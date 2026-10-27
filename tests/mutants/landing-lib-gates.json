@@ -1,0 +1,41 @@
+{
+  "target": "plugins/crew-orchestrator/lib/landing.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/landing-lib.bats",
+    "tests/land-batch.bats"
+  ],
+  "mutants": [
+    {
+      "name": "merge pause exemption ignored",
+      "old": "(.mergePauseExempt // []) | map(tostring) | index($pr) != null' \"$CAMPAIGN\") != true",
+      "new": "(.mergePauseExempt // []) | map(tostring) | index($pr) != null' \"$CAMPAIGN\") != false"
+    },
+    {
+      "name": "merge pause ignored by default",
+      "old": "HONOR_PAUSE=$(crew_setting land.honor_merge_pause true)",
+      "new": "HONOR_PAUSE=$(crew_setting land.honor_merge_pause false)"
+    },
+    {
+      "name": "corrupt campaign state opens the gates",
+      "old": "if [[ ! -r $CAMPAIGN ]] || ! jq -e 'type == \"object\"' \"$CAMPAIGN\" >/dev/null 2>&1; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "old bash accepted",
+      "old": "crew_land_bash_ok() {\n  (($1 > 4 || ($1 == 4 && $2 >= 4))) ||",
+      "new": "crew_land_bash_ok() {\n  true ||"
+    },
+    {
+      "name": "stale lane head ignored",
+      "old": "  if [[ -n $lane && ${lane#*$'\\t'} != \"\" && ${lane#*$'\\t'} != \"$PR_HEAD\" ]]; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "lane head compared by prefix",
+      "old": "${lane#*$'\\t'} != \"$PR_HEAD\" ]]; then",
+      "new": "$PR_HEAD != \"${lane#*$'\\t'}\"* ]]; then"
+    }
+  ]
+}

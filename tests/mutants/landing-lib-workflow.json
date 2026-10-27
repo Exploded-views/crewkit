@@ -1,0 +1,36 @@
+{
+  "target": "plugins/crew-orchestrator/lib/landing.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/landing-lib.bats",
+    "tests/land-batch.bats"
+  ],
+  "mutants": [
+    {
+      "name": "ci.workflow optional",
+      "old": "  CI_WORKFLOW=$(crew_require ci.workflow) || exit 78",
+      "new": "  CI_WORKFLOW=$(crew_setting ci.workflow .github/workflows/ci.yml)"
+    },
+    {
+      "name": "any event counts by default",
+      "old": "  CI_EVENT=$(crew_setting ci.event pull_request)",
+      "new": "  CI_EVENT=$(crew_setting ci.event \"\")"
+    },
+    {
+      "name": "the workflow isn't passed",
+      "old": "--required-check \"$CHECK\" --workflow \"$CI_WORKFLOW\" \\",
+      "new": "--required-check \"$CHECK\" --workflow \".github/workflows/x.yml\" \\"
+    },
+    {
+      "name": "only ci.workflow's jobs are read",
+      "old": "  for id in $(jq -r '.[].id' \"$d/runs.json\"); do",
+      "new": "  for id in $(jq -r --arg wf \"$CI_WORKFLOW\" '.[] | select(.path == $wf) | .id' \"$d/runs.json\"); do"
+    },
+    {
+      "name": "jobs listed without filter=latest",
+      "old": "actions/runs/$id/jobs?filter=latest&per_page=100\"",
+      "new": "actions/runs/$id/jobs?per_page=100\""
+    }
+  ]
+}
