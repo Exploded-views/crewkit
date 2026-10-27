@@ -58,6 +58,12 @@ README = """\
     | `page_command` | none |
     | `lessons_url` | `URL` |
 
+    <!-- export:drop-start -->
+    ## Lessons links
+
+    Skills cite incidents as lessons by number.
+    <!-- export:drop-end -->
+
     ## Next
     """
 SETTINGS = """\
@@ -154,6 +160,32 @@ class Export(unittest.TestCase):
     def test_the_tool_itself_may_describe_the_clone_path_form(self):
         r, _ = export(repo({"tools/export.py": "# fails on <home>/" + "projects/<clone>\n"}))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_the_tools_own_files_are_copied_verbatim(self):
+        # The export must not apply its transforms to itself: a drop region in a test fixture was
+        # once dropped from the public copy of this file, leaving a mutant alive there.
+        fixture = "x = \"\"\"\n<!-- export:drop-start -->\ngone?\n<!-- export:drop-end -->\n\"\"\"\n"
+        r, out = export(repo({"tests/test_export.py": fixture, "a.md": "kept\n"}))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual((out / "tests" / "test_export.py").read_text(), fixture)
+
+    def test_exporting_this_repo_changes_markdown_only(self):
+        root = EXPORT.parent.parent
+        if subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True).returncode != 0:
+            self.skipTest("not a git checkout")
+        r, out = export(root)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        # The export rewrites Markdown prose only: code, tests, fixtures and data come through
+        # byte for byte, so the public tests are the dev repo's tests.
+        files = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True).stdout.split("\0")
+        changed = []
+        for rel in filter(None, files):
+            if rel.endswith(".md") or not (out / rel).is_file():
+                continue
+            committed = subprocess.run(["git", "-C", str(root), "show", f"HEAD:{rel}"], capture_output=True).stdout
+            if (out / rel).read_bytes() != committed:
+                changed.append(rel)
+        self.assertEqual(changed, [])
 
     def test_the_repo_and_home_placeholders_are_fine(self):
         r, _ = export(repo({"a.txt": "File \"<repo>/lib/checks.py\"; config in <home>/.config/x\n"}))

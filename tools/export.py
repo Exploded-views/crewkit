@@ -33,6 +33,7 @@ import tarfile
 PLACEHOLDER = "PLAYBOOK_" + "LESSONS_URL"
 LINK = r"\[(?:lessons?|see lessons?) [^\]]*\]\(" + PLACEHOLDER + r"#\d+\)"
 # Files that may name the placeholder: this tool, the lint that allows it, and their tests.
+# They are copied verbatim (see transform).
 MAY_NAME = {"tools/export.py", "tools/lint-skills.py", "tests/test_export.py", "tests/test_lint_settings.py"}
 START, END = "<!-- export:drop-start -->", "<!-- export:drop-end -->"
 # A link to the dev repo's PRs or issues: those numbers don't exist in the public repo, and the
@@ -45,8 +46,18 @@ CLONE_PATH = re.compile(r"<home>/projects/[^/\s]+")
 DEV_LINK = re.compile(r"github\.com/[^/\s]+/crewkit(?:-dev)?/(?:pull|issues)/\d+")
 
 
+def refuse_dev_links(rel, text):
+    if DEV_LINK.search(text):
+        raise ValueError(f"{rel}: links to a dev-repo PR or issue; move it into an export:drop region")
+
+
 def transform(rel, text):
     """The public text of one file, or raise ValueError naming what couldn't be handled."""
+    if rel in MAY_NAME:
+        # The tool, its lint and their tests are copied verbatim: their fixtures hold the very
+        # forms the transforms remove, and transforming them would weaken the public tests.
+        refuse_dev_links(rel, text)
+        return text
     lines, out, dropping, squeeze = text.split("\n"), [], False, False
     for n, line in enumerate(lines, 1):
         if line.strip() == START:
@@ -77,15 +88,14 @@ def transform(rel, text):
     text = re.sub(r"\s*" + LINK, "", text)
     # A citation that wrapped onto its own line leaves only its punctuation there: fold it back.
     text = re.sub(r"\n[ \t]*([.,;:])[ \t]*(?=\n)", r"\1", text)
-    if rel not in MAY_NAME and (START in text or END in text):
+    if START in text or END in text:
         raise ValueError(f"{rel}: an export marker is left in the text (it must be alone on its line)")
-    if rel not in MAY_NAME and PLAIN_CITATION.search(text):
+    if PLAIN_CITATION.search(text):
         raise ValueError(f"{rel}: cites a lesson by number in plain text; reword it or move it into an export:drop region")
-    if rel not in MAY_NAME and CLONE_PATH.search(text):
+    if CLONE_PATH.search(text):
         raise ValueError(f"{rel}: names a local clone path (<home>/projects/...); write <repo>/... instead")
-    if DEV_LINK.search(text):
-        raise ValueError(f"{rel}: links to a dev-repo PR or issue; move it into an export:drop region")
-    if PLACEHOLDER in text and rel not in MAY_NAME:
+    refuse_dev_links(rel, text)  # after the drop regions are gone
+    if PLACEHOLDER in text:
         raise ValueError(f"{rel}: names {PLACEHOLDER} in a form the export can't remove")
     return text
 
