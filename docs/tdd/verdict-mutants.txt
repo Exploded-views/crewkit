@@ -1,0 +1,26 @@
+lib/verdict.py:
+  killed       PR without a lane accepted without reviewers
+  killed       odd file names accepted
+  killed       <head>.1.json read as round 1
+  killed       leading zeros allowed
+  killed       only the first JSON value read
+  killed       body round not checked
+  killed       only one record at the top round checked
+  killed       top round checks every round
+  killed       schema unchecked
+  killed       pr/head unchecked
+  killed       changes accepted
+  killed       self-review accepted
+  killed       lane implementer unchecked
+  killed       reviewer list unchecked (records)
+  killed       marker matched as a prefix
+  killed       whole body searched, not the first line
+  killed       PR author counted
+  killed       anyone counted
+  killed       no reviewers means anyone
+  killed       list order, not created_at
+  killed       SHA-less later verdicts ignored
+  killed       SHA not required
+  killed       short head accepted
+  killed       boolean round accepted
+  all 24 mutants killed

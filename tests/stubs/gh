@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# Stub gh for the crew-orchestrator tests. No network: state lives in $STUB, and the "GitHub"
+# repo is the local bare remote $STUB_BARE. Every call is appended to $STUB/calls.log.
+#
+# Per PR n, in $STUB/pr/<n>/: head, state (OPEN|MERGED), base, ref, draft, labels (one per line),
+#   author, comments.json (array of {author:{login},body}), merge (the squash commit, once merged).
+# CI per sha: $STUB/ci/<sha> holds success|failure|skipped|okonly for a PR head; a sha without
+#   one is a batch tip, judged from its bad-* files (first line "flake" = fails on attempt 1 only).
+#   $STUB/runs/<sha>.json and $STUB/jobs/<run id>.json, if present, are served verbatim.
+# Fault toggles (files): jobs_fail/<run id> (that run's jobs read fails), status_fail, batch_skipped, batch_pending (count), stale_after_rerun (count),
+#   protection_strict, refuse_after (merge count), transient_once/<n>, transient_always/<n>,
+#   race_before/<n>, tree_tamper/<n>, merged_but_error/<n>, daemon, prlist.json.
+# Hooks (run once, then renamed .done): hooks/on_poll (a batch tip's runs are read),
+#   hooks/on_merge (before a merge), hooks/after_merge.
+echo "$*" >> "$STUB/calls.log"
+# A lingering helper: the braces keep the backgrounded sleep from holding our stdout open.
+if [[ -e $STUB/daemon ]]; then { sleep 6 >/dev/null 2>&1 </dev/null & echo $! >> "$STUB/daemon.pids"; }; fi
+args=("$@")
+
+flag() { local i; for i in "${!args[@]}"; do [[ ${args[$i]} == "$1" ]] && { echo "${args[$((i + 1))]}"; return; }; done; }
+is_batch() { [[ ! -e $STUB/ci/$1 ]]; }
+bad_file() { git --git-dir="$STUB_BARE" ls-tree -r --name-only "$1" 2>/dev/null | grep -m1 "^${2:-bad}-"; }
+hook() { local h=$STUB/hooks/$1; if [[ -x $h ]]; then mv "$h" "$h.done"; "$h.done"; fi; }
+dec() { # dec FILE: if the count in FILE is above 0, decrement it and succeed
+  [[ -e $1 ]] || return 1
+  local n; n=$(cat "$1"); ((n > 0)) || return 1; echo $((n - 1)) > "$1"
+}
+conclusion() { # conclusion SHA ATTEMPT
+  if is_batch "$1" && [[ -e $STUB/batch_skipped ]]; then echo skipped; return; fi
+  if [[ -e $STUB/ci/$1 ]]; then cat "$STUB/ci/$1"; return; fi
+  local f; f=$(bad_file "$1")
+  [[ -n $f ]] || { echo success; return; }
+  if [[ $(git --git-dir="$STUB_BARE" show "$1:$f" | head -1) == flake && $2 == 2 ]]; then echo success; else echo failure; fi
+}
+poll() { # poll ID: one poll of a run's CI, with its side effects: "ATTEMPT STATUS CONCLUSION" in $STUB/cur/ID
+  local att=1 status=completed
+  ! is_batch "$1" || hook on_poll
+  [[ ! -e $STUB/rerun/$1 ]] || att=2
+  if [[ $att == 2 ]] && dec "$STUB/stale_now"; then att=1
+  elif [[ $att == 2 ]] && dec "$STUB/pending_now"; then status=in_progress
+  elif is_batch "$1" && dec "$STUB/batch_pending"; then status=in_progress
+  fi
+  mkdir -p "$STUB/cur"; echo "$att $status $(conclusion "$1" "$att")" > "$STUB/cur/$1"
+}
+merge_pr() { # squash refs/pull/N/head onto main in a scratch clone
+  local n=$1 t; t=$(mktemp -d "$STUB/tmp.XXXX")
+  git clone -q "$STUB_BARE" "$t" && cd "$t" && git config user.email s@example.com && git config user.name s &&
+    git fetch -q origin "refs/pull/$n/head" && git merge -q --squash FETCH_HEAD &&
+    { [[ ! -e $STUB/tree_tamper/$n ]] || { echo x > tamper.txt && git add tamper.txt; }; } &&
+    git commit -q -m "squash #$n" && git push -q origin HEAD:main || return 1
+  git rev-parse HEAD > "$STUB/pr/$n/merge"
+  cd / && rm -rf "$t"
+}
+push_main() { # push_main NAME: something else lands on main
+  local t; t=$(mktemp -d "$STUB/tmp.XXXX")
+  git clone -q "$STUB_BARE" "$t"
+  (cd "$t" && git config user.email a@example.com && git config user.name a &&
+    echo "$1" > "$1.txt" && git add . && git commit -qm "$1" && git push -q origin HEAD:main)
+  rm -rf "$t"
+}
+
+case "$1 $2" in
+"api -X")
+  id=$(sed -E 's#.*/runs/([^/]+)/rerun.*#\1#' <<<"$4")
+  mkdir -p "$STUB/rerun"; touch "$STUB/rerun/$id"
+  [[ ! -e $STUB/stale_after_rerun ]] || cp "$STUB/stale_after_rerun" "$STUB/stale_now"
+  echo 1 > "$STUB/pending_now" ;;
+"api repos/"*)
+  p=$2
+  case $p in
+  *"/actions/runs?head_sha="*)
+    s=${p#*head_sha=}; s=${s%%&*}
+    # Served as written, with any missing head_sha, status, run_attempt or conclusion filled in
+    # from that run's jobs/<id>.json (its attempt; success only when every job succeeded).
+    if [[ -e $STUB/runs/$s.json ]]; then
+      jq --arg s "$s" '.workflow_runs |= map({head_sha: $s, status: "completed", run_attempt: 1} + .)' \
+        "$STUB/runs/$s.json" > "$STUB/runs/$s.filled"
+      while read -r id; do
+        f=$STUB/jobs/$id.json
+        [[ -e $f ]] || continue
+        jq --arg id "$id" --slurpfile j "$f" '.workflow_runs |= map(if (.id | tostring) == $id then
+          {conclusion: (if all($j[0].jobs[]; .conclusion == "success") then "success" else "failure" end)} + . else . end)' \
+          "$STUB/runs/$s.filled" > "$STUB/runs/$s.tmp" && mv "$STUB/runs/$s.tmp" "$STUB/runs/$s.filled"
+      done < <(jq -r '.workflow_runs[].id' "$STUB/runs/$s.json")
+      cat "$STUB/runs/$s.filled"; exit 0
+    fi
+    # The run and its jobs come from one poll: the jobs read below takes this poll's state.
+    poll "$s"; read -r att status c < "$STUB/cur/$s"
+    rc=null
+    if [[ $status == completed ]]; then
+      case $c in okonly) rc='"success"' ;; *) rc=\"$c\" ;; esac
+      ! { is_batch "$s" && [[ -n $(bad_file "$s" bad2) ]]; } || rc='"failure"'
+    fi
+    printf '{"workflow_runs":[{"id":"%s","path":".github/workflows/ci.yml","event":"pull_request","created_at":"2026-01-01T00:00:00Z","head_sha":"%s","run_attempt":%s,"status":"%s","conclusion":%s}]}\n' \
+      "$s" "$s" "$att" "$status" "$rc" ;;
+  *"/actions/runs/"*"/jobs"*)
+    id=$(sed -E 's#.*/runs/([^/]+)/jobs.*#\1#' <<<"$p")
+    # A failed read, as real gh reports one: the error body on stdout, HTTP status on stderr, exit 1.
+    [[ ! -e $STUB/jobs_fail/$id ]] || { echo '{"message":"Server Error"}'; echo "HTTP 502" >&2; exit 1; }
+    [[ ! -e $STUB/jobs/$id.json ]] || { cat "$STUB/jobs/$id.json"; exit 0; }
+    [[ -e $STUB/cur/$id ]] || poll "$id"   # a run served from runs/<sha>.json is polled here
+    read -r att status c < "$STUB/cur/$id"; rm "$STUB/cur/$id"
+    unit=\"$c\" agg=\"$c\"
+    [[ $c != okonly ]] || { unit='"skipped"'; agg='"success"'; }
+    [[ $status == completed ]] || { unit=null; agg=null; }
+    # On a batch tip, a bad2-* file adds a second job, e2e, that always fails (its log is the file).
+    e2e=""
+    if [[ $status == completed ]] && is_batch "$id" && [[ -n $(bad_file "$id" bad2) ]]; then
+      e2e=$(printf ',{"id":"e2e-%s","name":"e2e","status":"completed","run_attempt":%s,"conclusion":"failure","started_at":"2026-01-01T00:00:00Z"}' "$id" "$att")
+      agg='"failure"'
+    fi
+    printf '{"jobs":[{"id":"%s","name":"unit","status":"%s","run_attempt":%s,"conclusion":%s,"started_at":"2026-01-01T00:00:00Z"}%s,{"id":"ok-%s","name":"ci-ok","status":"%s","run_attempt":%s,"conclusion":%s,"started_at":"2026-01-01T00:00:01Z"}]}\n' \
+      "$id" "$status" "$att" "$unit" "$e2e" "$id" "$status" "$att" "$agg" ;;
+  *"/actions/jobs/"*"/logs")
+    id=${p#*/jobs/}; id=${id%/logs}
+    kind=bad; [[ $id != e2e-* ]] || { kind=bad2; id=${id#e2e-}; }
+    f=$(bad_file "$id" "$kind"); [[ -z $f ]] || git --git-dir="$STUB_BARE" show "$id:$f" | tail -n +2 ;;
+  *"/issues/"*"/comments"*)
+    # The REST shape (user.login, created_at), from the same comments.json as pr view; pages
+    # of two, as --paginate would join them.
+    n=${p#*/issues/}; n=${n%%/*}
+    jq -c '[.[] | {user: {login: .author.login}, created_at: .createdAt, body: .body}] | _nwise(2)' \
+      "$STUB/pr/$n/comments.json" 2>/dev/null || echo '[]' ;;
+  *"/commits/"*"/status"*)
+    # The combined commit status: $STUB/status/<sha>.json if a test set one, else no contexts.
+    s=${p#*/commits/}; s=${s%%/status*}
+    [[ ! -e $STUB/status_fail ]] || { echo '{"message":"Server Error"}'; echo "HTTP 502" >&2; exit 1; }
+    cat "$STUB/status/$s.json" 2>/dev/null || echo '{"state":"pending","statuses":[]}' ;;
+  *"/branches/"*"/protection")
+    [[ -e $STUB/protection_strict ]] || { echo '{"message":"Not Found"}'; exit 1; }
+    echo '{"required_status_checks":{"strict":true}}' ;;
+  *) echo "stub gh: unhandled api $p" >&2; exit 1 ;;
+  esac ;;
+"pr view")
+  d=$STUB/pr/$3; [[ -e $d/head ]] || exit 1
+  labels=$(sed '/^$/d' "$d/labels" 2>/dev/null | jq -R '{name: .}' | jq -sc .)
+  mc=null; [[ ! -e $d/merge ]] || mc="{\"oid\":\"$(cat "$d/merge")\"}"
+  jq -n --arg state "$(cat "$d/state")" --argjson draft "$(cat "$d/draft")" --arg head "$(cat "$d/head")" \
+    --arg base "$(cat "$d/base")" --arg ref "$(cat "$d/ref")" --argjson labels "${labels:-[]}" \
+    --argjson mc "$mc" --arg author "$(cat "$d/author" 2>/dev/null || echo lane-bot)" \
+    --argjson comments "$(cat "$d/comments.json" 2>/dev/null || echo '[]')" \
+    '{state: $state, isDraft: $draft, headRefOid: $head, baseRefName: $base, headRefName: $ref,
+      labels: $labels, mergeCommit: $mc, author: {login: $author}, comments: $comments}' ;;
+"pr list") cat "$STUB/prlist.json" 2>/dev/null || echo '[]' ;;
+"label create") ;;
+"pr create")
+  n=$(($(cat "$STUB/counter" 2>/dev/null || echo 900) + 1)); echo $n > "$STUB/counter"
+  echo "https://github.com/OWNER/REPO/pull/$n" ;;
+"pr close") touch "$STUB/closed-$3" ;;
+"pr merge")
+  n=$3; count=$(wc -l < "$STUB/merged.log" 2>/dev/null || echo 0)
+  hook on_merge
+  [[ ! -e $STUB/race_before/$n ]] || push_main "race-$n"
+  if [[ -e $STUB/refuse_after ]] && ((count >= $(cat "$STUB/refuse_after"))); then
+    echo "X Pull request #$n is not mergeable: the head branch is not up to date with the base branch." >&2; exit 1
+  fi
+  if [[ -e $STUB/transient_once/$n ]]; then rm "$STUB/transient_once/$n"; echo "Base branch was modified. Review and try the merge again." >&2; exit 1; fi
+  [[ ! -e $STUB/transient_always/$n ]] || { echo "Base branch was modified. Review and try the merge again." >&2; exit 1; }
+  [[ $(flag --match-head-commit) == "$(cat "$STUB/pr/$n/head")" ]] || { echo "head sha mismatch" >&2; exit 1; }
+  merge_pr "$n" || { echo "merge failed" >&2; exit 1; }
+  echo "$n" >> "$STUB/merged.log"
+  hook after_merge
+  echo MERGED > "$STUB/pr/$n/state"
+  [[ ! -e $STUB/merged_but_error/$n ]] || { echo "Base branch was modified. Review and try the merge again." >&2; exit 1; } ;;
+*) echo "stub gh: unhandled $*" >&2; exit 1 ;;
+esac

@@ -1,0 +1,60 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-land",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-land.bats"
+  ],
+  "mutants": [
+    {
+      "name": "records without implementer accepted",
+      "old": "  [[ -n $impl && $impl != null ]] || say",
+      "new": "  impl=${impl:-x}; true || say"
+    },
+    {
+      "name": "record verdict not checked",
+      "old": "  vout=$(child \"$here/lane-verdict\" check \"$pr\" \"$head\" --implementer \"$impl\" --model \"$model\") || say",
+      "new": "  vout=ok || say"
+    },
+    {
+      "name": "PR author not passed",
+      "old": "--author \"$author\"",
+      "new": "--author nobody"
+    },
+    {
+      "name": "reviewers not passed",
+      "old": "--reviewers \"$(crew_setting review.reviewers \"\")\"",
+      "new": "--reviewers \"rev-a,intruder,anyone\""
+    },
+    {
+      "name": "comment verdict ignored",
+      "old": "--require-sha \"$(crew_setting review.require_sha true)\" --model \"$model\") || say",
+      "new": "--require-sha \"$(crew_setting review.require_sha true)\" --model \"$model\") || true"
+    },
+    {
+      "name": "comments verdict not asked for the model",
+      "old": "--require-sha \"$(crew_setting review.require_sha true)\" --model \"$model\")",
+      "new": "--require-sha \"$(crew_setting review.require_sha true)\")"
+    },
+    {
+      "name": "review_model defaults to none",
+      "old": "model=$(crew_setting review_model opus)",
+      "new": "model=$(crew_setting review_model \"\")"
+    },
+    {
+      "name": "review_model setting ignored",
+      "old": "model=$(crew_setting review_model opus)",
+      "new": "model=opus"
+    },
+    {
+      "name": "comments read without --paginate",
+      "old": "/comments?per_page=100\" --paginate",
+      "new": "/comments?per_page=100\""
+    },
+    {
+      "name": "empty PR author accepted",
+      "old": "  [[ -n $author ]] || say",
+      "new": "  true || say"
+    }
+  ]
+}

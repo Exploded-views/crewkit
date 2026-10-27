@@ -1,0 +1,45 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-land",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-land.bats"
+  ],
+  "mutants": [
+    {
+      "name": "merge pause ignored",
+      "old": "if [[ $(get mergePaused) == true ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "draft or closed accepted",
+      "old": "[[ $(field .state) == OPEN && $(field .isDraft) == false ]] || say",
+      "new": "true || say"
+    },
+    {
+      "name": "stale lane head accepted",
+      "old": "if [[ -n $lane_head && $lane_head != null && $lane_head != \"$head\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "dirty accepted",
+      "old": "[[ $(field .mergeStateStatus) != DIRTY ]] || say",
+      "new": "true || say"
+    },
+    {
+      "name": "owner gate off",
+      "old": "  [[ -z $why ]] || say \"NEEDS-OWNER-PRESENT",
+      "new": "  true || say \"NEEDS-OWNER-PRESENT"
+    },
+    {
+      "name": "unconfirmed risk areas allowed",
+      "old": "  [[ -n $(crew_setting high_risk_areas.confirmed_by \"\") ]] || why=",
+      "new": "  true || why="
+    },
+    {
+      "name": "gated lanes ignored",
+      "old": "  jq -e --arg l \"$lane\" 'index($l) != null' <<<\"$(get ownerGatedLanes)\" >/dev/null && why=",
+      "new": "  false && why="
+    }
+  ]
+}

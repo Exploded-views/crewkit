@@ -1,0 +1,149 @@
+EEEEEEEEEEEE
+======================================================================
+ERROR: test_bare_path_to_or_owner_in_shell_block_fails (tests.test_lint_inputs.CheckInputs.test_bare_path_to_or_owner_in_shell_block_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 80, in test_bare_path_to_or_owner_in_shell_block_fails
+    errs = self.check(GOOD.replace('"$CREWKIT_DIR/install.sh"', "/path/to/crewkit/install.sh"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_description_on_the_next_line_passes (tests.test_lint_inputs.CheckInputs.test_description_on_the_next_line_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 88, in test_description_on_the_next_line_passes
+    self.assertEqual(self.check(page), [])
+                     ^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_good_page_passes (tests.test_lint_inputs.CheckInputs.test_good_page_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 56, in test_good_page_passes
+    self.assertEqual(self.check(GOOD), [])
+                     ^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_input_never_used_in_the_steps_fails (tests.test_lint_inputs.CheckInputs.test_input_never_used_in_the_steps_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 76, in test_input_never_used_in_the_steps_fails
+    errs = self.check(GOOD.replace('--host "$HOST"', ""))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_long_literal_repeated_on_a_page_fails (tests.test_lint_inputs.CheckInputs.test_long_literal_repeated_on_a_page_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 97, in test_long_literal_repeated_on_a_page_fails
+    errs = self.check(page)
+           ^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_malformed_inputs_bullet_fails (tests.test_lint_inputs.CheckInputs.test_malformed_inputs_bullet_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 71, in test_malformed_inputs_bullet_fails
+    errs = self.check(GOOD.replace("- `HOST` = `<host name>`: this machine's name in memsync.",
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_page_without_placeholders_passes (tests.test_lint_inputs.CheckInputs.test_page_without_placeholders_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 106, in test_page_without_placeholders_passes
+    self.assertEqual(self.check(f"# P\n\n{FENCE}bash\nls\n{FENCE}\n"), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_placeholder_outside_its_assignment_fails (tests.test_lint_inputs.CheckInputs.test_placeholder_outside_its_assignment_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 91, in test_placeholder_outside_its_assignment_fails
+    errs = self.check(GOOD.replace('--host "$HOST"', '--host "<host name>"'))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_repeated_command_line_fails (tests.test_lint_inputs.CheckInputs.test_repeated_command_line_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 102, in test_repeated_command_line_fails
+    errs = self.check(page)
+           ^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_shell_placeholders_without_an_inputs_section_fail (tests.test_lint_inputs.CheckInputs.test_shell_placeholders_without_an_inputs_section_fail)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 67, in test_shell_placeholders_without_an_inputs_section_fail
+    errs = self.check(page)
+           ^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_text_blocks_are_exempt (tests.test_lint_inputs.CheckInputs.test_text_blocks_are_exempt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 63, in test_text_blocks_are_exempt
+    self.assertEqual(self.check(GOOD.replace("<a tag>", "<anything>")), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+======================================================================
+ERROR: test_undeclared_placeholder_in_shell_block_fails (tests.test_lint_inputs.CheckInputs.test_undeclared_placeholder_in_shell_block_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 59, in test_undeclared_placeholder_in_shell_block_fails
+    errs = self.check(GOOD.replace('--host "$HOST"', "--host <other host>"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_inputs.py", line 52, in check
+    lint.check_inputs(["page.md"])
+    ^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_inputs'. Did you mean: 'check_links'?
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.028s
+
+FAILED (errors=12)

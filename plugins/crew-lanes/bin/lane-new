@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# lane-new LANE [BASE]: create, or reuse, a lane's worktree and branch.
+#
+# The worktree is <checkout>/<lane.worktree_dir>/<lane> on branch <branch_prefix.lane><lane>,
+# from BASE (default origin/<main_branch>). An existing local branch is reused; one that exists
+# only on origin is tracked. The lane gets a .lane/ scratch directory (ignored through the
+# repository's shared info/exclude), the packet's exemptions in .lane/exemptions.txt, and a
+# lane note committed (without the repo's hooks) and pushed, so a draft PR can exist. Then
+# lane.setup_hook runs in the worktree with LANE, BRANCH and WORKTREE set.
+#
+# Prints: WORKTREE <path> BRANCH <branch> HEAD <sha>
+# Exit 0 = ready, 1 = a step failed, 64 = usage (docs/exit-codes.md). Running it again is safe.
+set -euo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=SCRIPTDIR/../lib/settings.sh
+source "$here/../lib/settings.sh"
+
+die() { echo "lane-new: $*" >&2; exit 1; }
+if (($# < 1)) || [[ -z $1 || $1 == -* ]]; then
+  awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0" >&2
+  exit 64
+fi
+lane=$1
+safe=${lane//[^A-Za-z0-9._-]/-}
+checkout=$(crew_setting checkout "")
+[[ -n $checkout ]] || checkout=$(git rev-parse --show-toplevel 2>/dev/null) || die "not in a git checkout; set checkout"
+main=$(crew_setting main_branch main)
+base=${2:-origin/$main}
+prefix=$(crew_setting branch_prefix.lane lane/)
+wt_dir=$(crew_setting lane.worktree_dir .claude/worktrees)
+note_dir=$(crew_setting lane.note_dir docs/lanes)
+campaign=$(crew_setting campaign_dir "$HOME/.local/state/crewkit/campaign")
+campaign=${campaign/#\~/$HOME}
+branch=$prefix$safe
+wt=$checkout/$wt_dir/$safe
+
+git -C "$checkout" fetch -q origin || die "fetch from origin failed"
+if [[ ! -d $wt ]]; then
+  if git -C "$checkout" show-ref --verify --quiet "refs/heads/$branch"; then
+    git -C "$checkout" worktree add -q "$wt" "$branch"
+  elif git -C "$checkout" ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    git -C "$checkout" worktree add -q --track -b "$branch" "$wt" "origin/$branch"
+  else
+    git -C "$checkout" worktree add -q --no-track -b "$branch" "$wt" "$base"
+  fi
+fi
+
+# .lane/ is scratch: ignored for every worktree through the shared exclude file. (A worktree's
+# .git is a file, so its own .git/info/exclude doesn't exist.)
+exclude="$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)/info/exclude"
+mkdir -p "$(dirname "$exclude")" "$wt/.lane"
+grep -qx '.lane/' "$exclude" 2>/dev/null || echo '.lane/' >> "$exclude"
+
+packet="$campaign/lanes/$safe.json"
+if [[ -f $packet ]]; then
+  python3 - "$packet" > "$wt/.lane/exemptions.txt" <<'PY' || die "can't read the packet $packet"
+import json, sys
+d = json.load(open(sys.argv[1]))
+paths = {e.split(" ")[0] for i in d.get("issues", []) for e in i.get("exemptions", [])}
+print("\n".join(sorted(paths)))
+PY
+fi
+
+note="$wt/$note_dir/$safe.md"
+if [[ ! -f $note ]]; then
+  mkdir -p "$(dirname "$note")"
+  cat > "$note" <<EOF
+# Lane $lane
+
+Opened $(date -u +%F). Branch \`$branch\`. Base \`$base\`.
+
+## Findings and gotchas
+
+## Behaviour changes
+
+## Rules to promote
+EOF
+  git -C "$wt" add "$note"
+  git -C "$wt" -c core.hooksPath=/dev/null commit -q -m "chore($safe): open lane"
+fi
+if ! git -C "$checkout" ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+  git -C "$wt" push -q -u origin "$branch" || die "push of $branch failed"
+fi
+
+hook=$(crew_setting lane.setup_hook "")
+if [[ -n $hook ]]; then
+  (cd "$wt" && LANE=$safe BRANCH=$branch WORKTREE=$wt bash -c "$hook") || die "the setup hook failed (lane.setup_hook)"
+fi
+echo "WORKTREE $wt BRANCH $branch HEAD $(git -C "$wt" rev-parse HEAD)"

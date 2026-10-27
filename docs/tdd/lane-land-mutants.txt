@@ -1,0 +1,36 @@
+## Full run after the M1 review fixes
+plugins/crew-lanes/bin/lane-land:
+  killed       merge pause ignored
+  killed       draft or closed accepted
+  killed       stale lane head accepted
+  killed       pending checks accepted
+  killed       failed checks accepted
+  killed       required check not required
+  killed       min green ignored
+  NOT APPLIED  ignored checks not ignored (old text found 0 times)
+  killed       dirty accepted
+  killed       owner gate off
+  killed       unconfirmed risk areas allowed
+  killed       gated lanes ignored
+  killed       precheck hook ignored
+  killed       records without implementer accepted
+  killed       record verdict not checked
+  killed       merge not pinned to the head
+  killed       merge not verified
+  killed       not recorded
+  killed       issues not labelled
+  killed       dirty worktree removed
+  killed       no landing lock
+  killed       already-merged merged again
+  killed       corrupt state not refused
+  killed       required check from any workflow
+  killed       status contexts read as success
+  killed       merged-despite-error reported as failure
+  killed       hook timeout not refused
+  killed       PR author not passed
+  killed       reviewers not passed
+  killed       comment verdict ignored
+  a mutant survived, did not apply or was invalid
+
+## The one mutant whose line had moved, repointed and rerun
+  killed       ignored checks not ignored

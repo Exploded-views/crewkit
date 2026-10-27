@@ -1,0 +1,160 @@
+{
+  "target": "lib/settings.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/settings.bats"
+  ],
+  "mutants": [
+    {
+      "name": "environment ignored",
+      "old": "    if (!fo && (e in ENVIRON)) { print \"E=\" ENVIRON[e]; exit }",
+      "new": "    if (0) { print \"E=\" ENVIRON[e]; exit }"
+    },
+    {
+      "name": "crew_keys reads past the frontmatter",
+      "old": "$0 == \"---\" { exit }",
+      "new": "$0 == \"---\" { next }"
+    },
+    {
+      "name": "trailing comment kept",
+      "old": "    *) v=${v%%[[:space:]]#*}; v=\"${v%\"${v##*[![:space:]]}\"}\" ;;",
+      "new": "    *) v=\"${v%\"${v##*[![:space:]]}\"}\" ;;"
+    },
+    {
+      "name": "quotes kept",
+      "old": "    \\\"*\\\"*) v=${v#\\\"}; v=${v%%\\\"*} ;;",
+      "new": "    \\\"*\\\"*) : ;;"
+    },
+    {
+      "name": "default ignored",
+      "old": "  if (($# > 1)); then printf '%s\\n' \"$2\"; fi",
+      "new": "  :"
+    },
+    {
+      "name": "require accepts unset",
+      "old": "    exit 78",
+      "new": "    return 0"
+    },
+    {
+      "name": "keys listed twice",
+      "old": "&& !seen[$1]++ ",
+      "new": ""
+    },
+    {
+      "name": "lookup reads past the frontmatter",
+      "old": "  fm && index($0, k \":\") == 1 {",
+      "new": "  index($0, k \":\") == 1 {"
+    },
+    {
+      "name": "no walk up from subdirectories",
+      "old": "    dir=${dir%/*}",
+      "new": "    break"
+    },
+    {
+      "name": "local file not preferred over shared",
+      "old": "    [[ -f $dir/.claude/crewkit.local.md ]] && found+=(\"$dir/.claude/crewkit.local.md\")\n    [[ -f $dir/.claude/crewkit.md ]] && found+=(\"$dir/.claude/crewkit.md\")",
+      "new": "    [[ -f $dir/.claude/crewkit.md ]] && found+=(\"$dir/.claude/crewkit.md\")\n    [[ -f $dir/.claude/crewkit.local.md ]] && found+=(\"$dir/.claude/crewkit.local.md\")"
+    },
+    {
+      "name": "user file skipped",
+      "old": "  [[ -f $HOME/.claude/crewkit.md ]] && found+=(\"$HOME/.claude/crewkit.md\")",
+      "new": "  :"
+    },
+    {
+      "name": "search passes the repo root",
+      "old": "    [[ -e $dir/.git || $dir == / ]] && break",
+      "new": "    [[ $dir == / ]] && break"
+    },
+    {
+      "name": "world-writable files read",
+      "old": "    elif [[ $bad == *$'\\n'\"$f\"$'\\n'* ]]; then",
+      "new": "    elif false; then"
+    },
+    {
+      "name": "files not owned by you read",
+      "old": "    if [[ ! -O $f ]]; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "cache ignores the directory",
+      "old": "  [[ ${_CREW_FILES_FOR:-} == \"$PWD\" ]] && return 0",
+      "new": "  [[ -n ${_CREW_FILES_FOR:-} ]] && return 0"
+    },
+    {
+      "name": "not primed at source time",
+      "old": "\n_crew_find_files\n",
+      "new": "\n:\n"
+    },
+    {
+      "name": "file_only reads the environment",
+      "old": "    if (!fo && (e in ENVIRON)) {",
+      "new": "    if ((e in ENVIRON)) {"
+    },
+    {
+      "name": "main checkout not entered",
+      "old": "  cd \"${common%/.git}\" || return 1\n}",
+      "new": "  :\n}"
+    },
+    {
+      "name": "a bare repository's worktree accepted",
+      "old": "  [[ $common == */.git && -d ${common%/.git} ]] || return 1",
+      "new": "  [[ -n $common ]] || return 1"
+    },
+    {
+      "name": "outside a repository is an error",
+      "old": "  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0",
+      "new": "  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1"
+    },
+    {
+      "name": "every key takes the environment",
+      "old": "  _crew_env_ok \"$key\" && fo=0",
+      "new": "  fo=0"
+    },
+    {
+      "name": "no key takes the environment",
+      "old": "  _crew_env_ok \"$key\" && fo=0",
+      "new": "  :"
+    },
+    {
+      "name": "an exact file-only entry loses to an env-OK prefix",
+      "old": "  case $_CREW_FO_FLAT in *\" $key \"*) return 1 ;; esac",
+      "new": "  :"
+    },
+    {
+      "name": "exact env-OK entries ignored",
+      "old": "  case $_CREW_EO_FLAT in *\" $key \"*) return 0 ;; esac",
+      "new": "  :"
+    },
+    {
+      "name": "env-OK prefixes ignored",
+      "old": "    case $_CREW_EO_FLAT in *\" $p.* \"*) return 0 ;; esac",
+      "new": "    :"
+    },
+    {
+      "name": "a nested file-only prefix loses to an env-OK prefix",
+      "old": "    case $_CREW_FO_FLAT in *\" $p.* \"*) return 1 ;; esac",
+      "new": "    :"
+    },
+    {
+      "name": "env-OK list split with glob expansion",
+      "old": "  read -rd '' -a _crew_eo <<<\"$CREW_ENV_OK\" || true",
+      "new": "  _crew_eo=($CREW_ENV_OK)"
+    },
+    {
+      "name": "a changed list isn't re-read",
+      "old": "  [[ $_CREW_LISTS_SRC == \"$CREW_FILE_ONLY|$CREW_ENV_OK\" ]] || _crew_flatten_lists",
+      "new": "  [[ -n $_CREW_LISTS_SRC ]] || _crew_flatten_lists"
+    },
+    {
+      "name": "an unlisted key takes the environment",
+      "old": "  done\n  return 1\n}\n\n# _crew_find_files",
+      "new": "  done\n  return 0\n}\n\n# _crew_find_files"
+    },
+    {
+      "name": "a malformed key can take the environment",
+      "old": "  case $key in ''|*[!abcdefghijklmnopqrstuvwxyz0123456789_.-]*) return 1 ;; esac",
+      "new": "  :"
+    }
+  ]
+}

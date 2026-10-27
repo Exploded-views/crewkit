@@ -1,0 +1,131 @@
+EEEEEEEEE
+======================================================================
+ERROR: test_a_budget_with_no_scenario_fails (tests.test_perf.Perf.test_a_budget_with_no_scenario_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+======================================================================
+ERROR: test_a_measured_scenario_without_a_budget_fails (tests.test_perf.Perf.test_a_measured_scenario_without_a_budget_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+======================================================================
+ERROR: test_headroom_only_in_ci (tests.test_perf.Perf.test_headroom_only_in_ci)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+======================================================================
+ERROR: test_headroom_widens_the_budget (tests.test_perf.Perf.test_headroom_widens_the_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+======================================================================
+ERROR: test_over_budget_fails_and_names_the_scenario (tests.test_perf.Perf.test_over_budget_fails_and_names_the_scenario)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+======================================================================
+ERROR: test_p95_is_order_independent (tests.test_perf.Perf.test_p95_is_order_independent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+======================================================================
+ERROR: test_p95_of_twenty_samples_is_the_nineteenth_smallest (tests.test_perf.Perf.test_p95_of_twenty_samples_is_the_nineteenth_smallest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+======================================================================
+ERROR: test_the_committed_budgets_cover_every_scenario (tests.test_perf.Perf.test_the_committed_budgets_cover_every_scenario)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+======================================================================
+ERROR: test_under_budget_passes (tests.test_perf.Perf.test_under_budget_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_perf.py", line 20, in setUp
+    self.perf = load()
+                ^^^^^^
+  File "<repo>/tests/test_perf.py", line 14, in load
+    spec.loader.exec_module(mod)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '<repo>/tools/perf.py'
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.002s
+
+FAILED (errors=9)

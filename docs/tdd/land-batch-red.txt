@@ -1,0 +1,294 @@
+# land-batch suite (tests/land-batch.bats) before plugins/crew-orchestrator/bin/land-batch existed.
+# Every test fails: the script is missing. Paths are replaced with <tmp>.
+
+1..55
+not ok 1 1 all green: merged in order, batch branch deleted, batch PR closed
+# (in test file tests/land-batch.bats, line 19)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 2 a conflict drops one PR, the rest land
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 26)
+#   `mkpr 11 --shared AAA; mkpr 12 --shared BBB; mkpr 13' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 3 3 main moved while the batch ran: abort, nothing merged
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 34)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 4 4 a PR head changed while the batch ran: abort, nothing merged
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 43)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 5 5 a known flake reruns once, then everything lands
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 51)
+#   `mkpr 11; mkpr 12 --bad "flake\n FAIL  src/bigmem.test.ts > big thing"; mkpr 13' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 6 6 a real failure bisects to the culprit
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 60)
+#   `mkpr 12 --bad "real\n FAIL  src/foo.test.ts > x"' failed with status 128
+# fatal: pathspec 'f-14.txt' did not match any files
+not ok 7 7 an up-to-date requirement refusal is reported once, not retried
+# (in test file tests/land-batch.bats, line 73)
+#   `[ "$status" -eq 10 ]' failed
+not ok 8 8 strict branch protection: stop before opening a batch PR
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 80)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 9 9 a draft PR is skipped
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 88)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 10 10 a skipped check, or the aggregate check with no other green job, is not green
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 96)
+#   `mkpr 11; mkpr 12; mkpr 13' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 11 11 a batch run with only skipped jobs times out (exit 75), nothing merged
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 106)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 12 12 the batch PR is not a draft, and is labelled and titled do-not-merge
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 115)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 13 13 a pending check is not red: poll until it succeeds
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 124)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 14 14 a flake rerun waits for the new attempt, ignoring the stale failure
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 133)
+#   `mkpr 11; mkpr 12 --bad "flake\n FAIL  src/bigmem.test.ts"' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 15 15a flakes match only FAIL lines
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 142)
+#   `mkpr 11; mkpr 12 --bad "real\nsetup bigmem.test.ts ok\n FAIL  src/real.test.ts"' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 16 15b one unknown FAIL line among flakes is not a flake
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 149)
+#   `mkpr 11; mkpr 12 --bad "flake\n FAIL  src/bigmem.test.ts\n FAIL  src/real.test.ts"' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 17 15c flake entries are literal text, not patterns
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 156)
+#   `mkpr 11; mkpr 12 --bad "flake\n FAIL  src/bigXmem.test.ts"' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 18 16a a PR not based on the main branch is skipped
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 162)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 19 16b a base change found at the recheck aborts with nothing merged
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 170)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 20 17a batch branch heads and blocked labels are refused
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 178)
+#   `mkpr 11; mkpr 12; mkpr 13' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 21 17b a blocking label added before the merges aborts with nothing merged
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 188)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 22 18a an owner-gated PR is skipped while the owner is away
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 196)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 23 18b with the owner present, gated PRs land
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 205)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 24 19 main moves between squashes: stop with a loud partial report
+# (in test file tests/land-batch.bats, line 216)
+#   `[ "$status" -eq 7 ]' failed
+not ok 25 20 a transient 'Base branch was modified' is retried
+# (in test file tests/land-batch.bats, line 227)
+#   `[ "$status" -eq 0 ]' failed
+not ok 26 21 a persistent squash failure stops and names what landed
+# (in test file tests/land-batch.bats, line 236)
+#   `[ "$status" -eq 8 ]' failed
+not ok 27 22 something landed between the recheck and a squash: parent mismatch
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 243)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 28 23 the squash tree differs from the tree tested
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 252)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 29 24 a timeout after a partial landing reports what landed
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 260)
+#   `mkpr 11; mkpr 12 --bad "real\n FAIL  src/z.test.ts"' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 30 25 stale batch PRs and branches are swept, fresh ones kept
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 269)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 31 26 the landing lock is shared: busy means exit 75 and nothing merged
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 281)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 32 27 PRs sharing a commit not on main (stacked) are not batched together
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 291)
+#   `mkpr 11; mkpr_on 12 11; mkpr 13' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 33 28 the batch branch is a chain of squashes, so the tested tree is GitHub's
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 299)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 34 29 a merge call that errors although the PR merged counts as landed
+# (in test file tests/land-batch.bats, line 310)
+#   `[ "$status" -eq 0 ]' failed
+not ok 35 30 a lingering helper process does not hold the landing lock
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 317)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 36 31a a later mirror run's failure is ignored: the real run's success counts
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 341)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 37 31b a later mirror run's success is ignored too: the real run failed
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 349)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 38 31c without ci.noise_step_prefix the newest run counts
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 357)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 39 a dry run (no --yes) reports the plan and changes nothing
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 366)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 40 usage errors exit 64
+# (in test file tests/land-batch.bats, line 377)
+#   `[ "$status" -eq 64 ]' failed
+not ok 41 the repo setting is required (exit 78)
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 385)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 42 until high_risk_areas is confirmed, nothing is batched (exit 78)
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 393)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 43 a high-risk PR without a verdict for its head is not landed; the rest are
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 403)
+#   `mkpr 11; mkpr 12 --file src/billing/charge.ts; mkpr 13' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 44 a high-risk PR with a verdict for its exact head lands alone, after the batch
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 412)
+#   `mkpr 11; mkpr 12 --file src/billing/charge.ts; mkpr 13' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 45 a verdict for an older head does not count
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 423)
+#   `mkpr 12 --file src/billing/charge.ts' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 46 a verdict written by the PR's own author does not count
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 432)
+#   `mkpr 12 --file src/billing/charge.ts' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 47 a verdict that only quotes the marker mid-comment does not count
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 442)
+#   `mkpr 12 --file src/billing/charge.ts' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 48 high-risk globs: * matches across directories; other paths are not high risk
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 451)
+#   `mkpr 11 --file deploy/prod/app.yaml; mkpr 12 --file src/deploy.txt' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 49 required_check names the aggregate check
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 458)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 50 labels.do_not_merge names the batch label and the blocking label
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 465)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 51 branch_prefix.batch names the batch branch
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 473)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 52 a merge pause is honoured when land.honor_merge_pause is true
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 481)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 53 owner-gated PR numbers may be strings
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 495)
+#   `mkpr 11; mkpr 12' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 54 --lock-wait overrides lock_wait_seconds
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 503)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+not ok 55 the journal records each merge and the summary
+# (from function `mkpr' in file tests/orch-helpers.bash, line 62,
+#  in test file tests/land-batch.bats, line 511)
+#   `mkpr 11' failed with status 128
+# fatal: pathspec 'f-.txt' did not match any files
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/land-batch --yes 11 12 13` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `lb' in file tests/land-batch.bats, line 9,
+       in test file tests/land-batch.bats, line 18)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/land-batch --yes 11 12 13` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `lb' in file tests/land-batch.bats, line 9,
+       in test file tests/land-batch.bats, line 72)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/land-batch --yes 11 12 13` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `lb' in file tests/land-batch.bats, line 9,
+       in test file tests/land-batch.bats, line 215)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/land-batch --yes 11 12 13` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `lb' in file tests/land-batch.bats, line 9,
+       in test file tests/land-batch.bats, line 226)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/land-batch --yes 11 12 13` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `lb' in file tests/land-batch.bats, line 9,
+       in test file tests/land-batch.bats, line 235)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/land-batch --yes 11 12 13` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `lb' in file tests/land-batch.bats, line 9,
+       in test file tests/land-batch.bats, line 309)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/land-batch --yes` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/land-batch.bats, line 376)

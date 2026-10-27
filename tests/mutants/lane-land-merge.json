@@ -1,0 +1,55 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-land",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-land.bats"
+  ],
+  "mutants": [
+    {
+      "name": "merge not pinned to the head",
+      "old": "--squash --match-head-commit \"$head\" --subject",
+      "new": "--squash --subject"
+    },
+    {
+      "name": "merge not verified",
+      "old": "if [[ ! $sha =~ ^[0-9a-f]{40}$ ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "not recorded",
+      "old": "[[ $recorded == yes ]] || say",
+      "new": "true || say"
+    },
+    {
+      "name": "issues not labelled",
+      "old": "    child \"$here/gh-write\" label \"$n\" \"$label\" >/dev/null ||",
+      "new": "    true ||"
+    },
+    {
+      "name": "dirty worktree removed",
+      "old": "  if child \"$here/lane-hygiene\" \"$wt\" \"$branch\" >/dev/null 2>&1; then",
+      "new": "  if true; then"
+    },
+    {
+      "name": "no landing lock",
+      "old": "flock -w \"$wait_s\" 9 || {",
+      "new": "true || {"
+    },
+    {
+      "name": "already-merged merged again",
+      "old": "if [[ $(field .state) == MERGED ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "corrupt state not refused",
+      "old": "if [[ -e $campaign/state.json ]] && ! sout=$(\"$here/lane-state\" validate 2>&1); then",
+      "new": "if false; then"
+    },
+    {
+      "name": "merged-despite-error reported as failure",
+      "old": "if [[ ! $sha =~ ^[0-9a-f]{40}$ ]]; then\n  ((merge_rc != 0))",
+      "new": "if [[ $merge_rc != 0 || ! $sha =~ ^[0-9a-f]{40}$ ]]; then\n  ((merge_rc != 0))"
+    }
+  ]
+}

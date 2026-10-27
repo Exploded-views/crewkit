@@ -1,0 +1,5 @@
+# The landers' gate settings file-only (CREW_FILE_ONLY in lib/settings.sh), after the third review's repro: an exported CREWKIT_HIGH_RISK_AREAS_BILLING_PATHS=nomatch let a billing PR land with no verdict. RED: the new test with the previous settings.sh:
+1..1
+not ok 1 gate settings are file-only: CREWKIT_* can't drop a high-risk area or add a reviewer
+# (in test file tests/land-batch.bats, line 1112)
+#   `[ "$status" -eq 2 ]' failed

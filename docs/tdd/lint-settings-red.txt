@@ -1,0 +1,77 @@
+EEEEEE
+======================================================================
+ERROR: test_a_key_outside_a_documented_prefix_shape_fails (tests.test_lint_settings.CheckSettings.test_a_key_outside_a_documented_prefix_shape_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 48, in test_a_key_outside_a_documented_prefix_shape_fails
+    errs = self.check({"plugins/p/bin/x": 'v=$(crew_setting high_risk_areas.billing.colour)\n'})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_settings.py", line 35, in check
+    lint.check_settings()
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_settings'
+
+======================================================================
+ERROR: test_a_vendored_reader_that_differs_fails (tests.test_lint_settings.CheckSettings.test_a_vendored_reader_that_differs_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 56, in test_a_vendored_reader_that_differs_fails
+    errs = self.check({"plugins/p/lib/settings.sh": "# reader, edited\n"})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_settings.py", line 35, in check
+    lint.check_settings()
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_settings'
+
+======================================================================
+ERROR: test_an_identical_vendored_reader_passes (tests.test_lint_settings.CheckSettings.test_an_identical_vendored_reader_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 60, in test_an_identical_vendored_reader_passes
+    self.assertEqual(self.check({"plugins/p/lib/settings.sh": "# reader\n"}), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_settings.py", line 35, in check
+    lint.check_settings()
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_settings'
+
+======================================================================
+ERROR: test_an_undocumented_key_in_a_script_fails (tests.test_lint_settings.CheckSettings.test_an_undocumented_key_in_a_script_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 44, in test_an_undocumented_key_in_a_script_fails
+    errs = self.check({"plugins/p/bin/x": 'v=$(crew_setting reqired_check ci-ok)\n'})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_settings.py", line 35, in check
+    lint.check_settings()
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_settings'
+
+======================================================================
+ERROR: test_an_undocumented_key_in_an_example_settings_file_fails (tests.test_lint_settings.CheckSettings.test_an_undocumented_key_in_an_example_settings_file_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 52, in test_an_undocumented_key_in_an_example_settings_file_fails
+    errs = self.check({"plugins/p/settings.example.md": "---\nrepo: o/r\nlables.x: y\n---\n"})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_settings.py", line 35, in check
+    lint.check_settings()
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_settings'
+
+======================================================================
+ERROR: test_documented_keys_pass (tests.test_lint_settings.CheckSettings.test_documented_keys_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 39, in test_documented_keys_pass
+    errs = self.check({"plugins/p/bin/x": 'r=$(crew_require repo)\nt=$(crew_setting gates.test "")\n'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_settings.py", line 35, in check
+    lint.check_settings()
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_settings'
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.023s
+
+FAILED (errors=6)

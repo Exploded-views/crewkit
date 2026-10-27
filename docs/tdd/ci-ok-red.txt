@@ -1,0 +1,9 @@
+ci-ok (required check) script and lint: RED run, 2026-10-26, python3 -m unittest tests.test_ci_ok before tools/ci-ok.py and check_ci_ok existed:
+
+FAILED (failures=5, errors=7)
+
+Then RED once more: the lint read on: trigger keys (push, pull_request) as jobs; fixed to the jobs: section.
+
+## ci-ok lint: job keys with a comment or quotes (review of 04c5f5d, LOW)
+
+FAILED (failures=2)

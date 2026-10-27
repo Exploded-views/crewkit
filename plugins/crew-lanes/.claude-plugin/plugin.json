@@ -1,0 +1,16 @@
+{
+  "name": "crew-lanes",
+  "version": "0.1.0",
+  "description": "Remediation lanes for crews of Claude Code sessions: one worktree and branch per lane, test-first implementation, gates, independent review and a gated land.",
+  "author": {
+    "name": "crewkit maintainers"
+  },
+  "license": "MIT",
+  "keywords": [
+    "multi-agent",
+    "lanes",
+    "worktrees",
+    "review",
+    "landing"
+  ]
+}

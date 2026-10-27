@@ -1,0 +1,37 @@
+1..12
+not ok 1 the default is used when nothing sets the key
+# (in test file tests/settings.bats, line 23)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 precedence: env, project local, project shared, user, default
+# (in test file tests/settings.bats, line 29)
+#   `lookup crew_setting repo dflt; [ "$output" = user/r ]' failed
+not ok 3 the project files are found from a subdirectory
+# (in test file tests/settings.bats, line 42)
+#   `[ "$output" = shared/r ]' failed
+not ok 4 dotted keys map to CREWKIT_ env names with dots as underscores
+# (in test file tests/settings.bats, line 47)
+#   `[ "$output" = "make test" ]' failed
+not ok 5 values keep colons and inner spaces; quotes and trailing comments are stripped
+# (in test file tests/settings.bats, line 55)
+#   `lookup crew_setting health_url; [ "$output" = "https://app.example/healthz" ]' failed
+not ok 6 only the frontmatter is read, not the notes below it
+# (in test file tests/settings.bats, line 63)
+#   `[ "$output" = fm/r ]' failed
+not ok 7 an empty value in a higher file overrides a lower one
+# (in test file tests/settings.bats, line 70)
+#   `[ "$output" = "" ]' failed
+not ok 8 crew_require exits 78 and names the key when it is unset
+# (in test file tests/settings.bats, line 75)
+#   `[ "$status" -eq 78 ]' failed
+not ok 9 crew_require prints the value when it is set
+# (in test file tests/settings.bats, line 82)
+#   `[ "$status" -eq 0 ]' failed
+not ok 10 crew_keys lists the keys under a prefix across all files, once each
+# (in test file tests/settings.bats, line 90)
+#   `[ "$status" -eq 0 ]' failed
+not ok 11 a settings file is never sourced or executed
+# (in test file tests/settings.bats, line 99)
+#   `[[ $output == *'$(touch'* ]]' failed
+not ok 12 works under bash's set -euo pipefail
+# (in test file tests/settings.bats, line 104)
+#   `[ "$status" -eq 0 ]' failed

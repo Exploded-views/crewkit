@@ -1,0 +1,55 @@
+FFFFFF.
+======================================================================
+FAIL: test_a_failing_baseline_stops_everything (tests.test_mutate.Mutate.test_a_failing_baseline_stops_everything)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_mutate.py", line 63, in test_a_failing_baseline_stops_everything
+    self.assertEqual(r.returncode, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_a_guarded_line_is_killed (tests.test_mutate.Mutate.test_a_guarded_line_is_killed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_mutate.py", line 39, in test_a_guarded_line_is_killed
+    self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+AssertionError: 2 != 0 : /usr/bin/python3: can't open file '<repo>/tools/mutate.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_a_mutant_that_doesnt_parse_is_invalid_not_killed (tests.test_mutate.Mutate.test_a_mutant_that_doesnt_parse_is_invalid_not_killed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_mutate.py", line 57, in test_a_mutant_that_doesnt_parse_is_invalid_not_killed
+    self.assertEqual(r.returncode, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_a_survivor_fails_the_run (tests.test_mutate.Mutate.test_a_survivor_fails_the_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_mutate.py", line 45, in test_a_survivor_fails_the_run
+    self.assertEqual(r.returncode, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_an_old_string_that_isnt_unique_fails (tests.test_mutate.Mutate.test_an_old_string_that_isnt_unique_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_mutate.py", line 51, in test_an_old_string_that_isnt_unique_fails
+    self.assertEqual(r.returncode, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_multi_line_old_strings_work (tests.test_mutate.Mutate.test_multi_line_old_strings_work)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_mutate.py", line 75, in test_multi_line_old_strings_work
+    self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+AssertionError: 2 != 0 : /usr/bin/python3: can't open file '<repo>/tools/mutate.py': [Errno 2] No such file or directory
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.157s
+
+FAILED (failures=6)

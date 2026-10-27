@@ -1,0 +1,47 @@
+# The allow-list checks invariant (tests/checks_invariant.py): states generated from GitHub's documented run, job and commit-status values plus one undocumented value and a missing field, in three grids (required run x required job x another job; another workflow x its job x contexts; run histories) and named cells from the reviews (crewkit's 9385b45 re-review, the needs:/skipped-e2e repro, mixed attempts, the coordinator's skipped-run cells), each with its answer written down.
+# RED: the new invariant against lib/checks.py at 9385b45 (the patched deny-list):
+## grids
+checks invariant: 20579 cells, 2648 wrong
+required run=queued/None ci-ok=queued/None other unit=completed/neutral: want red, got pending
+required run=queued/None ci-ok=queued/None other unit=completed/skipped: want red, got pending
+required run=queued/None ci-ok=in_progress/None other unit=completed/neutral: want red, got pending
+required run=queued/None ci-ok=in_progress/None other unit=completed/skipped: want red, got pending
+required run=queued/None ci-ok=waiting/None other unit=completed/neutral: want red, got pending
+required run=queued/None ci-ok=waiting/None other unit=completed/skipped: want red, got pending
+required run=queued/None ci-ok=requested/None other unit=completed/neutral: want red, got pending
+required run=queued/None ci-ok=requested/None other unit=completed/skipped: want red, got pending
+required run=queued/None ci-ok=pending/None other unit=completed/neutral: want red, got pending
+required run=queued/None ci-ok=pending/None other unit=completed/skipped: want red, got pending
+required run=queued/None ci-ok=None/None other unit=completed/neutral: want red, got pending
+required run=queued/None ci-ok=None/None other unit=completed/skipped: want red, got pending
+## named cells that 9385b45 gets wrong
+ignored job failed, its needs: dependent skipped: want red, got green
+an older attempt's red job beside a green latest attempt: want pending, got green
+jobs whose run_attempt field is missing: want pending, got green
+a newer run whose required job was skipped, the rest green: want red, got green
+a run 'skipped' that executed a job is not passed over: want red, got green
+skipped and neutral jobs beside a green required job: want red, got green
+a run without status fields (unread): want pending, got green
+
+# Follow-up after the Opus review of 40f1bbb (no false green from well-formed data; CHANGES for robustness and test design): runs created in the same second all decide (the input order picked one); a run without head_sha, id or created_at, and a context without a name, are pending; wrong-shape JSON exits 65; --ignored naming the required check exits 64; a mixed-attempt pending says so. The oracle was rewritten as a checklist over sets (it had copied decide()'s loop, and tested ignored names as a substring). RED, the new cells against 40f1bbb:
+named: same-second runs: a green pull_request run listed before a red push run: want red, got green
+named: same-second runs of another workflow, the red one listed second: want red, got green
+named: same-second required runs, one red: want red, got green
+named: a red run with created_at null: want pending, got green
+named: the newest required run with created_at null, red: want pending, got green
+named: a red run without head_sha: want pending, got green
+named: a failed status context without a name: want pending, got green
+checks invariant: 20599 cells, 7 wrong
+not ok 7 JSON of the wrong shape is bad data (65), not a crash
+# (in test file tests/checks.bats, line 72)
+#   `[ "$status" -eq 65 ]' failed
+not ok 8 --ignored naming the required check is a usage error (64)
+# (in test file tests/checks.bats, line 86)
+#   `[ "$status" -eq 64 ]' failed
+ok 9 usage errors exit 64
+# Mutants added (all killed): the reviewer's five survivors (a mirror step of any conclusion, min-green capped at 1, ignored names as substrings, a skipped run passed over whatever its status; 'pending contexts make company' dropped as equivalent) and one per new rule.
+
+# Follow-up after the re-review of d1ac7ef (no false green; CHANGES for a missing cell): the mutants judging only the first or last same-second required run survived, so two named cells (a tied twin that finished success with ci-ok skipped, in both orders) now kill them; a run without a path is unplaceable (pending). RED, the new cells against d1ac7ef:
+named: runs without a path: an older red one behind a newer green one: want pending, got green
+checks invariant: 20605 cells, 1 wrong
+# Mutants added (all killed): only the first / only the last same-second required run judged, a run without an id / a path placed.

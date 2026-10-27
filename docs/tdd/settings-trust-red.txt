@@ -1,0 +1,23 @@
+1..18
+ok 1 the default is used when nothing sets the key
+ok 2 precedence: env, project local, project shared, user, default
+ok 3 the project files are found from a subdirectory
+ok 4 dotted keys map to CREWKIT_ env names with dots as underscores
+ok 5 values keep colons and inner spaces; quotes and trailing comments are stripped
+ok 6 only the frontmatter is read, not the notes below it
+ok 7 an empty value in a higher file overrides a lower one
+ok 8 crew_require exits 78 and names the key when it is unset
+ok 9 crew_require prints the value when it is set
+ok 10 crew_keys lists the keys under a prefix across all files, once each
+ok 11 a settings file is never sourced or executed
+ok 12 works under bash's set -euo pipefail
+ok 13 crew_require treats an empty value as unset
+ok 14 crew_keys ignores keys in the notes below the frontmatter
+ok 15 a file without frontmatter sets nothing
+not ok 16 the search stops at the repo root: a settings file above the repo is not read
+# (in test file tests/settings.bats, line 135)
+#   `[ "$output" = dflt ]' failed
+ok 17 the repo's own settings file is read from inside it
+not ok 18 a group- or world-writable settings file is skipped, with a warning
+# (in test file tests/settings.bats, line 152)
+#   `[[ $output == *dflt* ]]' failed

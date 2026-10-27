@@ -1,0 +1,19 @@
+# Lane cross-checks (campaign lanes.<lane>.headSha and .implementer) before the code. The self-review test passed at once: a record whose reviewer is its own implementer was already refused.
+
+1..10
+ok 1 campaign fixture: owner-gated PRs (a number and a numeric string) wait; others land
+ok 2 campaign fixture: a PR of an owner-gated lane waits too
+ok 3 campaign fixture: with the owner present, gated PRs land
+not ok 4 a lane whose recorded head differs from the PR's head is stale: skipped
+# (in test file tests/land-batch.bats, line 642)
+#   `[ "$status" -eq 20 ]' failed
+not ok 5 a lane head is compared exactly: a short prefix of the real head is stale
+# (in test file tests/land-batch.bats, line 652)
+#   `[ "$status" -eq 2 ]' failed
+not ok 6 records: the lane's implementer must match the record's, and may not review
+# (in test file tests/land-batch.bats, line 664)
+#   `[ "$status" -eq 2 ]' failed
+ok 7 records: a reviewer who is the lane's implementer does not count, whatever the record says
+ok 8 a merge pause is ignored unless land.honor_merge_pause is true
+ok 9 an honoured merge pause holds every PR except the exempt ones
+ok 10 a missing campaign state means no gates

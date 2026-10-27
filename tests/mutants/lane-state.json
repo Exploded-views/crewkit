@@ -1,0 +1,80 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-state",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-state.bats"
+  ],
+  "mutants": [
+    {
+      "name": "no lock taken",
+      "old": "                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)\n                break",
+      "new": "                break"
+    },
+    {
+      "name": "written in place, not renamed",
+      "old": "            os.replace(tmp, path)",
+      "new": "            path.write_text(open(tmp).read()); os.unlink(tmp)"
+    },
+    {
+      "name": "type check skipped on set",
+      "old": "            if found:\n                print(f\"lane-state: refusing",
+      "new": "            if False:\n                print(f\"lane-state: refusing"
+    },
+    {
+      "name": "unknown keys dropped",
+      "old": "            state.clear()\n            state.update(trial)",
+      "new": "            state.clear()\n            state.update({k: v for k, v in trial.items() if k in TOP})"
+    },
+    {
+      "name": "busy lock not reported as 75",
+      "old": "                    sys.exit(75)",
+      "new": "                    sys.exit(1)"
+    },
+    {
+      "name": "defaults not applied on get",
+      "old": "    cur = {**DEFAULTS, **state}",
+      "new": "    cur = dict(state)"
+    },
+    {
+      "name": "updatedAt not stamped",
+      "old": "        entry[\"updatedAt\"] = datetime",
+      "new": "        entry[\"_ignored\"] = datetime"
+    },
+    {
+      "name": "lane status not checked",
+      "old": "    \"status\": (\"one of \" + \", \".join(STATUSES), lambda v: v in STATUSES),",
+      "new": "    \"status\": (\"one of \" + \", \".join(STATUSES), lambda v: True),"
+    },
+    {
+      "name": "bool keys accept anything",
+      "old": "    \"ownerPresent\": (\"a boolean\", lambda v: isinstance(v, bool)),",
+      "new": "    \"ownerPresent\": (\"a boolean\", lambda v: True),"
+    },
+    {
+      "name": "PR lists accept non-numbers",
+      "old": "    \"ownerGatedPrs\": (\"a list of PR numbers\", lambda v: isinstance(v, list) and all(is_pr(x) for x in v)),",
+      "new": "    \"ownerGatedPrs\": (\"a list of PR numbers\", lambda v: isinstance(v, list)),"
+    },
+    {
+      "name": "strings not kept as strings",
+      "old": "    except ValueError:\n        return raw",
+      "new": "    except ValueError:\n        return None"
+    },
+    {
+      "name": "missing key not exit 1",
+      "old": "        except KeyError:\n            return 1",
+      "new": "        except KeyError:\n            return 0"
+    },
+    {
+      "name": "implementer type not checked",
+      "old": "    \"implementer\": (\"a string (the implementing session or agent)\", lambda v: isinstance(v, str)),",
+      "new": "    \"implementer\": (\"a string (the implementing session or agent)\", lambda v: True),"
+    },
+    {
+      "name": "short SHAs accepted",
+      "old": "    \"headSha\": (\"a full 40-hex SHA or null\", nullable_sha),",
+      "new": "    \"headSha\": (\"a full 40-hex SHA or null\", nullable_str),"
+    }
+  ]
+}

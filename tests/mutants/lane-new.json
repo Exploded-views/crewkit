@@ -1,0 +1,65 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-new",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-new.bats"
+  ],
+  "mutants": [
+    {
+      "name": "existing local branch not reused",
+      "old": "  if git -C \"$checkout\" show-ref --verify --quiet \"refs/heads/$branch\"; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "remote-only branch not tracked",
+      "old": "  elif git -C \"$checkout\" ls-remote --exit-code --heads origin \"$branch\" >/dev/null 2>&1; then\n    git -C \"$checkout\" worktree add -q --track",
+      "new": "  elif false; then\n    git -C \"$checkout\" worktree add -q --track"
+    },
+    {
+      "name": "exclude written to the worktree's own path",
+      "old": "exclude=\"$(git -C \"$wt\" rev-parse --path-format=absolute --git-common-dir)/info/exclude\"",
+      "new": "exclude=\"$wt/.git/info/exclude\""
+    },
+    {
+      "name": "exclude appended every run",
+      "old": "grep -qx '.lane/' \"$exclude\" 2>/dev/null || echo",
+      "new": "true; echo"
+    },
+    {
+      "name": "exemptions not deduplicated",
+      "old": "paths = {e.split(\" \")[0]",
+      "new": "paths = [e.split(\" \")[0]"
+    },
+    {
+      "name": "note committed with the repo's hooks",
+      "old": "git -C \"$wt\" -c core.hooksPath=/dev/null commit",
+      "new": "git -C \"$wt\" commit"
+    },
+    {
+      "name": "not pushed",
+      "old": "  git -C \"$wt\" push -q -u origin \"$branch\" || die",
+      "new": "  true || die"
+    },
+    {
+      "name": "setup hook failure ignored",
+      "old": "bash -c \"$hook\") || die",
+      "new": "bash -c \"$hook\") || true"
+    },
+    {
+      "name": "branch prefix ignored",
+      "old": "branch=$prefix$safe",
+      "new": "branch=lane/$safe"
+    },
+    {
+      "name": "lane name not made safe",
+      "old": "safe=${lane//[^A-Za-z0-9._-]/-}",
+      "new": "safe=$lane"
+    },
+    {
+      "name": "usage not refused",
+      "old": "  exit 64\nfi\nlane=$1",
+      "new": "  exit 0\nfi\nlane=$1"
+    }
+  ]
+}

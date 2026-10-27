@@ -1,0 +1,17 @@
+# pre-commit framework config (https://pre-commit.com). Install with: pre-commit install
+# Without the framework, run tools/install-hooks.sh instead; it installs the same check.
+repos:
+  - repo: local
+    hooks:
+      - id: scrub
+        name: scrub (secrets, personal data, private denylist; counts and file names only)
+        entry: tools/scrub.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+      - id: lint-skills
+        name: lint skills, manifests and evals
+        entry: python3 tools/lint-skills.py
+        language: system
+        pass_filenames: false
+        always_run: true

@@ -1,0 +1,13 @@
+plugins/crew-lanes/bin/lane-new:
+  killed       existing local branch not reused
+  killed       remote-only branch not tracked
+  killed       exclude written to the worktree's own path
+  killed       exclude appended every run
+  killed       exemptions not deduplicated
+  killed       note committed with the repo's hooks
+  killed       not pushed
+  killed       setup hook failure ignored
+  killed       branch prefix ignored
+  killed       lane name not made safe
+  killed       usage not refused
+  all 11 mutants killed

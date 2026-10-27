@@ -1,0 +1,55 @@
+1..46
+ok 1 install.md: the dry run passes exactly one -- to the installer
+ok 2 install.md: an extra bootstrap flag added the documented way still gives one --
+ok 3 dry run exits 0 and changes nothing
+ok 4 dry run downloads nothing
+ok 5 an unknown flag is a usage error
+ok 6 an unpinned tool is skipped, not installed
+ok 7 memsync: a matching sha hands the unpacked release to its bootstrap as --prebuilt-dir
+ok 8 memsync: downloads the pinned asset and SHA256SUMS from the pinned URL
+ok 9 memsync: an archive the release's SHA256SUMS disagrees with is refused
+ok 10 memsync: an archive missing from SHA256SUMS is refused
+ok 11 memsync: runs the release's bootstrap with the flags after --
+ok 12 memsync: a sha mismatch is refused before anything is unpacked or run
+ok 13 memsync: bootstrap exit 3 (paused, needs a human) passes through and stops
+ok 14 memsync: a bootstrap failure fails the install
+ok 15 a pinned tag with no hash for this target is refused
+ok 16 a malformed hash is refused
+ok 17 pin files are parsed, never executed
+ok 18 a pinned URL must be https
+ok 19 an archive with a path outside its root is refused
+ok 20 an archive containing a link is refused
+ok 21 memsync: an archive without its claude-utils-<tag>-<os>-<arch>/ dir is refused
+ok 22 memsync: a release missing a binary is refused before its bootstrap runs
+ok 23 bitc: a matching sha installs bitc into ~/.local/bin
+ok 24 bitc: a sha mismatch installs nothing
+ok 25 bitc: skipped on macOS, which it doesn't support
+ok 26 an unsupported OS is refused
+ok 27 plugins: --yes adds the marketplace, installs both plugins and the rules fragment
+ok 28 plugins: an edited rules file is backed up, not lost
+ok 29 --help prints usage and exits 0
+ok 30 an unsupported architecture is refused
+ok 31 a missing pin file is an error
+ok 32 plugins: without claude on PATH, a dry run warns and --yes fails
+ok 33 a tag that isn't vMAJOR.MINOR.PATCH is refused before any download
+ok 34 an archive with an absolute path is refused
+ok 35 an archive with a FIFO or other special file is refused
+ok 36 bitc: an archive without a bitc binary is refused
+ok 37 an inherited tmp variable doesn't redirect the work dir
+ok 38 a failing step exits 1 whatever the failing command's own code
+ok 39 plugins: a second edit keeps the first backup too
+ok 40 bootstrap flags are not echoed in the plan
+ok 41 flags after -- are reported when the memsync step isn't run
+not ok 42 plugins: a re-run with everything installed adds and installs nothing
+# (from function `none' in file tests/helpers.bash, line 75,
+#  in test file tests/install.bats, line 350)
+#   `none -q '^claude plugin install' "$CALLS"' failed
+# unexpected match: grep -q ^claude plugin install <tmp>
+not ok 43 plugins: only the missing plugin is installed
+# (from function `none' in file tests/helpers.bash, line 75,
+#  in test file tests/install.bats, line 360)
+#   `none -qx 'claude plugin install agent-practice@crewkit' "$CALLS"' failed
+# unexpected match: grep -qx claude plugin install agent-practice@crewkit <tmp>
+ok 44 plugins: a plugin from another marketplace with the same name doesn't count
+ok 45 every claude-memsync hook is a silent no-op when claude-memsync isn't installed
+ok 46 the hooks call claude-memsync changes --hook when it is installed

@@ -1,0 +1,71 @@
+{
+  "target": "plugins/crew-orchestrator/lib/landing.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/landing-lib.bats",
+    "tests/land-batch.bats"
+  ],
+  "mutants": [
+    {
+      "name": "lock wait failure ignored",
+      "old": "flock -w \"$LOCK_WAIT\" 9 ||",
+      "new": "flock -w \"$LOCK_WAIT\" 9 || true ||"
+    },
+    {
+      "name": "helpers inherit the lock fd",
+      "old": "g() { gh \"$@\" 9>&-; }",
+      "new": "g() { gh \"$@\"; }"
+    },
+    {
+      "name": "owner gate ignored",
+      "old": "    PROB=\"owner-gated(ownerPresent=false)\"; return",
+      "new": "    return"
+    },
+    {
+      "name": "gated lanes ignored",
+      "old": "      or ((.ownerGatedLanes // []) as $gl",
+      "new": "      or (([]) as $gl"
+    },
+    {
+      "name": "high-risk paths never match",
+      "old": "[[ -n $f && $f == $glob ]] && { echo \"$area\"; return 0; }",
+      "new": "[[ -n $f && $f == \"$glob\" ]] && { echo \"$area\"; return 0; }"
+    },
+    {
+      "name": "unconfirmed high-risk areas allowed",
+      "old": "[[ -n $(crew_setting high_risk_areas.confirmed_by \"\") ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "base branch not checked",
+      "old": "[[ $base == \"$MAIN\" ]] || { PROB=",
+      "new": "true || { PROB="
+    },
+    {
+      "name": "batch heads accepted",
+      "old": "[[ $ref != \"$BPFX\"* ]] || { PROB=",
+      "new": "true || { PROB="
+    },
+    {
+      "name": "blocking labels ignored",
+      "old": "case \",${labels:-},\" in *\",$DNM,\"* | *\",$AWAIT,\"*) PROB=\"blocked-label($labels)\"; return ;; esac",
+      "new": "true"
+    },
+    {
+      "name": "risk files read from the wrong stream",
+      "old": "  mapfile -d '' files || return 1   #",
+      "new": "  files=() || return 1   #"
+    },
+    {
+      "name": "a failed read of changed files is no high-risk files",
+      "old": "  mapfile -d '' files || return 1",
+      "new": "  mapfile -d '' files || true"
+    },
+    {
+      "name": "the noise prefix isn't passed",
+      "old": "--noise-step-prefix \"$NOISE\" 2>/dev/null)",
+      "new": "--noise-step-prefix \"\" 2>/dev/null)"
+    }
+  ]
+}

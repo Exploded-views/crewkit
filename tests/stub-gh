@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# stub-gh: a stand-in for gh in the crew-lanes tests. State lives in $STUB:
+#   calls.log                every call, one per line
+#   comments/<n>/<k>.md      issue and PR comments (bodies)
+#   reviews/<n>/<k>.md       PR reviews (bodies)
+#   labels/<n>               one label per line
+#   ready/<n>                exists once `gh pr ready` ran
+#   merge_noop               if present, `pr merge` exits 0 without merging anything
+#   pr/<n>.json              a PR as gh would show it: number, headRefName, baseRefName, state,
+#                            headRefOid... `pr view` prints it (through --jq when given), `pr list
+#                            --head B` the PRs with that head, `pr edit --base B` changes the base
+#   fail_next                if it holds N > 0, the next N write calls fail (exit 1) and N drops
+#   ci/runs.json, ci/jobs.json, ci/status.json
+#                            the head's Actions runs, their jobs (each with run_id) and the
+#                            combined commit status: `api .../actions/runs?...`,
+#                            `.../actions/runs/ID/jobs` and `.../commits/SHA/status` print them
+#   ci/fail_<runs|jobs|status>   if present, that read fails (exit 1)
+#   ci/fail_jobs_<id>        if present, reading run <id>'s jobs fails (exit 1)
+#   api_padding              if present, api reads pause after the bodies, then print 20000 more
+#                            lines: a reader piping into `grep -q` has exited by then, so the
+#                            later writes always meet SIGPIPE, whatever the pipe buffer size
+set -uo pipefail
+echo "$*" >> "$STUB/calls.log"
+fail_write() {
+  local f=$STUB/fail_next n
+  [[ -f $f ]] || return 1
+  n=$(cat "$f")
+  ((n > 0)) || return 1
+  echo $((n - 1)) > "$f"
+  echo "stub-gh: simulated failure" >&2
+  return 0
+}
+arg() { # arg FLAG: the value after FLAG in the call
+  local want=$1
+  set -- "${ARGS[@]}"
+  while (($#)); do [[ $1 == "$want" ]] && { echo "$2"; return; }; shift; done
+}
+store() { # store DIR FILE
+  local existing
+  mkdir -p "$1"
+  shopt -s nullglob
+  existing=("$1"/*.md)
+  shopt -u nullglob
+  cp "$2" "$1/$((${#existing[@]} + 1)).md"
+}
+ARGS=("$@")
+case "$1 $2" in
+  "api repos/"*)
+    # A REST list, as gh api returns it: bodies posted through gh write calls, plus (for issue
+    # comments) the stub PR's own comments converted from {author.login, createdAt} to
+    # {user.login, created_at}. --jq is applied with real jq.
+    path=${2%%\?*} n=""
+    ci_read() { # ci_read KIND JQ_FILTER: print $STUB/ci/KIND.json through the filter, or fail
+      [[ -e $STUB/ci/fail_$1 ]] && { echo "stub-gh: simulated $1 read failure" >&2; exit 1; }
+      jq "${@:3}" "$2" "$STUB/ci/$1.json"; exit 0
+    }
+    if [[ $path =~ /actions/runs$ ]]; then ci_read runs '{workflow_runs: .}'
+    elif [[ $path =~ /actions/runs/([0-9]+)/jobs$ ]]; then
+      [[ -e $STUB/ci/fail_jobs_${BASH_REMATCH[1]} ]] && { echo "stub-gh: simulated jobs read failure" >&2; exit 1; }
+      # shellcheck disable=SC2016  # $id is jq's variable (--argjson), not the shell's
+      ci_read jobs '{jobs: [.[] | select(.run_id == $id) | del(.run_id)]}' --argjson id "${BASH_REMATCH[1]}"
+    elif [[ $path =~ /commits/[0-9a-f]+/status$ ]]; then ci_read status '.'
+    fi
+    if [[ $path =~ /issues/([0-9]+)/comments$ ]]; then n=${BASH_REMATCH[1]}; d=$STUB/comments/$n
+    elif [[ $path =~ /pulls/([0-9]+)/reviews$ ]]; then d=$STUB/reviews/${BASH_REMATCH[1]}
+    else echo "stub-gh: unhandled api $2" >&2; exit 1; fi
+    posted='[]'
+    if [[ -d $d ]]; then
+      posted=$(for f in "$d"/*.md; do jq -Rs '{user: {login: "stub-writer"}, created_at: "2026-01-01T00:00:00Z", body: .}' "$f"; done | jq -s '.')
+    fi
+    own='[]'
+    [[ -n $n && -f $STUB/pr/$n.json ]] && own=$(jq '[(.comments // [])[] | {user: {login: .author.login}, created_at: (.createdAt // ""), body: .body}]' "$STUB/pr/$n.json")
+    all=$(jq -n --argjson a "$posted" --argjson b "$own" '$a + $b')
+    q=$(arg --jq)
+    if [[ -n $q ]]; then jq -r "$q" <<<"$all"; else echo "$all"; fi
+    # Like real gh, die of the broken pipe instead of carrying on to exit 0.
+    if [[ -e $STUB/api_padding ]]; then sleep 0.3; seq 1 20000 || exit $?; fi
+    exit 0 ;;
+  "issue comment")
+    fail_write && exit 1
+    store "$STUB/comments/$3" "$(arg --body-file)" ;;
+  "pr review")
+    fail_write && exit 1
+    store "$STUB/reviews/$3" "$(arg --body-file)" ;;
+  "issue edit")
+    fail_write && exit 1
+    mkdir -p "$STUB/labels"; touch "$STUB/labels/$3"
+    add=$(arg --add-label); rm=$(arg --remove-label)
+    [[ -n $rm ]] && { grep -vx -- "$rm" "$STUB/labels/$3" > "$STUB/labels/$3.tmp" || true; mv "$STUB/labels/$3.tmp" "$STUB/labels/$3"; }
+    [[ -n $add ]] && echo "$add" >> "$STUB/labels/$3" ;;
+  "pr view")
+    f=$STUB/pr/$3.json
+    [[ -f $f ]] || { echo "stub-gh: no PR $3" >&2; exit 1; }
+    q=$(arg --jq)
+    if [[ -n $q ]]; then jq -r "$q" "$f"; else cat "$f"; fi ;;
+  "pr list")
+    head=$(arg --head); q=$(arg --jq)
+    shopt -s nullglob
+    out=$(jq -s --arg h "$head" '[.[] | select($h == "" or .headRefName == $h)]' "$STUB"/pr/*.json 2>/dev/null || echo '[]')
+    [[ -n $out ]] || out='[]'
+    if [[ -n $q ]]; then jq -r "$q" <<<"$out"; else echo "$out"; fi ;;
+  "pr merge")
+    fail_write && exit 1
+    f=$STUB/pr/$3.json; pin=$(arg --match-head-commit)
+    head=$(jq -r '.headRefOid // ""' "$f")
+    if [[ -n $pin && $pin != "$head" ]]; then echo "stub-gh: Head branch was modified" >&2; exit 1; fi
+    [[ -e $STUB/merge_noop ]] && exit 0   # the call "succeeds" but nothing merges
+    jq --arg m "$(printf 'f%.0s' {1..40})" '.state = "MERGED" | .mergeCommit = {oid: $m}' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+    arg --subject > "$STUB/merge_subject.$3" ;;
+  "pr edit")
+    fail_write && exit 1
+    base=$(arg --base); f=$STUB/pr/$3.json
+    [[ -n $base ]] && { jq --arg b "$base" '.baseRefName = $b' "$f" > "$f.tmp" && mv "$f.tmp" "$f"; } ;;
+  "pr ready")
+    fail_write && exit 1
+    mkdir -p "$STUB/ready"; touch "$STUB/ready/$3" ;;
+  *) echo "stub-gh: unhandled call: $*" >&2; exit 1 ;;
+esac

@@ -1,0 +1,35 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-land",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-land.bats"
+  ],
+  "mutants": [
+    {
+      "name": "precheck hook ignored",
+      "old": "  elif ((hrc != 0)); then",
+      "new": "  elif false; then"
+    },
+    {
+      "name": "hook timeout not refused",
+      "old": "  if ((hrc == 124)); then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "settings read from the current directory",
+      "old": "crew_cd_main_checkout || { echo \"lane-land:",
+      "new": "true || { echo \"lane-land:"
+    },
+    {
+      "name": "ignored_checks may name the required check",
+      "old": "  [[ $_n != \"$required\" ]] || {",
+      "new": "  true || {"
+    },
+    {
+      "name": "ignored names not trimmed",
+      "old": "  _n=${_n#\"${_n%%[![:space:]]*}\"}; _n=${_n%\"${_n##*[![:space:]]}\"}",
+      "new": "  :"
+    }
+  ]
+}

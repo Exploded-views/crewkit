@@ -1,0 +1,125 @@
+{
+  "target": "tools/scrub.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/scrub-history.bats"
+  ],
+  "mutants": [
+    {
+      "name": "only the current branch",
+      "old": "  git rev-list --all > \"$tmp/commits\"",
+      "new": "  git rev-list HEAD > \"$tmp/commits\""
+    },
+    {
+      "name": "only the current branch's objects",
+      "old": "  git rev-list --all --objects | cut -d' ' -f1 \\",
+      "new": "  git rev-list HEAD --objects | cut -d' ' -f1 \\"
+    },
+    {
+      "name": "paths not scanned",
+      "old": "  for s in paths commits messages identities refs; do scan_one",
+      "new": "  for s in commits messages identities refs; do scan_one"
+    },
+    {
+      "name": "commit headers not scanned",
+      "old": "  for s in paths commits messages identities refs; do scan_one",
+      "new": "  for s in paths messages identities refs; do scan_one"
+    },
+    {
+      "name": "tree paths not read",
+      "old": "    tr '\\0' '\\n' < \"$tmp/tree\" | sed 's/^[0-9]* [a-z]* [0-9a-f]*\\t//' >> \"$tmp/streams/paths\"",
+      "new": "    :"
+    },
+    {
+      "name": "commit messages not read",
+      "old": "    sed '1,/^$/d' \"$tmp/commit\" >> \"$tmp/streams/messages\"",
+      "new": "    :"
+    },
+    {
+      "name": "committer identity not read",
+      "old": "s/^\\(author\\|committer\\) \\(.*\\)",
+      "new": "s/^\\(author\\) \\(.*\\)"
+    },
+    {
+      "name": "ref names not read",
+      "old": "  git for-each-ref --format='%(refname)' > \"$tmp/streams/refs\"",
+      "new": "  : > \"$tmp/streams/refs\""
+    },
+    {
+      "name": "tag names not read",
+      "old": "      sed -n 's/^tag //p' \"$tmp/tag\" >> \"$tmp/streams/refs\"",
+      "new": "      :"
+    },
+    {
+      "name": "tag messages read only under refs/tags",
+      "old": "  git for-each-ref --format='%(objectname) %(objecttype)' | while read -r sha type; do",
+      "new": "  git for-each-ref refs/tags --format='%(objectname) %(objecttype)' | while read -r sha type; do"
+    },
+    {
+      "name": "tags of tags not followed",
+      "old": "      type=$(git cat-file -t \"$sha\")",
+      "new": "      type=commit"
+    },
+    {
+      "name": "any historical scrub.sh is exempt",
+      "old": "    [[ $ctx == tools/scrub.sh ]] && is_known_self \"$sha\" && self=1",
+      "new": "    [[ $ctx == tools/scrub.sh ]] && self=1"
+    },
+    {
+      "name": "a blob is labelled by its path",
+      "old": "\"history:blob ${sha:0:12}\" \"$ctx\" \"$self\"",
+      "new": "\"$ctx\" \"$ctx\" \"$self\""
+    },
+    {
+      "name": "an exemption from one of several paths",
+      "old": "| sort -u | wc -l) -eq 1 ]]; then ctx=${paths[0]}; fi",
+      "new": "| sort -u | wc -l) -ge 1 ]]; then ctx=${paths[0]}; fi"
+    },
+    {
+      "name": "any long hex passes as an own object",
+      "old": "      if git cat-file -e \"$x\" 2>/dev/null; then printf",
+      "new": "      if true; then printf"
+    },
+    {
+      "name": "a git failure exits with git's code",
+      "old": "  trap 'echo \"scrub: a git command failed; the history was not fully read\"; exit 1' ERR",
+      "new": "  :"
+    },
+    {
+      "name": "a tree a ref or tag points at isn't read",
+      "old": "    if [[ $type == tree ]]; then read_tree \"$sha\"; fi",
+      "new": "    :"
+    },
+    {
+      "name": "tag headers not scanned",
+      "old": "      sed -n '1,/^$/p' \"$tmp/tag\" | { grep -aEv \"$known_tag\" || nomatch_ok; } >> \"$tmp/streams/commits\"",
+      "new": "      :"
+    },
+    {
+      "name": "every author/committer line dropped, well-formed or not",
+      "old": "  known_commit='^(tree|parent) [0-9a-f]{40}([0-9a-f]{24})?$|^(author|committer) .* <[^>]*> [0-9]+ [-+][0-9]{4}$'",
+      "new": "  known_commit='^(tree|parent|author|committer) '"
+    },
+    {
+      "name": "streams not created up front",
+      "old": "  for s in paths commits messages identities refs; do : > \"$tmp/streams/$s\"; done",
+      "new": "  :"
+    },
+    {
+      "name": "extraction follows the user's locale",
+      "old": "  export LC_ALL=C\n  set -E",
+      "new": "  set -E"
+    },
+    {
+      "name": "commit header filter drops a header with a NUL byte",
+      "old": "{ grep -aEv \"$known_commit\" || nomatch_ok; }",
+      "new": "{ grep -Ev \"$known_commit\" || nomatch_ok; }"
+    },
+    {
+      "name": "tag header filter drops a header with a NUL byte",
+      "old": "{ grep -aEv \"$known_tag\" || nomatch_ok; }",
+      "new": "{ grep -Ev \"$known_tag\" || nomatch_ok; }"
+    }
+  ]
+}

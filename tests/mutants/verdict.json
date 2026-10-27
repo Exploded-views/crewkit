@@ -1,0 +1,190 @@
+{
+  "target": "lib/verdict.py",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/verdict.bats"
+  ],
+  "mutants": [
+    {
+      "name": "PR without a lane accepted without reviewers",
+      "old": "    if not lane_impl and not allowed:\n        return",
+      "new": "    if False:\n        return"
+    },
+    {
+      "name": "odd file names accepted",
+      "old": "        if rnd is None:\n            return",
+      "new": "        if rnd is None:\n            continue\n        if False:\n            return"
+    },
+    {
+      "name": "<head>.1.json read as round 1",
+      "old": "    if m and int(m.group(1)) >= 2:",
+      "new": "    if m:"
+    },
+    {
+      "name": "leading zeros allowed",
+      "old": "r\"\\.([1-9][0-9]*)\\.json\"",
+      "new": "r\"\\.([0-9]+)\\.json\""
+    },
+    {
+      "name": "only the first JSON value read",
+      "old": "        for v in values:",
+      "new": "        for v in values[:1]:"
+    },
+    {
+      "name": "body round not checked",
+      "old": "            if type(v.get(\"round\")) is not int or v.get(\"round\") != rnd:",
+      "new": "            if False:"
+    },
+    {
+      "name": "only one record at the top round checked",
+      "old": "    for r in (r for r in records if r[\"round\"] == top):",
+      "new": "    for r in [next(r for r in records if r[\"round\"] == top)]:"
+    },
+    {
+      "name": "top round checks every round",
+      "old": "    top = max(r[\"round\"] for r in records)",
+      "new": "    top = min(r[\"round\"] for r in records)"
+    },
+    {
+      "name": "schema unchecked",
+      "old": "        if r.get(\"schema\") != 1:",
+      "new": "        if False:"
+    },
+    {
+      "name": "pr/head unchecked",
+      "old": "        if r.get(\"pr\") != pr or r.get(\"headSha\") != head:",
+      "new": "        if False:"
+    },
+    {
+      "name": "changes accepted",
+      "old": "        if r.get(\"verdict\") != \"merge\":",
+      "new": "        if False:"
+    },
+    {
+      "name": "self-review accepted",
+      "old": "        if who == impl:",
+      "new": "        if False:"
+    },
+    {
+      "name": "lane implementer unchecked",
+      "old": "        if lane_impl and impl != lane_impl:",
+      "new": "        if False:"
+    },
+    {
+      "name": "reviewer list unchecked (records)",
+      "old": "        if allowed and who not in allowed:\n            return f\"{who} is not in review.reviewers\"\n        if model",
+      "new": "        if False:\n            return f\"{who} is not in review.reviewers\"\n        if model"
+    },
+    {
+      "name": "marker matched as a prefix",
+      "old": "    return line.startswith(marker) and (len(line) == len(marker) or line[len(marker)].isspace())",
+      "new": "    return line.startswith(marker)"
+    },
+    {
+      "name": "whole body searched, not the first line",
+      "old": "        first = (c.get(\"body\") or \"\").lstrip().split(\"\\n\", 1)[0].rstrip(\"\\r\")",
+      "new": "        first = (c.get(\"body\") or \"\").lstrip()"
+    },
+    {
+      "name": "PR author counted",
+      "old": "        if not who or who == author or who not in allowed:",
+      "new": "        if not who or who not in allowed:"
+    },
+    {
+      "name": "anyone counted",
+      "old": "        if not who or who == author or who not in allowed:",
+      "new": "        if not who or who == author:"
+    },
+    {
+      "name": "no reviewers means anyone",
+      "old": "    if not allowed:\n        return \"review.reviewers is not set",
+      "new": "    if False:\n        return \"review.reviewers is not set"
+    },
+    {
+      "name": "list order, not created_at",
+      "old": "    at, line = sorted(candidates, key=lambda x: x[0])[-1]",
+      "new": "    at, line = candidates[-1]"
+    },
+    {
+      "name": "SHA-less later verdicts ignored",
+      "old": "        if head in first or any(first.startswith(o) for o in openers):",
+      "new": "        if head in first and any(first.startswith(o) for o in openers):"
+    },
+    {
+      "name": "SHA not required",
+      "old": "    if require_sha and head not in line:",
+      "new": "    if False:"
+    },
+    {
+      "name": "short head accepted",
+      "old": "    if not SHA.match(a.head):",
+      "new": "    if False:"
+    },
+    {
+      "name": "boolean round accepted",
+      "old": "            if type(v.get(\"round\")) is not int or v.get(\"round\") != rnd:",
+      "new": "            if v.get(\"round\") != rnd:"
+    },
+    {
+      "name": "records model not checked",
+      "old": "        if model and not model_matches(r.get(\"model\"), model):",
+      "new": "        if False:"
+    },
+    {
+      "name": "model matched as a substring",
+      "old": "    return v == w or w in re.split(r\"[-_.:/ ]+\", v)",
+      "new": "    return w in v"
+    },
+    {
+      "name": "model matched case-sensitively",
+      "old": "    v, w = value.lower(), want.lower()",
+      "new": "    v, w = value, want"
+    },
+    {
+      "name": "model must equal exactly",
+      "old": "    return v == w or w in re.split(r\"[-_.:/ ]+\", v)",
+      "new": "    return v == w"
+    },
+    {
+      "name": "comment model not required",
+      "old": "        if not named:\n            return \"review_model",
+      "new": "        if False:\n            return \"review_model"
+    },
+    {
+      "name": "comment model= glued to a word",
+      "old": "re.findall(r\"(?:^|\\s)model=(\\S+)\", line)",
+      "new": "re.findall(r\"model=(\\S+)\", line)"
+    },
+    {
+      "name": "comment model read from the whole body",
+      "old": "re.findall(r\"(?:^|\\s)model=(\\S+)\", line)",
+      "new": "re.findall(r\"(?:^|\\s)model=(\\S+)\", \"\\n\".join((x.get(\"body\") or \"\") for x in comments if isinstance(x, dict)))"
+    },
+    {
+      "name": "one matching comment model is enough",
+      "old": "        if not all(model_matches(n, model) for n in named):",
+      "new": "        if not any(model_matches(n, model) for n in named):"
+    },
+    {
+      "name": "records --model not passed",
+      "old": "a.lane_implementer, a.reviewers, a.model)",
+      "new": "a.lane_implementer, a.reviewers)"
+    },
+    {
+      "name": "comments --model not passed",
+      "old": "a.require_sha == \"true\", a.model)",
+      "new": "a.require_sha == \"true\")"
+    },
+    {
+      "name": "verdict.py --model defaults to empty (records)",
+      "old": "    r.add_argument(\"--model\", default=\"opus\")",
+      "new": "    r.add_argument(\"--model\", default=\"\")"
+    },
+    {
+      "name": "verdict.py --model defaults to empty (comments)",
+      "old": "    c.add_argument(\"--model\", default=\"opus\")",
+      "new": "    c.add_argument(\"--model\", default=\"\")"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+# The landers exit 78 when ignored_checks names required_check (after trimming each name). checks.py's allow-list refuses that (64), which ci_state reads as pending on every poll. RED: the new test on the old code:
+1..1
+not ok 1 ignored_checks naming the required check is a config error (78), not a forever-pending
+# (in test file tests/land-batch.bats, line 409)
+#   `[ "$status" -eq 78 ]' failed

@@ -1,0 +1,29 @@
+.FF..F....
+======================================================================
+FAIL: test_a_non_literal_key_without_a_tag_fails (tests.test_lint_settings.CheckSettings.test_a_non_literal_key_without_a_tag_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 57, in test_a_non_literal_key_without_a_tag_fails
+    self.assertTrue(any("not a literal" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+======================================================================
+FAIL: test_a_tagged_key_that_isnt_documented_fails (tests.test_lint_settings.CheckSettings.test_a_tagged_key_that_isnt_documented_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 66, in test_a_tagged_key_that_isnt_documented_fails
+    self.assertTrue(any("nope" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+======================================================================
+FAIL: test_a_wrapper_hiding_a_literal_key_is_caught_at_its_call (tests.test_lint_settings.CheckSettings.test_a_wrapper_hiding_a_literal_key_is_caught_at_its_call)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_settings.py", line 70, in test_a_wrapper_hiding_a_literal_key_is_caught_at_its_call
+    self.assertTrue(any("not a literal" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.026s
+
+FAILED (failures=3)

@@ -1,0 +1,61 @@
+{
+  "name": "crewkit",
+  "description": "Plugins for running crews of Claude Code sessions on shared repos and hosts: working practices, shared-memory notices, and skills for the tools around them.",
+  "owner": {
+    "name": "crewkit maintainers"
+  },
+  "plugins": [
+    {
+      "name": "agent-practice",
+      "source": "./plugins/agent-practice",
+      "description": "Skills and an always-on rules fragment for multi-session work on a shared repo and host: messaging and approvals, the Orchestrator, landing, independent review, host safety, secret-safe checks, crash recovery, herdr and bitc.",
+      "version": "0.1.0",
+      "category": "development",
+      "tags": [
+        "multi-agent",
+        "orchestration",
+        "review",
+        "ci",
+        "safety"
+      ]
+    },
+    {
+      "name": "memory-notices",
+      "source": "./plugins/memory-notices",
+      "description": "On top of claude-memsync: the shared memory index at session start, notices when a memory note changed on another machine, and a skill for working with memsync.",
+      "version": "0.1.0",
+      "category": "development",
+      "tags": [
+        "memory",
+        "claude-memsync",
+        "hooks"
+      ]
+    },
+    {
+      "name": "crew-lanes",
+      "source": "./plugins/crew-lanes",
+      "description": "Remediation lanes: one worktree and branch per lane, test-first implementation, gates, independent review and a gated land. In development.",
+      "version": "0.1.0",
+      "category": "development",
+      "tags": [
+        "multi-agent",
+        "lanes",
+        "worktrees",
+        "review"
+      ]
+    },
+    {
+      "name": "crew-orchestrator",
+      "source": "./plugins/crew-orchestrator",
+      "description": "The coordinating session's tooling: a batch lander with every merge check (pinned heads, parent and tree verification, owner gates, high-risk PRs landed alone on an independent verdict), and the skill for running it. In development.",
+      "version": "0.1.0",
+      "category": "development",
+      "tags": [
+        "multi-agent",
+        "orchestration",
+        "landing",
+        "merge-queue"
+      ]
+    }
+  ]
+}

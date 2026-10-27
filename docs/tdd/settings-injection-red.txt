@@ -1,0 +1,5 @@
+1..2
+not ok 1 a settings value with quotes or $(...) is never run as shell
+# (in test file tests/lane-verdict.bats, line 77)
+#   `[ ! -e "$BATS_TEST_TMPDIR/pwned" ]' failed
+ok 2 a settings value with quotes or $(...) is never run as shell

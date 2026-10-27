@@ -1,0 +1,67 @@
+scrub.sh --history: RED run, 2026-10-26, tests/scrub-history.bats before --history existed:
+
+not ok 1 a clean history passes
+not ok 2 a term in a file that was later deleted is found, by path
+not ok 3 an old version of a file still in the tree is found
+not ok 4 a secret shape in history is found by its rule
+not ok 5 a commit on a branch that isn't checked out is scanned
+not ok 6 a term in a commit message is found
+not ok 7 a term in an author name or a committer email is found
+not ok 8 a term in a branch or tag name is found
+not ok 9 a term in an annotated tag's message is found
+not ok 10 a pinned sha256 line in pins/*.env stays exempt in history
+not ok 11 --require-denylist refuses a history scan with no denylist
+not ok 12 the summary says how many commits, refs and files it read
+not ok 1 GitHub's own merge identity (noreply@github.com) is allowed
+not ok 2 a message naming one of this repo's own commits by full SHA is allowed; any other long hex isn't
+
+## The review of 37a2c54 (BLOCKER, HIGH ×4, MEDIUM ×3, LOW ×2): RED before the fixes
+
+not ok 15 a term only in a file path, or only in a directory name, is found and never printed
+not ok 16 a content hit names the blob by its SHA, never by a path that could hold the term
+not ok 17 an invalid denylist pattern fails the scan instead of counting zero
+not ok 18 a denylist with no patterns (comments only) fails, not passes
+not ok 19 binary content is scanned, and a binary later version hides nothing earlier
+ok 20 a file named like a stream can't overwrite it: both are scanned
+not ok 21 a historical tools/scrub.sh that isn't a known version is scanned like any file
+not ok 22 annotated tags outside refs/tags, and tags of tags, are read
+not ok 23 a blob introduced only by a merge commit is scanned
+not ok 24 a path that was a file and later a directory doesn't abort the scan or print paths
+not ok 25 the noreply allow rules are anchored to the whole address
+not ok 1 a file named like a stream can't overwrite it: both are scanned
+
+## tools/scrub-known-versions.txt: its blob SHAs tripped long-hex (found by the real history run)
+
+not ok 1 tools/scrub-known-versions.txt may list blob SHAs; any other long hex in it is found
+
+## The review of 3dad719 (BLOCKER, HIGH ×3, MEDIUM ×2, LOW ×4): RED before the fixes
+
+not ok 29 a term only in a file's old name (renamed later) is found
+not ok 30 a term in a path whose content is shared with another path is found
+not ok 31 a term in a directory that copies another directory's content is found
+not ok 32 a submodule (gitlink) entry's name is scanned
+not ok 33 a path with a newline in it is scanned whole
+not ok 34 commit headers are scanned: a mergetag's tagger and message
+not ok 35 the tree scan reads files with non-ASCII or quoted names
+not ok 36 the tree scan withholds a path that looks like a secret
+not ok 37 scrub:pinned-hash exempts a sha256-length hash only, not any long hex
+not ok 38 a git command that fails mid-scan exits 1, not git's own code
+
+## The review of 4a53d6a (MEDIUM ×2, LOW ×4): RED before the fixes
+
+not ok 1 paths in a tree that a tag or ref points at directly are read
+not ok 2 unknown tag headers are scanned
+not ok 3 a malformed author line is still scanned
+not ok 4 an empty repository (no commits) is clean, not a failed search
+
+## Mutation run of the C-locale fix: "header filter drops non-UTF-8 lines" survived
+
+Under LC_ALL=C non-UTF-8 bytes no longer make grep binary, so -a guards a NUL byte instead.
+New test "a header with a NUL byte is still scanned (grep -a), in commits and tags", run
+against scrub.sh with the commit filter's -a removed:
+
+not ok 1 a header with a NUL byte is still scanned (grep -a), in commits and tags
+#   `[ "$status" -eq 1 ]' failed
+
+Mutants renamed/added: "commit header filter drops a header with a NUL byte", "tag header
+filter drops a header with a NUL byte".

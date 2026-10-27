@@ -1,0 +1,11 @@
+plugins/crew-lanes/bin/lane-hygiene:
+  killed       uncommitted paths ignored
+  killed       patch files ignored
+  killed       in-progress markers ignored
+  killed       wrong branch accepted
+  killed       main head not compared
+  killed       exit 0 when dirty
+  killed       usage not exit 2
+  killed       audit file not written
+  killed       product hash ignores files
+  all 9 mutants killed

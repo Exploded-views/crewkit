@@ -1,0 +1,25 @@
+# The checks invariant (tests/checks_invariant.py): every combination of newest run x fallback run x other workflow x status contexts (3465 cells), each compared with an oracle written from the rule. Added after three review rounds each found a fail-open in a case nobody had written down.
+# RED, the invariant against earlier versions of lib/checks.py:
+## f0d0d1f: checks invariant: 3465 cells, 581 wrong
+newest=green fallback=absent other=green statuses=unread-red: want red, got green
+newest=green fallback=absent other=green statuses=unread-pending: want pending, got green
+newest=green fallback=absent other=pending statuses=unread-red: want red, got pending
+newest=green fallback=absent other=no-jobs-yet statuses=green: want pending, got green
+newest=green fallback=absent other=no-jobs-yet statuses=none: want pending, got green
+newest=green fallback=absent other=no-jobs-yet statuses=unread-red: want red, got green
+## 16f4613: checks invariant: 3465 cells, 282 wrong
+newest=green fallback=absent other=ignored-job-red statuses=green: want green, got red
+newest=green fallback=absent other=ignored-job-red statuses=none: want green, got red
+newest=green fallback=absent other=ignored-job-red statuses=pending: want pending, got red
+newest=green fallback=absent other=ignored-job-red statuses=unread-pending: want pending, got red
+newest=green fallback=absent other=ignored-job-red statuses=ignored-red: want green, got red
+newest=green fallback=absent other=ignored-job-red statuses=required-context-green: want green, got red
+## 409e100: checks invariant: 3465 cells, 234 wrong
+newest=green fallback=absent other=ignored-job-red statuses=green: want green, got red
+newest=green fallback=absent other=ignored-job-red statuses=none: want green, got red
+newest=green fallback=absent other=ignored-job-red statuses=pending: want pending, got red
+newest=green fallback=absent other=ignored-job-red statuses=unread-pending: want pending, got red
+newest=green fallback=absent other=ignored-job-red statuses=ignored-red: want green, got red
+newest=green fallback=absent other=ignored-job-red statuses=required-context-green: want green, got red
+
+# 409e100's 234 wrong cells were all 'other=ignored-job-red': an ignored job's failure turns its run's conclusion red, and the run-level rule overrode --ignored. Fixed: a run that finished red counts red unless every non-green job in it is ignored. Mutants: checks.json kills all; 'any ignored job excuses the run' was dropped as equivalent, since a non-ignored non-green job is counted by the per-job rule anyway.

@@ -1,0 +1,55 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-hygiene",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-hygiene.bats"
+  ],
+  "mutants": [
+    {
+      "name": "uncommitted paths ignored",
+      "old": "if [[ -n $porcelain ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "patch files ignored",
+      "old": "if ((${#patches[@]})); then\n  problems+=",
+      "new": "if false; then\n  problems+="
+    },
+    {
+      "name": "in-progress markers ignored",
+      "old": "  [[ -e $gitdir/$marker ]] && problems+=",
+      "new": "  false && problems+="
+    },
+    {
+      "name": "wrong branch accepted",
+      "old": "if [[ $branch == \"$want\" ]]; then branch_ok=true; else",
+      "new": "if true; then branch_ok=true; else"
+    },
+    {
+      "name": "main head not compared",
+      "old": "  [[ -n $now && $now == \"$main_head\"* ]] || problems+=",
+      "new": "  true || problems+="
+    },
+    {
+      "name": "exit 0 when dirty",
+      "old": "[[ $clean == true ]]",
+      "new": "true"
+    },
+    {
+      "name": "usage not exit 64",
+      "old": "  json false \"\" false \"\" \"usage: lane-hygiene WORKTREE BRANCH [--main-head SHA] [PRODUCT_FILE...]\"\n  exit 64",
+      "new": "  json false \"\" false \"\" \"usage: lane-hygiene WORKTREE BRANCH [--main-head SHA] [PRODUCT_FILE...]\"\n  exit 1"
+    },
+    {
+      "name": "audit file not written",
+      "old": "printf '%s\\n' \"$out\" > \"$wt/.lane/hygiene-last.json\"",
+      "new": "printf '%s\\n' \"$out\" > /dev/null"
+    },
+    {
+      "name": "product hash ignores files",
+      "old": "if ((${#files[@]})); then\n  product_hash=",
+      "new": "if false; then\n  product_hash="
+    }
+  ]
+}

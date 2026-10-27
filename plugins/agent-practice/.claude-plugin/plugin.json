@@ -1,0 +1,10 @@
+{
+  "name": "agent-practice",
+  "version": "0.1.0",
+  "description": "Working practices for teams of Claude Code sessions on shared hosts: cross-session messaging without permission laundering, an Orchestrator with a durable log, landing on a shared main, independent review, host safety, secret-safe checks and crash recovery.",
+  "author": {
+    "name": "crewkit maintainers"
+  },
+  "license": "MIT",
+  "keywords": ["multi-agent", "orchestration", "code-review", "ci", "safety", "practices"]
+}

@@ -1,0 +1,60 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-refresh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-refresh.bats"
+  ],
+  "mutants": [
+    {
+      "name": "patch-id check skipped",
+      "old": "if [[ $own != \"$now\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "conflict not refused",
+      "old": "  echo \"#$pr conflict in:\"; conflicted\n  git merge --abort; exit 3",
+      "new": "  echo \"#$pr conflict in:\"; conflicted\n  git merge --abort; exit 0"
+    },
+    {
+      "name": "push not verified",
+      "old": "if [[ $(git ls-remote origin \"refs/heads/$branch\" | cut -f1) != \"$new\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "unmerged parent accepted",
+      "old": "  if [[ $pstate != MERGED ]]; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "stacked PR not retargeted",
+      "old": "  gh pr edit \"$pr\" -R \"$repo\" --base \"$main_branch\" >/dev/null ||",
+      "new": "  true ||"
+    },
+    {
+      "name": "force push",
+      "old": "git push -q origin \"HEAD:refs/heads/$branch\"",
+      "new": "git push -q --force origin \"HEAD:refs/heads/$branch\""
+    },
+    {
+      "name": "up-to-date check skipped",
+      "old": "if [[ -z $parent ]] && git -C \"$checkout\" merge-base --is-ancestor \"$main\" \"$old\"; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "temp worktree kept",
+      "old": "cleanup() { git -C \"$checkout\" worktree remove --force \"$wt\" 2>/dev/null; rm -f \"$wt.own.patch\"; }",
+      "new": "cleanup() { :; }"
+    },
+    {
+      "name": "own change taken from the wrong base",
+      "old": "[[ -n $parent ]] && mb=$(git -C \"$checkout\" rev-parse \"origin/$parent\")",
+      "new": ":"
+    },
+    {
+      "name": "usage not refused",
+      "old": "  exit 64\nfi\npr=$1",
+      "new": "  exit 0\nfi\npr=$1"
+    }
+  ]
+}

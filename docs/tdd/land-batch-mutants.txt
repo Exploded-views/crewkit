@@ -1,0 +1,58 @@
+# Mutation check for land-batch and lib/landing.sh (tools/mutate.py, 2026-10-26).
+# Two earlier runs found 3 survivors (one flake is enough; a redundant main check; a false
+# partial-landing alarm, see land-batch-survivors-red.txt). This final run left three lib items:
+#  - 'record by the implementer accepted' no longer applied (the cross-check rewrote that line); fixed.
+#  - 'verdict head need not be a full SHA' survived; a short-SHA test now kills it (checked by hand).
+#  - 'lane implementer may review' survived as an equivalent mutant: the record's implementer must equal
+#    the lane's, and the reviewer must differ from the record's, so the extra clause was redundant.
+#    The clause and its mutant are removed. CI's mutants matrix reruns both specs in full.
+
+plugins/crew-orchestrator/bin/land-batch:
+  killed       squash not pinned to the verified head
+  killed       parent check skipped
+  killed       tree check skipped
+  killed       main not re-checked before each squash
+  killed       no recheck before merging
+  killed       high-risk PRs batched with the rest
+  killed       dry run lands
+  killed       strict protection not checked
+  killed       PR's own check need not be green
+  killed       one flake is enough
+  killed       stacked overlap not detected
+  killed       up-to-date refusal retried as a generic failure
+  killed       partial landing not reported
+  killed       unreadable changed files fail open
+  killed       a normal exit 20 reported as a partial landing
+  all 15 mutants killed
+plugins/crew-orchestrator/lib/landing.sh:
+  killed       lock wait failure ignored
+  killed       helpers inherit the lock fd
+  killed       owner gate ignored
+  killed       gated lanes ignored
+  killed       merge pause exemption ignored
+  killed       high-risk paths never match
+  killed       unconfirmed high-risk areas allowed
+  killed       comment by the PR author accepted
+  killed       comment reviewer allow-list ignored
+  killed       comments accepted without an allow-list
+  killed       marker anywhere on the line
+  killed       comment need not name the head
+  NOT APPLIED  record by the implementer accepted (old text found 0 times)
+  killed       record round ignored
+  killed       record schema not checked
+  killed       record for another head accepted
+  killed       record reviewer allow-list ignored
+  killed       min_green_checks ignored
+  killed       noise filter off
+  killed       base branch not checked
+  killed       batch heads accepted
+  killed       blocking labels ignored
+  killed       risk files read from the wrong stream
+  SURVIVED     verdict head need not be a full SHA
+  killed       record under another PR accepted
+  killed       stale lane head ignored
+  killed       lane head compared by prefix
+  killed       lane implementer ignored
+  SURVIVED     lane implementer may review
+  a mutant survived, did not apply or was invalid
+rc=1

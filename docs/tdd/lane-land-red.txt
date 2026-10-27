@@ -1,0 +1,166 @@
+1..27
+not ok 1 a ready, green, approved PR is squash-merged pinned to its head, and recorded
+# (in test file tests/lane-land.bats, line 28)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 the closing issues are labelled through gh-write
+# (in test file tests/lane-land.bats, line 38)
+#   `"$BIN/lane-land" x >/dev/null' failed with status 127
+# <repo>/tests/lane-land.bats: line 38: <repo>/plugins/crew-lanes/bin/lane-land: No such file or directory
+not ok 3 no verdict for the head: NO-VERDICT (13), nothing merged
+# (in test file tests/lane-land.bats, line 44)
+#   `[ "$status" -eq 13 ]' failed
+not ok 4 a verdict for an older head doesn't count
+# (in test file tests/lane-land.bats, line 52)
+#   `[ "$status" -eq 13 ]' failed
+not ok 5 a record naming a different implementer than the lane's is refused
+# (in test file tests/lane-land.bats, line 58)
+#   `[ "$status" -eq 13 ]' failed
+not ok 6 a lane with no implementer in the state can't land on records
+# (in test file tests/lane-land.bats, line 65)
+#   `[ "$status" -eq 13 ]' failed
+not ok 7 comment verdicts count only from review.reviewers and must name the full head
+# (from function `pr_set' in file tests/lanes-helpers.bash, line 79,
+#  in test file tests/lane-land.bats, line 71)
+#   `pr_set 12 --arg h "$HEAD" '.comments = [{author: {login: "intruder"}, body: ("Verdict: MERGE\nReviewed head: " + $h)}]'' failed with status 2
+# jq: --arg takes two parameters (e.g. --arg varname value)
+# Use jq --help for help with command-line options,
+# or see the jq manpage, or online docs  at https://jqlang.github.io/jq
+not ok 8 a newer comment verdict asking for changes overrides an older merge
+# (from function `pr_set' in file tests/lanes-helpers.bash, line 79,
+#  in test file tests/lane-land.bats, line 84)
+#   `pr_set 12 --arg h "$HEAD" '.comments = [{author: {login: "rev-a"}, body: ("Verdict: MERGE\nReviewed head: " + $h)}, {author: {login: "rev-a"}, body: ("Verdict: CHANGES\nReviewed head: " + $h)}]'' failed with status 2
+# jq: --arg takes two parameters (e.g. --arg varname value)
+# Use jq --help for help with command-line options,
+# or see the jq manpage, or online docs  at https://jqlang.github.io/jq
+not ok 9 comment verdicts need review.reviewers to be set
+# (from function `pr_set' in file tests/lanes-helpers.bash, line 79,
+#  in test file tests/lane-land.bats, line 91)
+#   `pr_set 12 --arg h "$HEAD" '.comments = [{author: {login: "anyone"}, body: ("Verdict: MERGE\nReviewed head: " + $h)}]'' failed with status 2
+# jq: --arg takes two parameters (e.g. --arg varname value)
+# Use jq --help for help with command-line options,
+# or see the jq manpage, or online docs  at https://jqlang.github.io/jq
+not ok 10 a pending check: PENDING (10)
+# (in test file tests/lane-land.bats, line 101)
+#   `[ "$status" -eq 10 ]' failed
+not ok 11 a failed check: RED (11), naming it
+# (in test file tests/lane-land.bats, line 108)
+#   `[ "$status" -eq 11 ]' failed
+not ok 12 an ignored check never blocks
+# (in test file tests/lane-land.bats, line 117)
+#   `[ "$status" -eq 0 ]' failed
+not ok 13 the required check missing on the head: PENDING
+# (in test file tests/lane-land.bats, line 124)
+#   `[ "$status" -eq 10 ]' failed
+not ok 14 too few other green checks: PENDING
+# (in test file tests/lane-land.bats, line 132)
+#   `[ "$status" -eq 10 ]' failed
+not ok 15 a dirty merge state: DIRTY (12)
+# (in test file tests/lane-land.bats, line 139)
+#   `[ "$status" -eq 12 ]' failed
+not ok 16 a draft or closed PR: NOT-READY (17)
+# (in test file tests/lane-land.bats, line 146)
+#   `[ "$status" -eq 17 ]' failed
+not ok 17 an already-merged PR is recorded, not merged again
+# (from function `pr_set' in file tests/lanes-helpers.bash, line 79,
+#  in test file tests/lane-land.bats, line 153)
+#   `pr_set 12 --arg m "$(hex40 e)" '.state = "MERGED" | .mergeCommit = {oid: $m}'' failed with status 2
+# jq: --arg takes two parameters (e.g. --arg varname value)
+# Use jq --help for help with command-line options,
+# or see the jq manpage, or online docs  at https://jqlang.github.io/jq
+not ok 18 the lane's recorded head differs from the PR's: LANE-HEAD-STALE (16)
+# (in test file tests/lane-land.bats, line 165)
+#   `[ "$status" -eq 16 ]' failed
+not ok 19 a merge pause holds everything but exempt PRs
+# (in test file tests/lane-land.bats, line 172)
+#   `[ "$status" -eq 15 ]' failed
+not ok 20 an owner-gated PR or lane needs the owner present
+# (in test file tests/lane-land.bats, line 182)
+#   `[ "$status" -eq 14 ]' failed
+not ok 21 unconfirmed high_risk_areas means every PR needs the owner present
+# (in test file tests/lane-land.bats, line 196)
+#   `[ "$status" -eq 14 ]' failed
+not ok 22 land.precheck_hook can refuse a landing (PRECHECK-REFUSED, 18)
+# (in test file tests/lane-land.bats, line 204)
+#   `[ "$status" -eq 18 ]' failed
+not ok 23 a head that moves before the merge: MERGE-FAILED (1), nothing recorded
+# (from function `pr_set' in file tests/lanes-helpers.bash, line 79,
+#  in test file tests/lane-land.bats, line 212)
+#   `pr_set 12 --arg h "$HEAD" '.headRefOid = $h'' failed with status 2
+# jq: --arg takes two parameters (e.g. --arg varname value)
+# Use jq --help for help with command-line options,
+# or see the jq manpage, or online docs  at https://jqlang.github.io/jq
+not ok 24 a clean lane worktree is removed after landing; a dirty one is kept
+# (in test file tests/lane-land.bats, line 226)
+#   `"$BIN/lane-land" x >/dev/null' failed with status 127
+# <repo>/tests/lane-land.bats: line 226: <repo>/plugins/crew-lanes/bin/lane-land: No such file or directory
+not ok 25 a dirty lane worktree is kept, with a warning
+# (in test file tests/lane-land.bats, line 235)
+#   `[ "$status" -eq 0 ]' failed
+not ok 26 a held landing lock exits 75
+# (in test file tests/lane-land.bats, line 247)
+#   `[ "$status" -eq 75 ]' failed
+not ok 27 a lane with no PR in the state, or no lane name: usage (2)
+# (in test file tests/lane-land.bats, line 252)
+#   `[ "$status" -eq 2 ]' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 27)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 43)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 51)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 57)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 64)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 100)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 107)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 116)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 123)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 131)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 138)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 145)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 164)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 171)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 181)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 195)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 203)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 234)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 245)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-land` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-land.bats, line 251)

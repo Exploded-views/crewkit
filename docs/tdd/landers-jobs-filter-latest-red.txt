@@ -1,0 +1,5 @@
+# landing.sh lists each run's jobs with filter=latest (checks.py's allow-list reads a list mixing attempts as pending, so a re-run must list only its latest attempt). RED: the new test on the old call:
+1..1
+not ok 1 jobs are listed with filter=latest (checks.py reads a mixed-attempt list as pending)
+# (in test file tests/land-batch.bats, line 1014)
+#   `grep -qE "^api repos/OWNER/REPO/actions/runs/[^/]+/jobs\?filter=latest&per_page=100 --paginate" "$STUB/calls.log"' failed

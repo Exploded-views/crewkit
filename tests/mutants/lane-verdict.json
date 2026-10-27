@@ -1,0 +1,80 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-verdict",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-verdict.bats"
+  ],
+  "mutants": [
+    {
+      "name": "self-review recorded",
+      "old": "    if not reviewer or reviewer == implementer:",
+      "new": "    if not reviewer:"
+    },
+    {
+      "name": "short SHA recorded",
+      "old": "def record(pr, head, verdict, reviewer, implementer, model):\n    if not SHA.match(head):",
+      "new": "def record(pr, head, verdict, reviewer, implementer, model):\n    if False:"
+    },
+    {
+      "name": "rounds overwrite one file",
+      "old": "    name = f\"{head}.json\" if rnd == 1 else f\"{head}.{rnd}.json\"",
+      "new": "    name = f\"{head}.json\""
+    },
+    {
+      "name": "implementer optional on check",
+      "old": "    if len(rest) != 2 or \"implementer\" not in o:",
+      "new": "    if len(rest) != 2:"
+    },
+    {
+      "name": "settings value interpolated into shell",
+      "old": "    out = subprocess.run([\"bash\", \"-c\", f'source \"$1\" && {{ crew_cd_main_checkout || exit 78; }} && crew_setting \"$2\" \"$3\"', \"bash\",",
+      "new": "    out = subprocess.run([\"bash\", \"-c\", f\"source \\\"$1\\\" && {{ crew_cd_main_checkout || exit 78; }} && crew_setting {key} '{default}'\", \"bash\","
+    },
+    {
+      "name": "check ignores verdict.py",
+      "old": "    if out.returncode == 0:\n        return None",
+      "new": "    if True:\n        return None"
+    },
+    {
+      "name": "reviewers setting not passed",
+      "old": "\"--reviewers\", setting(\"review.reviewers\", \"\"),\n",
+      "new": "\"--reviewers\", \"\",\n"
+    },
+    {
+      "name": "check --model not passed to verdict.py",
+      "old": "                          \"--model\", model],",
+      "new": "                          \"--model\", \"\"],"
+    },
+    {
+      "name": "stray head file counted as a round",
+      "old": "        if not m:\n            continue\n",
+      "new": "        if not m:\n            pass\n"
+    },
+    {
+      "name": "unreadable round file forgotten",
+      "old": "        except (OSError, ValueError):\n            out.append((rnd, None))",
+      "new": "        except (OSError, ValueError):\n            pass"
+    },
+    {
+      "name": "check ignores --model",
+      "old": "    model = o[\"model\"] if \"model\" in o else setting(\"review_model\", \"opus\")",
+      "new": "    model = setting(\"review_model\", \"opus\")"
+    },
+    {
+      "name": "check default ignores review_model",
+      "old": "if \"model\" in o else setting(\"review_model\", \"opus\")",
+      "new": "if \"model\" in o else \"opus\""
+    },
+    {
+      "name": "check default is no model",
+      "old": "if \"model\" in o else setting(\"review_model\", \"opus\")",
+      "new": "if \"model\" in o else \"\""
+    },
+    {
+      "name": "check reads settings from the current directory",
+      "old": "f'source \"$1\" && {{ crew_cd_main_checkout || exit 78; }} && crew_setting \"$2\" \"$3\"'",
+      "new": "f'source \"$1\" && crew_setting \"$2\" \"$3\"'"
+    }
+  ]
+}

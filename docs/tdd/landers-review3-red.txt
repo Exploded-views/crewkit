@@ -1,0 +1,11 @@
+# After the third delta review of land-batch: (2) the gh stub's failed reads printed nothing on stdout, where real gh prints the error body, so a lander ignoring the status read's exit code passed (checks.py reads {"message":...} as no contexts: green); (4) a GitHub App author (app/<slug>) wasn't matched to its comments' <slug>[bot]; (5) a PR's own head wasn't re-checked before the squash. RED:
+## (2) the mutant 'a failed status read is ignored' against the old stub:
+SURVIVED a failed status read is ignored
+## (4) and (5), the new tests on the old code:
+1..2
+not ok 1 a GitHub App author (app/<slug>) is the same account as its comments' <slug>[bot]
+# (in test file tests/land-batch.bats, line 472)
+#   `[ "$status" -eq 2 ]' failed
+not ok 2 a PR whose own head turns red while the batch runs is not merged (exit 9)
+# (in test file tests/land-batch.bats, line 1068)
+#   `[ "$status" -eq 9 ]' failed

@@ -1,0 +1,18 @@
+lib/settings.sh:
+  killed       environment ignored
+  killed       crew_keys reads past the frontmatter
+  killed       trailing comment kept
+  killed       quotes kept
+  killed       default ignored
+  killed       require accepts unset
+  killed       keys listed twice
+  killed       lookup reads past the frontmatter
+  killed       no walk up from subdirectories
+  killed       local file not preferred over shared
+  killed       user file skipped
+  killed       search passes the repo root
+  killed       world-writable files read
+  killed       files not owned by you read
+  killed       cache ignores the directory
+  killed       not primed at source time
+  all 16 mutants killed

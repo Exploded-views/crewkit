@@ -1,0 +1,193 @@
+FFFFFFF.FFFFFFFFFFF
+======================================================================
+FAIL: test_branch_ref_fails (tests.test_check_workflows.CheckWorkflows.test_branch_ref_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 101, in test_branch_ref_fails
+    self.assertFails(GOOD.replace(f"actions/checkout@{SHA}", "actions/checkout@main"), "SHA")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_custom_label_fails (tests.test_check_workflows.CheckWorkflows.test_custom_label_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 70, in test_custom_label_fails
+    self.assertFails(GOOD.replace("runs-on: ubuntu-latest", "runs-on: my-big-box"), "my-big-box")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_default_scans_github_workflows (tests.test_check_workflows.CheckWorkflows.test_default_scans_github_workflows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 122, in test_default_scans_github_workflows
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_docker_tag_fails (tests.test_check_workflows.CheckWorkflows.test_docker_tag_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 111, in test_docker_tag_fails
+    self.assertFails(GOOD.replace(f"docker://alpine@sha256:{'a' * 64}", "docker://alpine:3"), "digest")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_good_workflow_passes (tests.test_check_workflows.CheckWorkflows.test_good_workflow_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 58, in test_good_workflow_passes
+    self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+AssertionError: 2 != 0 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_matrix_include_value_is_checked (tests.test_check_workflows.CheckWorkflows.test_matrix_include_value_is_checked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 81, in test_matrix_include_value_is_checked
+    self.assertFails(text, "build-farm")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_matrix_value_that_is_self_hosted_fails (tests.test_check_workflows.CheckWorkflows.test_matrix_value_that_is_self_hosted_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 76, in test_matrix_value_that_is_self_hosted_fails
+    self.assertFails(GOOD.replace("windows-2022", "self-hosted"), "self-hosted")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_pull_request_target_fails_in_every_form (tests.test_check_workflows.CheckWorkflows.test_pull_request_target_fails_in_every_form)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 87, in test_pull_request_target_fails_in_every_form
+    self.assertFails(GOOD.replace("  pull_request:", "  pull_request_target:"), "pull_request_target")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_pull_request_target_in_a_comment_or_run_is_fine (tests.test_check_workflows.CheckWorkflows.test_pull_request_target_in_a_comment_or_run_is_fine)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 95, in test_pull_request_target_in_a_comment_or_run_is_fine
+    self.assertEqual(self.run_on(text).returncode, 0)
+AssertionError: 2 != 0
+
+======================================================================
+FAIL: test_reports_file_and_line (tests.test_check_workflows.CheckWorkflows.test_reports_file_and_line)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 115, in test_reports_file_and_line
+    self.assertRegex(r.stdout, r"ci\.yml:\d+:")
+AssertionError: Regex didn't match: 'ci\\.yml:\\d+:' not found in ''
+
+======================================================================
+FAIL: test_reusable_workflow_must_be_pinned (tests.test_check_workflows.CheckWorkflows.test_reusable_workflow_must_be_pinned)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 108, in test_reusable_workflow_must_be_pinned
+    self.assertFails(text, "SHA")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_runner_group_fails (tests.test_check_workflows.CheckWorkflows.test_runner_group_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 73, in test_runner_group_fails
+    self.assertFails(GOOD.replace("runs-on: ubuntu-latest", "runs-on:\n      group: private"), "group")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_self_hosted_in_a_block_list_fails (tests.test_check_workflows.CheckWorkflows.test_self_hosted_in_a_block_list_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 67, in test_self_hosted_in_a_block_list_fails
+    self.assertFails(GOOD.replace("- ubuntu-24.04-arm", "- self-hosted"), "self-hosted")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_self_hosted_in_a_flow_list_fails (tests.test_check_workflows.CheckWorkflows.test_self_hosted_in_a_flow_list_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 64, in test_self_hosted_in_a_flow_list_fails
+    self.assertFails(GOOD.replace("runs-on: ubuntu-latest", "runs-on: [self-hosted, linux]"), "self-hosted")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_self_hosted_label_fails (tests.test_check_workflows.CheckWorkflows.test_self_hosted_label_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 61, in test_self_hosted_label_fails
+    self.assertFails(GOOD.replace("runs-on: ubuntu-latest", "runs-on: self-hosted"), "runs-on")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_short_sha_fails (tests.test_check_workflows.CheckWorkflows.test_short_sha_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 104, in test_short_sha_fails
+    self.assertFails(GOOD.replace(f"actions/checkout@{SHA}", f"actions/checkout@{SHA[:12]}"), "SHA")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_tag_ref_fails (tests.test_check_workflows.CheckWorkflows.test_tag_ref_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 98, in test_tag_ref_fails
+    self.assertFails(GOOD.replace(f"actions/checkout@{SHA}", "actions/checkout@v4"), "SHA")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_unresolvable_expression_is_refused (tests.test_check_workflows.CheckWorkflows.test_unresolvable_expression_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_check_workflows.py", line 84, in test_unresolvable_expression_is_refused
+    self.assertFails(GOOD.replace("runs-on: ubuntu-latest", "runs-on: ${{ inputs.runner }}"), "resolve")
+  File "<repo>/tests/test_check_workflows.py", line 53, in assertFails
+    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+AssertionError: 2 != 1 : /usr/bin/python3: can't open file '<repo>/tools/check-workflows.py': [Errno 2] No such file or directory
+
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.283s
+
+FAILED (failures=18)

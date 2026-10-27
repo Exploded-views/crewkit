@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# lane-refresh PR: bring a lane PR up to date with the main branch, safely.
+#
+# In a temporary worktree (never the lane's own), merge origin/<main_branch> into the PR's head,
+# then check that the diff against main is still exactly the PR's own change: the patch-id of
+# diff(old merge base, old head) must equal that of diff(main, new head). Only then push, never
+# with force, and confirm with ls-remote that the push landed.
+#
+# A PR stacked on another branch is refused unless that branch's PR is merged. If it is, the
+# child's own change (diff from the parent's final head) is applied onto main three-way, never by
+# taking a side wholesale, recorded as a merge of the child and main, and the PR is retargeted to
+# main before the push (a base change alone triggers no workflow; the push must).
+#
+# Exit (docs/exit-codes.md) 0 = refreshed or already up to date, 1 = a git or gh step failed, 64 = usage,
+# 3 = conflict (files listed, nothing pushed), 4 = the diff vs main would change (not pushed),
+# 5 = the push didn't land, 6 = the stacked parent isn't merged, 78 = `repo` not set.
+set -uo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=SCRIPTDIR/../lib/settings.sh
+source "$here/../lib/settings.sh"
+
+if (($# != 1)) || [[ ! $1 =~ ^[0-9]+$ ]]; then
+  awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0" >&2
+  exit 64
+fi
+pr=$1
+repo=$(crew_require repo) || exit 78
+main_branch=$(crew_setting main_branch main)
+checkout=$(crew_setting checkout "")
+[[ -n $checkout ]] || checkout=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "lane-refresh: not in a git checkout; set checkout" >&2; exit 1; }
+wt_dir=$(crew_setting lane.worktree_dir .claude/worktrees)
+prefix=$(crew_setting branch_prefix.refresh lane-refresh/)
+
+info=$(gh pr view "$pr" -R "$repo" --json headRefName,baseRefName --jq '.headRefName + " " + .baseRefName') || { echo "lane-refresh: can't read PR #$pr" >&2; exit 1; }
+read -r branch base <<<"$info"
+parent=""
+if [[ $base != "$main_branch" ]]; then
+  pstate=$(gh pr list -R "$repo" --head "$base" --state all --json state --jq '.[0].state // ""') || exit 1
+  if [[ $pstate != MERGED ]]; then
+    echo "#$pr targets $base, whose PR is ${pstate:-not found}, not merged: refusing"
+    exit 6
+  fi
+  parent=$base
+fi
+
+git -C "$checkout" fetch -q origin "$main_branch" "$branch" ${parent:+"$parent"} || { echo "lane-refresh: fetch failed" >&2; exit 1; }
+old=$(git -C "$checkout" rev-parse "origin/$branch")
+main=$(git -C "$checkout" rev-parse "origin/$main_branch")
+if [[ -z $parent ]] && git -C "$checkout" merge-base --is-ancestor "$main" "$old"; then
+  echo "#$pr already contains main ${main:0:9}; head ${old:0:9}"
+  exit 0
+fi
+mb=$(git -C "$checkout" merge-base "$old" "$main")
+[[ -n $parent ]] && mb=$(git -C "$checkout" rev-parse "origin/$parent")
+
+wt=$checkout/$wt_dir/$prefix$pr
+git -C "$checkout" worktree remove --force "$wt" 2>/dev/null
+git -C "$checkout" worktree add -q --detach "$wt" "$old" || exit 1
+cleanup() { git -C "$checkout" worktree remove --force "$wt" 2>/dev/null; rm -f "$wt.own.patch"; }
+trap cleanup EXIT
+cd "$wt" || exit 1
+conflicted() { git diff --name-only --diff-filter=U | sed 's/^/  /'; }
+
+if [[ -n $parent ]]; then
+  if ! git -c core.editor=true merge --no-edit -m "Merge $parent (final head) into $branch" "$mb" >/dev/null 2>&1; then
+    echo "#$pr conflict merging the parent $parent:"; conflicted
+    git merge --abort; exit 3
+  fi
+  own_head=$(git rev-parse HEAD)
+  git diff "$mb" "$own_head" > "$wt.own.patch"
+  git checkout -q --detach "$main"
+  if ! git apply --3way --index "$wt.own.patch" >/dev/null 2>&1; then
+    echo "#$pr: its own change doesn't apply onto main:"; conflicted
+    exit 3
+  fi
+  new=$(git commit-tree "$(git write-tree)" -p "$own_head" -p "$main" -m "Merge origin/$main_branch into $branch
+
+Own change applied onto $main_branch (the parent $parent landed); the diff vs $main_branch equals this branch's own change.") || exit 1
+  git checkout -q --detach "$new"
+  old=$own_head
+elif ! git -c core.editor=true merge --no-edit -m "Merge origin/$main_branch into $branch" "$main" >/dev/null 2>&1; then
+  echo "#$pr conflict in:"; conflicted
+  git merge --abort; exit 3
+fi
+
+own=$(git diff "$mb" "$old" | git patch-id --stable | awk '{print $1}')
+now=$(git diff "$main" HEAD | git patch-id --stable | awk '{print $1}')
+if [[ $own != "$now" ]]; then
+  echo "#$pr: the diff vs main differs from the PR's own change (own ${own:0:12}, now ${now:0:12}); not pushing"
+  git diff --stat "$main" HEAD | tail -3
+  exit 4
+fi
+
+if [[ -n $parent ]]; then
+  gh pr edit "$pr" -R "$repo" --base "$main_branch" >/dev/null || { echo "lane-refresh: retargeting #$pr failed" >&2; exit 1; }
+  echo "#$pr retargeted $parent -> $main_branch"
+fi
+git push -q origin "HEAD:refs/heads/$branch" 2>&1 | grep -vE '^remote:|^$'
+new=$(git rev-parse HEAD)
+if [[ $(git ls-remote origin "refs/heads/$branch" | cut -f1) != "$new" ]]; then
+  echo "#$pr: the push did not land on origin"
+  exit 5
+fi
+echo "#$pr refreshed: ${old:0:9} -> ${new:0:9} (main ${main:0:9}); diff vs main == own change (patch-id ${own:0:12})"

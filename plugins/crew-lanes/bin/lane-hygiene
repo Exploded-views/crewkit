@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# lane-hygiene WORKTREE BRANCH [--main-head SHA] [PRODUCT_FILE...]
+#
+# The deterministic clean-worktree check a lane runs after every agent step. Prints one JSON
+# object: {"clean", "headSha", "branchOk", "productHash", "detail"}. clean is false when:
+#   - `git status --porcelain` lists anything (ignored scratch such as .lane/ never does);
+#   - a .lane/*.patch file exists (a cut-off revert or probe left behind);
+#   - a rebase, merge, revert or cherry-pick is in progress;
+#   - the worktree is not on BRANCH;
+#   - --main-head was given and the main checkout's HEAD is no longer that commit.
+# Not dirt, on purpose: the stash (it is shared, and other sessions' entries are normal) and
+# the rest of .lane/. productHash is a sha256 over the named files at HEAD ("n/a" if none).
+# The result is also written to WORKTREE/.lane/hygiene-last.json for audit.
+#
+# Exit 0 = clean, 1 = not clean, 64 = usage (docs/exit-codes.md). It never changes the worktree.
+set -uo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=SCRIPTDIR/../lib/settings.sh
+source "$here/../lib/settings.sh"
+
+# jstr VAR S: set VAR to S as a JSON string, in pure bash with no subshell (this runs after
+# every agent step, so it stays cheap).
+jstr() {
+  local s=$2 c out='' i
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  s=${s//$'\t'/\\t}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\r'/\\r}
+  if [[ $s == *[[:cntrl:]]* ]]; then
+    for ((i = 0; i < ${#s}; i++)); do
+      c=${s:i:1}
+      if [[ $c == [[:cntrl:]] ]]; then out+=' '; else out+=$c; fi
+    done
+    s=$out
+  fi
+  printf -v "$1" '"%s"' "$s"
+}
+
+json() { # json CLEAN HEAD BRANCHOK HASH DETAIL
+  local c=false b=false jh jp jd
+  [[ $1 == true ]] && c=true
+  [[ $3 == true ]] && b=true
+  jstr jh "$2"
+  jstr jp "$4"
+  jstr jd "${5:0:780}"
+  printf '{"clean": %s, "headSha": %s, "branchOk": %s, "productHash": %s, "detail": %s}\n' "$c" "$jh" "$b" "$jp" "$jd"
+}
+
+if (($# < 2)); then
+  json false "" false "" "usage: lane-hygiene WORKTREE BRANCH [--main-head SHA] [PRODUCT_FILE...]"
+  exit 64
+fi
+wt=$1 want=$2
+shift 2
+main_head=""
+if [[ ${1:-} == --main-head ]]; then
+  if (($# < 2)); then json false "" false "" "usage: --main-head needs a SHA"; exit 64; fi
+  main_head=$2
+  shift 2
+fi
+files=("$@")
+
+# One rev-parse for the git dir, HEAD and the branch.
+if ! info=$(git -C "$wt" rev-parse --absolute-git-dir HEAD --abbrev-ref HEAD 2>/dev/null); then
+  json false "" false "" "not a git worktree: $wt"
+  exit 1
+fi
+{ IFS= read -r gitdir; IFS= read -r head; IFS= read -r branch; } <<<"$info"
+problems=()
+branch_ok=false
+if [[ $branch == "$want" ]]; then branch_ok=true; else problems+=("branch is '$branch', expected '$want'"); fi
+
+porcelain=$(git -C "$wt" status --porcelain 2>/dev/null)
+if [[ -n $porcelain ]]; then
+  n=$(printf '%s\n' "$porcelain" | wc -l | tr -d ' ')
+  first=$(printf '%s\n' "$porcelain" | head -5 | tr '\n' ';')
+  problems+=("$n uncommitted path(s): ${first%;}")
+fi
+
+shopt -s nullglob
+patches=("$wt"/.lane/*.patch)
+shopt -u nullglob
+if ((${#patches[@]})); then
+  problems+=("${#patches[@]} .lane patch file(s): $(for p in "${patches[@]:0:3}"; do printf '%s ' "${p##*/}"; done)")
+fi
+
+for marker in rebase-merge rebase-apply MERGE_HEAD REVERT_HEAD CHERRY_PICK_HEAD; do
+  [[ -e $gitdir/$marker ]] && problems+=("$marker present (an operation is in progress)")
+done
+
+if [[ -n $main_head ]]; then
+  checkout=$(crew_setting checkout "")
+  [[ -n $checkout ]] || checkout=$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/..
+  now=$(git -C "$checkout" rev-parse HEAD 2>/dev/null || echo "")
+  [[ -n $now && $now == "$main_head"* ]] || problems+=("main checkout HEAD moved: was ${main_head:0:12}, now ${now:0:12}")
+fi
+
+product_hash=n/a
+if ((${#files[@]})); then
+  product_hash=$(for f in "${files[@]}"; do git -C "$wt" show "HEAD:$f" 2>/dev/null; done | sha256sum | cut -d' ' -f1)
+fi
+
+clean=true detail=clean
+if ((${#problems[@]})); then
+  clean=false
+  detail=$(printf '%s; ' "${problems[@]}")
+  detail=${detail%; }
+fi
+out=$(json "$clean" "$head" "$branch_ok" "$product_hash" "$detail")
+mkdir -p "$wt/.lane" 2>/dev/null && printf '%s\n' "$out" > "$wt/.lane/hygiene-last.json" 2>/dev/null
+echo "$out"
+[[ $clean == true ]]

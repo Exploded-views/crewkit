@@ -1,0 +1,3 @@
+# Dev-process docs: kept in the dev repo, left out of the public export (git archive honours this).
+docs/plans/ export-ignore
+docs/public-export.md export-ignore

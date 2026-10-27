@@ -1,0 +1,2 @@
+  lane-hygiene-clean             p95    48.9 ms   budget 25 ms
+FAIL lane-hygiene-clean: p95 48.9 ms is over its 25 ms budget

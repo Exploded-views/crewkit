@@ -1,0 +1,39 @@
+lane-land review fixes (independent Opus review of an earlier version): RED run, 2026-10-26, before the change.
+
+not ok 1 the checks are read for the PR's exact head
+ok 2 comment verdicts are read from every page of the PR's comments
+not ok 3 a PR whose author can't be read (a deleted account) fails closed on comment verdicts
+
+Test 2 pins existing behaviour (every comment page); its mutant (--paginate dropped) is in lane-land-verdict.json.
+
+## An empty CREWKIT_REVIEW_MODEL can't switch the check off (2026-10-26)
+
+Before crew_setting_env_nonempty existed:
+
+not ok 1 crew_setting_env_nonempty: the environment can name a value but not empty it
+not ok 2 crew_setting_env_nonempty: an empty value in a settings file still counts as set
+not ok 1 check with no --model asks for review_model (default opus), and an empty review_model opts out
+not ok 1 an empty CREWKIT_REVIEW_MODEL can't switch the model check off; a settings file can
+FAILED (failures=1)
+
+## review_model ignores the environment entirely (re-review of 16f4613, 2026-10-26)
+
+An env value could still weaken the check without emptying it (CREWKIT_REVIEW_MODEL=claude matches claude-sonnet-...). Before crew_setting_file_only replaced crew_setting_env_nonempty:
+
+not ok 1 crew_setting_file_only: the environment is ignored, set or empty
+not ok 2 crew_setting_file_only: an empty value in a settings file still counts as set
+not ok 1 check with no --model asks for review_model (default opus), and an empty review_model opts out
+not ok 1 CREWKIT_REVIEW_MODEL can't change the model check, to empty or to another model; a settings file can
+FAILED (failures=1)
+
+## Settings come from the main checkout (owner-approved, 2026-10-26)
+
+not ok 1 settings come from the main checkout: a lane worktree's crewkit.local.md can't weaken lane-land
+#   `[ "$status" -eq 33 ]' failed
+ok 2 run from a subdirectory of the main checkout, the main checkout's settings apply
+not ok 1 check reads review_model from the main checkout, never a lane worktree's own settings
+#   `[ "$status" -eq 1 ]' failed
+
+## ignored_checks naming the required check is 78 (2026-10-26)
+
+not ok 1 ignored_checks naming the required check is a config error (78), not a wait

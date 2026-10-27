@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# gh-write KIND ARGS...: the one path for the lanes' GitHub writes.
+#
+#   issue-comment ISSUE HEADER BODY_FILE   posted once per header (idempotent)
+#   pr-comment    PR    HEADER BODY_FILE   the same on a PR, capped like a review
+#   pr-review     PR    HEADER BODY_FILE   a comment-type review, idempotent and capped
+#   label         ISSUE|PR ADD [REMOVE]
+#   pr-ready      PR
+#
+# Every body starts with "### HEADER" so it can be found again; a header already posted on that
+# issue or PR is a no-op ("exists"). A PR comment or review longer than gh_write.max_body_bytes
+# is posted as a summary (the header, the first heading, the verdict lines and a pointer).
+# Writes are serialised under a lock and spaced gh_write.min_gap_ms apart, retried with backoff,
+# and journalled to <campaign_dir>/journal.md.
+#
+# Exit (docs/exit-codes.md) 0 = posted or already there, 1 = failed after the retries, 64 = usage, 75 = the lock stayed
+# busy (try again later), 78 = `repo` is not set.
+set -uo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=SCRIPTDIR/../lib/settings.sh
+source "$here/../lib/settings.sh"
+
+usage() { awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0" >&2; exit 64; }
+(($# >= 2)) || usage
+kind=$1
+shift
+case $kind in
+  issue-comment|pr-comment|pr-review) (($# == 3)) || usage ;;
+  label) (($# == 2 || $# == 3)) || usage ;;
+  pr-ready) (($# == 1)) || usage ;;
+  *) usage ;;
+esac
+
+repo=$(crew_require repo) || exit 78
+state=$(crew_setting state_dir "$HOME/.local/state/crewkit")
+state=${state/#\~/$HOME}
+campaign=$(crew_setting campaign_dir "$HOME/.local/state/crewkit/campaign")
+campaign=${campaign/#\~/$HOME}
+gap_ms=$(crew_setting gh_write.min_gap_ms 1500)
+retries=$(crew_setting gh_write.retries 4)
+backoff=$(crew_setting gh_write.backoff_seconds 15)
+cap=$(crew_setting gh_write.max_body_bytes 1800)
+wait_s=$(crew_setting lock_wait_seconds 900)
+
+mkdir -p "$state/locks" "$campaign"
+exec 9>"$state/locks/gh-write.lock"
+if ! flock -w "$wait_s" 9; then
+  echo "gh-write: the GitHub write lock stayed busy for ${wait_s}s; try again later" >&2
+  exit 75
+fi
+# Space writes out (GitHub's secondary rate limits punish bursts).
+last=$(cat "$state/locks/gh-write.last" 2>/dev/null || echo 0)
+now=$(date +%s%N)
+elapsed=$(((now - last) / 1000000))
+if ((elapsed < gap_ms)); then
+  sleep "$(awk -v ms=$((gap_ms - elapsed)) 'BEGIN { printf "%.3f", ms / 1000 }')"
+fi
+date +%s%N > "$state/locks/gh-write.last"
+
+retry() {
+  local n=0
+  until "$@"; do
+    n=$((n + 1))
+    ((n >= retries)) && return 1
+    sleep $((backoff * n))
+  done
+}
+
+body=$(mktemp "$state/locks/gh-body.XXXXXX")
+trap 'rm -f "$body"' EXIT
+
+# compose HEADER FILE CAPPED: the posted body, into $body.
+compose() {
+  local header=$1 file=$2 capped=$3
+  if [[ $capped == yes ]] && (($(wc -c < "$file") > cap)); then
+    {
+      printf '### %s\n\n' "$header"
+      grep -m1 -E '^#{1,3} ' "$file" | sed 's/^#* */**/; s/$/**/'
+      grep -m2 -iE 'verdict' "$file" | cut -c1-300
+      printf '\nFull text: %s (summary only on GitHub; bodies over %s bytes are not posted whole).\n' "${file##*/}" "$cap"
+    } > "$body"
+  else
+    { printf '### %s\n\n' "$header"; cat "$file"; } > "$body"
+  fi
+}
+
+# already NUMBER HEADER ENDPOINT: true if a body on that endpoint has exactly the header line.
+# The output is captured before grepping: `gh ... | grep -q` under pipefail fails whenever grep
+# exits early and gh gets SIGPIPE, which would post a duplicate.
+already() {
+  local bodies
+  bodies=$(gh api "repos/$repo/$3?per_page=100" --paginate --jq '.[].body' 2>/dev/null) || return 1
+  grep -qxF "### $2" <<<"$bodies"
+}
+
+rc=0
+case $kind in
+  issue-comment|pr-comment)
+    n=$1 header=$2 file=$3
+    if already "$n" "$header" "issues/$n/comments"; then
+      echo "exists $kind $n :: $header"
+    else
+      capped=no; [[ $kind == pr-comment ]] && capped=yes
+      compose "$header" "$file" "$capped"
+      if retry gh issue comment "$n" -R "$repo" --body-file "$body" >/dev/null; then
+        echo "posted $kind $n :: $header"
+      else rc=1; fi
+    fi ;;
+  pr-review)
+    n=$1 header=$2 file=$3
+    if already "$n" "$header" "pulls/$n/reviews"; then
+      echo "exists pr-review $n :: $header"
+    else
+      compose "$header" "$file" yes
+      if retry gh pr review "$n" -R "$repo" --comment --body-file "$body" >/dev/null; then
+        echo "posted pr-review $n :: $header"
+      else rc=1; fi
+    fi ;;
+  label)
+    n=$1 add=$2 remove=${3:-}
+    args=(--add-label "$add")
+    [[ -n $remove ]] && args+=(--remove-label "$remove")
+    if retry gh issue edit "$n" -R "$repo" "${args[@]}" >/dev/null; then
+      echo "label $n +$add${remove:+ -$remove}"
+    else rc=1; fi ;;
+  pr-ready)
+    n=$1
+    if retry gh pr ready "$n" -R "$repo" >/dev/null; then echo "ready $n"; else rc=1; fi ;;
+esac
+echo "$(date -u +%FT%TZ) gh-write $kind $1 rc=$rc" >> "$campaign/journal.md"
+exit "$rc"

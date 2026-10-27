@@ -1,0 +1,9 @@
+check_mutant_suites (bats mutation suites run with --abort): RED run, 2026-10-26.
+python3 -m unittest tests.test_lint_mutant_suites, before the function existed:
+
+Ran 5 tests in 0.013s
+
+FAILED (errors=5)
+
+Why: lane-land's mutation job hit CI's 20-minute limit. Measured locally:
+full lane-land suite 64 s; one killed mutant 48 s without --abort, 15 s with it.

@@ -1,0 +1,280 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scrub:
+    name: scrub (secret rules)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Self-test the scrub rules
+        run: tools/scrub.sh --self-test
+      - name: Scrub tracked files (secret rules only; the private denylist never leaves its owner's machine)
+        run: tools/scrub.sh --secrets-only
+
+  lint:
+    name: skills and markdown lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Frontmatter, manifests, hooks, eval cases, relative links
+        run: python3 tools/lint-skills.py
+      - name: Workflows use GitHub-hosted runners, no pull_request_target, actions pinned by SHA
+        run: python3 tools/check-workflows.py
+      - name: Mutation check on the workflow lint
+        run: python3 tools/mutate-check-workflows.py
+      # The required check's own mutants run here too, so they keep running while the repo is
+      # private and the mutants matrix is off.
+      - name: Mutation check on ci-ok and its lint
+        run: python3 tools/mutate.py tests/mutants/ci-ok.json && python3 tools/mutate.py tests/mutants/lint-ci-ok.json
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@992badcdf24e3b8eb7e87ff9287fe931bcb00c6e # v20.0.0
+        with:
+          globs: "**/*.md"
+
+  mutants:
+    name: mutation check ${{ matrix.spec }}
+    # Off while the repo is private (Actions minutes); ci-ok accepts the skip only then.
+    # Run locally: python3 tools/mutate.py tests/mutants/<spec>.json (see docs/testing.md).
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every tests/mutants/*.json, listed here; tools/lint-skills.py fails on one missing.
+        spec:
+          - checks.json
+          - ci-ok.json
+          - export.json
+          - gh-write.json
+          - land-batch.json
+          - landing-lib-ci.json
+          - landing-lib-risk.json
+          - landing-lib-verdict.json
+          - lane-hygiene.json
+          - lane-land-checks.json
+          - lane-land-config.json
+          - lane-land-gates.json
+          - lane-land-merge.json
+          - lane-land-verdict.json
+          - lane-new.json
+          - lane-refresh.json
+          - lane-state.json
+          - lane-verdict.json
+          - lint-ci-ok.json
+          - lint-conflicts.json
+          - scrub-history.json
+          - scrub-rules.json
+          - settings.json
+          - verdict.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: mutation check (every mutant must fail the suite)
+        run: python3 tools/mutate.py "tests/mutants/${{ matrix.spec }}"
+
+  install-mutants:
+    name: mutation check on install.sh's key lines
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: every install.sh mutant must fail the suite
+        run: tools/mutate.sh
+
+  shell:
+    name: shellcheck and install dry run
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck (preinstalled on the runner)
+        run: |
+          # Plugin scripts are mixed bash and Python: check the ones with a bash shebang.
+          mapfile -t plugin_sh < <(grep -l '^#!/usr/bin/env bash' plugins/crew-*/bin/* 2>/dev/null || true)
+          shellcheck -x install.sh tools/*.sh tests/run.sh tests/stub-gh evals/*.sh "${plugin_sh[@]}"
+          shellcheck -s bash tests/*.bash lib/settings.sh
+      - name: install.sh dry run changes nothing and exits 0
+        run: ./install.sh
+      - name: install.sh rejects bad usage with exit 64
+        run: |
+          set +e
+          ./install.sh --bogus >/dev/null 2>&1
+          test $? -eq 64
+
+  tests:
+    name: bats suites and performance budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: bats suite (pinned bats-core)
+        run: tests/run.sh
+      - name: coverage-floors unit tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: performance budgets (perf-budgets.json; CI headroom applies)
+        run: python3 tools/perf.py
+
+  coverage:
+    name: coverage (kcov for bash, coverage.py for Python), and the ratchet
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the ratchet compares floors with the merge base
+      - name: kcov image with git and jq (built on the runner, never pushed)
+        run: |
+          # The pinned kcov image (Debian 12) has no git or jq, which the plugin suites need.
+          # Packages come from a dated snapshot of the Debian archive, so the build is the same
+          # every run; apt checks the archive signatures.
+          docker build -t crewkit-kcov --build-arg BASE="$(tools/coverage.sh --pinned-image)" - <<'EOF'
+          ARG BASE
+          FROM $BASE
+          RUN rm -f /etc/apt/sources.list.d/* \
+           && echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260401T000000Z bookworm main' > /etc/apt/sources.list \
+           && echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260401T000000Z bookworm-security main' >> /etc/apt/sources.list \
+           && apt-get update \
+           && apt-get install -y --no-install-recommends git jq \
+           && rm -rf /var/lib/apt/lists/*
+          EOF
+      - name: coverage under kcov (every suite but docs and settings; see tools/coverage.sh)
+        env:
+          KCOV_IMAGE: crewkit-kcov
+        run: tools/coverage.sh
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: coverage.py (pinned by sha256, installed here only)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/coverage-venv"
+          "$RUNNER_TEMP/coverage-venv/bin/pip" install --quiet --require-hashes --only-binary :all: \
+            -r tools/requirements-coverage.txt
+      - name: coverage of the plugins' Python tools
+        env:
+          COVERAGE_VENV: ${{ runner.temp }}/coverage-venv
+        run: tools/coverage-py.sh
+      - name: floors hold and never move down
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.base_ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          # Fail closed: a PR must compare with its merge base; a push compares with the
+          # commit it replaced. Only a brand-new branch (no before) has nothing to compare.
+          if [ "$EVENT" = pull_request ]; then
+            base=$(git merge-base HEAD "origin/$PR_BASE")
+          elif [ -n "$PUSH_BEFORE" ] && ! printf '%s' "$PUSH_BEFORE" | grep -qx '0*'; then
+            base=$PUSH_BEFORE
+          else
+            base=
+          fi
+          args=()
+          if [ -n "$base" ]; then
+            if git cat-file -e "$base:coverage-floors.json" 2>/dev/null; then
+              git show "$base:coverage-floors.json" > "$RUNNER_TEMP/base-floors.json"
+              args=(--base-floors "$RUNNER_TEMP/base-floors.json")
+            else
+              echo "no coverage-floors.json at $base: first floors, nothing to compare"
+            fi
+          fi
+          python3 tools/coverage-floors.py --report .cache/coverage/bats.*/coverage.json \
+            --report .cache/coverage-py/report.json "${args[@]}"
+
+  bash32:
+    # install.sh under bash 3.2 on Linux, on every PR, private or public: macOS's /bin/bash is
+    # 3.2 and the macos job is off while the repo is private. docker run, not a container: job,
+    # so the same commands run locally (with RUNNER_TEMP set to a scratch directory).
+    name: install.sh under bash 3.2 (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASH32: bash:3.2@sha256:b6252c62fc86114f93f02104a486c71e6569371d95950ea7479a2ffd6b47f16a # scrub:pinned-hash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: dry run with bash 3.2
+        run: docker run --rm -v "$PWD:/w:ro" -w /w "$BASH32" bash -c 'bash --version | head -1 && bash ./install.sh'
+      - name: dry run with bash 3.2, memsync pinned and no flags after --
+        run: |
+          tree="${RUNNER_TEMP:?}/bash32"
+          rm -rf "$tree" && mkdir -p "$tree" && git ls-files -z | xargs -0 cp --parents -t "$tree"
+          {
+            echo "MEMSYNC_URL=https://example.test/o/claude-utils/releases/download"
+            echo "MEMSYNC_TAG=v0.1.0"
+            for t in linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
+              echo "MEMSYNC_SHA256_$t=$(printf 'a%.0s' $(seq 64))"
+            done
+          } > "$tree/pins/memsync.env"
+          docker run --rm -v "$tree:/w:ro" -w /w "$BASH32" bash ./install.sh --only memsync
+
+  macos:
+    name: install.sh on macOS (stock bash 3.2)
+    # Off while the repo is private (macOS minutes bill at 10x); bash32 covers bash 3.2 meanwhile.
+    if: ${{ !github.event.repository.private }}
+    runs-on: macos-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: dry run with /bin/bash (3.2), unpinned
+        run: /bin/bash --version | head -1 && /bin/bash ./install.sh
+      - name: dry run with /bin/bash (3.2), memsync pinned and no flags after --
+        run: |
+          {
+            echo "MEMSYNC_URL=https://example.test/o/claude-utils/releases/download"
+            echo "MEMSYNC_TAG=v0.1.0"
+            for t in linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
+              echo "MEMSYNC_SHA256_$t=$(printf 'a%.0s' $(seq 64))"
+            done
+          } > pins/memsync.env
+          /bin/bash ./install.sh --only memsync
+
+  ci-ok:
+    # The one check main's ruleset requires: green only when every other job succeeded.
+    # tools/lint-skills.py fails if a job is missing from needs, so a new job can't skip it.
+    name: ci-ok
+    if: always()
+    needs: [scrub, lint, mutants, install-mutants, shell, tests, coverage, bash32, macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: every needed job succeeded (tools/ci-ok.py)
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+          PRIVATE: ${{ github.event.repository.private }}
+        run: python3 tools/ci-ok.py

@@ -1,0 +1,97 @@
+1..14
+not ok 1 a clean tree is clean: exit 0, one JSON object
+# (in test file tests/lane-hygiene.bats, line 18)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 another session's stash entry is not dirt
+# (in test file tests/lane-hygiene.bats, line 29)
+#   `[ "$status" -eq 0 ]' failed
+not ok 3 .lane/ scratch files are not dirt
+# (in test file tests/lane-hygiene.bats, line 35)
+#   `[ "$status" -eq 0 ]' failed
+not ok 4 a modified tracked file is dirty: exit 1, named in the detail
+# (in test file tests/lane-hygiene.bats, line 41)
+#   `[ "$status" -eq 1 ]' failed
+not ok 5 an untracked file is dirty
+# (in test file tests/lane-hygiene.bats, line 49)
+#   `[ "$status" -eq 1 ]' failed
+not ok 6 a .lane patch file is dirty (a cut-off revert or probe left behind)
+# (in test file tests/lane-hygiene.bats, line 56)
+#   `[ "$status" -eq 1 ]' failed
+not ok 7 the wrong branch is dirty
+# (in test file tests/lane-hygiene.bats, line 62)
+#   `[ "$status" -eq 1 ]' failed
+not ok 8 an operation in progress is dirty
+# (in test file tests/lane-hygiene.bats, line 71)
+#   `[ "$status" -eq 1 ]' failed
+not ok 9 a moved main checkout head is dirty when --main-head is given
+# (in test file tests/lane-hygiene.bats, line 79)
+#   `[ "$status" -eq 1 ]' failed
+not ok 10 the product hash covers the named files at HEAD
+# (in test file tests/lane-hygiene.bats, line 87)
+#   `[ "$status" -eq 0 ]' failed
+not ok 11 the last result is kept in .lane/hygiene-last.json
+# (in test file tests/lane-hygiene.bats, line 95)
+#   `[ "$(cat "$WT/.lane/hygiene-last.json")" = "$output" ]' failed
+# cat: <tmp> No such file or directory
+not ok 12 not a git worktree: exit 1 with a JSON detail
+# (in test file tests/lane-hygiene.bats, line 100)
+#   `[ "$status" -eq 1 ]' failed
+not ok 13 bad usage: exit 2, still one JSON object
+# (in test file tests/lane-hygiene.bats, line 106)
+#   `[ "$status" -eq 2 ]' failed
+ok 14 it never changes the worktree
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 17)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 28)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 34)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 40)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 48)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 55)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/y` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-hygiene.bats, line 61)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 70)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x --main-head <sha>` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 78)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x a.txt` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 86)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 94)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-hygiene.bats, line 99)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-hygiene.bats, line 105)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-hygiene <tmp> lane/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `hy' in file tests/lane-hygiene.bats, line 13,
+       in test file tests/lane-hygiene.bats, line 113)

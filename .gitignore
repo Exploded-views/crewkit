@@ -1,0 +1,8 @@
+# Local settings and scratch never go in the repo.
+.claude/*.local.md
+.claude/settings.local.json
+*.local.md
+denylist.txt
+.scratch/
+.cache/
+__pycache__/

@@ -1,0 +1,3 @@
+  settings-lookup                p95     9.4 ms   budget 5 ms
+FAIL settings-lookup: p95 9.4 ms is over its 5 ms budget
+perf: 20 runs each, headroom x1.0: over budget

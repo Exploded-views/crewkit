@@ -1,0 +1,5 @@
+error: README.md: shell block uses a bare /path/to/ or OWNER; declare it in ## Inputs: 'git clone https://github.com/OWNER/crewkit.git'
+error: README.md: shell block uses a bare /path/to/ or OWNER; declare it in ## Inputs: 'claude plugin marketplace add /path/to/crewkit'
+error: docs/install.md: <host> in a shell block, but the page has no ## Inputs section
+error: docs/install.md: shell block uses a bare /path/to/ or OWNER; declare it in ## Inputs: 'MEMSYNC_URL=https://github.com/OWNER/claude-utils/'
+lint-skills: 10 skills, 4 error(s), 0 warning(s)

@@ -1,0 +1,24 @@
+1..7
+not ok 1 records: every shared fixture case gets its expected answer
+# (in test file tests/verdict.bats, line 15)
+#   `[ "$status" -eq "$want" ] || { echo "case $case: expected $expect, got $status: $output"; return 1; }' failed
+# case valid-merge: expected accept, got 2: python3: can't open file '<repo>/lib/verdict.py': [Errno 2] No such file or directory
+not ok 2 comments: every shared fixture case gets its expected answer
+# (in test file tests/verdict.bats, line 26)
+#   `[ "$status" -eq "$want" ] || { echo "case $case: expected $expect, got $status: $output"; return 1; }' failed
+# case valid: expected accept, got 2: python3: can't open file '<repo>/lib/verdict.py': [Errno 2] No such file or directory
+not ok 3 records: a PR without a lane needs reviewers
+# (in test file tests/verdict.bats, line 34)
+#   `[ "$status" -eq 1 ]' failed
+not ok 4 records: an unexpected file name for the head refuses it
+# (in test file tests/verdict.bats, line 45)
+#   `[ "$status" -eq 1 ]' failed
+not ok 5 comments: require-sha false accepts a marker line without the SHA
+# (in test file tests/verdict.bats, line 52)
+#   `[ "$status" -eq 0 ]' failed
+not ok 6 a head that isn't a full SHA, and unreadable comments, are bad data (65)
+# (in test file tests/verdict.bats, line 59)
+#   `[ "$status" -eq 65 ]' failed
+not ok 7 usage errors exit 64
+# (in test file tests/verdict.bats, line 67)
+#   `[ "$status" -eq 64 ]' failed

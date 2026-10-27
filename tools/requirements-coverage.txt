@@ -1,0 +1,5 @@
+# coverage.py for CI's Python coverage (tools/coverage-py.sh), pinned by version and sha256:
+# pip install --require-hashes --only-binary :all: -r tools/requirements-coverage.txt
+# The hash is the CPython 3.12 manylinux x86_64 wheel's, which is what CI's setup-python 3.12 on
+# ubuntu-latest installs. Bump on purpose, with the new wheel's sha256 from PyPI.
+coverage==7.16.2 --hash=sha256:5375ebd99038021b35e99dc88255022912c06565d316212f4a576e4b08d30f5d  # scrub:pinned-hash

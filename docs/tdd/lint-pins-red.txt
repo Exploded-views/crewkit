@@ -1,0 +1,60 @@
+F..FFFFF
+======================================================================
+FAIL: test_bitc_missing_linux_arm64_fails (tests.test_lint_pins.CheckPins.test_bitc_missing_linux_arm64_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_pins.py", line 62, in test_bitc_missing_linux_arm64_fails
+    self.assertTrue(any("linux_arm64" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+======================================================================
+FAIL: test_crlf_fails (tests.test_lint_pins.CheckPins.test_crlf_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_pins.py", line 47, in test_crlf_fails
+    self.assertTrue(any("CR" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+======================================================================
+FAIL: test_duplicate_key_fails (tests.test_lint_pins.CheckPins.test_duplicate_key_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_pins.py", line 43, in test_duplicate_key_fails
+    self.assertTrue(any("duplicate" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+======================================================================
+FAIL: test_memsync_missing_a_darwin_hash_fails (tests.test_lint_pins.CheckPins.test_memsync_missing_a_darwin_hash_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_pins.py", line 51, in test_memsync_missing_a_darwin_hash_fails
+    self.assertTrue(any("darwin_arm64" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+======================================================================
+FAIL: test_unpinned_passes (tests.test_lint_pins.CheckPins.test_unpinned_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_pins.py", line 39, in test_unpinned_passes
+    self.assertEqual(self.check("memsync.env", "MEMSYNC_URL=\nMEMSYNC_TAG=TODO\n"), [])
+AssertionError: Lists differ: ['pins/memsync.env: needs at least one MEMSYNC_SHA256_<os>_<arch>'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'pins/memsync.env: needs at least one MEMSYNC_SHA256_<os>_<arch>'
+
+- ['pins/memsync.env: needs at least one MEMSYNC_SHA256_<os>_<arch>']
++ []
+
+======================================================================
+FAIL: test_url_without_host_fails (tests.test_lint_pins.CheckPins.test_url_without_host_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_pins.py", line 66, in test_url_without_host_fails
+    self.assertTrue(any("https URL" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.020s
+
+FAILED (failures=6)

@@ -1,0 +1,36 @@
+verdict.py --model (review_model): RED run, 2026-10-26, tests/verdict.bats + tests/lane-verdict.bats before the change.
+Tests 10-13 fail because verdict.py doesn't know --model yet (usage, exit 64).
+
+ok 1 records: every shared fixture case gets its expected answer
+ok 2 comments: every shared fixture case gets its expected answer
+ok 3 records: a PR without a lane needs reviewers
+ok 4 records: an unexpected file name for the head refuses it
+ok 5 comments: require-sha false accepts a marker line without the SHA
+ok 6 a head that isn't a full SHA, and unreadable comments, are bad data (65)
+ok 7 usage errors exit 64
+ok 8 records: a reviewer outside --reviewers is refused
+ok 9 comments: with no reviewers set, the reason says so
+not ok 10 records: review_model cases (--model) get their expected answer
+not ok 11 comments: review_model cases (--model) get their expected answer
+not ok 12 an empty --model checks no model, on both sources
+not ok 13 review_model refusals say what is missing
+ok 14 every shared fixture case gets its expected answer from check
+ok 15 record writes round 1, then round 2 to a new file
+ok 16 record refuses a self-review, a short SHA and an unknown verdict
+ok 17 check refuses a reviewer outside review.reviewers when it is set
+ok 18 check needs the implementer, so a self-review can't slip through
+ok 19 records are written through a temp file and a rename
+ok 20 usage errors exit 2
+ok 21 a settings value with quotes or $(...) is never run as shell
+ok 22 check refuses a record whose implementer isn't the one the caller knows
+ok 23 a record whose body round disagrees with its file name makes the head's verdict invalid
+not ok 11 check --model refuses a record from another model, and passes the matching one
+not ok 52 every lane-land verdict must name review_model: a sonnet record can't land
+not ok 53 review_model applies to comment verdicts too, and an empty review_model opts out
+
+## Fail closed when --model is left out (2026-10-26)
+
+verdict.py and lane-verdict check, run with no --model, before the default changed:
+
+not ok 14 no --model at all means review_model's default, opus: fail closed, not skipped
+not ok 28 check with no --model asks for review_model (default opus), and an empty review_model opts out

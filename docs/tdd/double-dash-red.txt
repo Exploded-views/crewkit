@@ -1,0 +1,24 @@
+1..2
+not ok 1 install.md: the dry run passes exactly one -- to the installer
+# (in test file tests/docs.bats, line 28)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 install.md: an extra bootstrap flag added the documented way still gives one --
+# (in test file tests/docs.bats, line 37)
+#   `[ "$status" -eq 0 ]' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `bash -euc CREWKIT_DIR="crewkit"
+MEMSYNC_HOST="test host"
+crewkit_install() { "$CREWKIT_DIR/install.sh" "$@" -- --host "$MEMSYNC_HOST"; }
+
+crewkit_install          # dry run: print what would happen
+crewkit_install` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/docs.bats, line 27)
+BW01: `run`'s command `bash -euc CREWKIT_DIR="crewkit"
+MEMSYNC_HOST="test host"
+crewkit_install() { "$CREWKIT_DIR/install.sh" "$@" -- --host "$MEMSYNC_HOST"; }
+BOOTSTRAP_FLAGS+=(--org acme)
+crewkit_install --yes` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/docs.bats, line 36)

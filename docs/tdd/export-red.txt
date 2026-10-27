@@ -1,0 +1,23 @@
+tools/export.py: RED run, 2026-10-26, python3 -m unittest tests.test_export before the tool existed:
+
+FAILED (failures=7)
+
+Then RED twice more: a See-sentence left a doubled full stop and a wrapped citation left its full stop alone on a line; a dropped region between blank lines left two (markdownlint MD012).
+
+Dev-repo PR and issue links (before the check existed):
+FAIL: test_a_link_to_the_dev_repos_prs_or_issues_fails_the_export (tests.test_export.Export.test_a_link_to_the_dev_repos_prs_or_issues_fails_the_export)
+Ran 11 tests in 1.149s
+FAILED (failures=1)
+
+Plain-text lesson citations (before the check existed):
+FAIL: test_a_plain_text_lesson_citation_fails_the_export (tests.test_export.Export.test_a_plain_text_lesson_citation_fails_the_export)
+Ran 14 tests in 6.351s
+FAILED (failures=1)
+
+Local clone paths (before the check existed):
+FAIL: test_a_local_clone_path_fails_the_export (tests.test_export.Export.test_a_local_clone_path_fails_the_export)
+Ran 16 tests in 2.136s
+FAILED (failures=1)
+
+The tool describing the clone-path form in its own docs (before the MAY_NAME exemption):
+FAIL: test_the_tool_itself_may_describe_the_clone_path_form

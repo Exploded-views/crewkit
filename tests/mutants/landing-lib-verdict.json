@@ -1,0 +1,71 @@
+{
+  "target": "plugins/crew-orchestrator/lib/landing.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/landing-lib.bats",
+    "tests/land-batch.bats"
+  ],
+  "mutants": [
+    {
+      "name": "lane implementer not passed to verdict.py",
+      "old": "    [[ -z $limpl ]] || args+=(--lane-implementer \"$limpl\")",
+      "new": "    true"
+    },
+    {
+      "name": "reviewers not passed for records",
+      "old": "--dir \"$VDIR\" --reviewers \"$REVIEWERS\" --model",
+      "new": "--dir \"$VDIR\" --model"
+    },
+    {
+      "name": "the PR author not passed",
+      "old": "comments --head \"$2\" --author \"$author\" --comments-json",
+      "new": "comments --head \"$2\" --author \"\" --comments-json"
+    },
+    {
+      "name": "reviewers not passed for comments",
+      "old": "      --reviewers \"$REVIEWERS\" --markers \"$MARKERS\"",
+      "new": "      --reviewers \"reviewer\" --markers \"$MARKERS\""
+    },
+    {
+      "name": "only the first page of comments",
+      "old": "--paginate | jq -s 'add // []' > \"$f\"; then",
+      "new": "--paginate | jq -s '.[0] // []' > \"$f\"; then"
+    },
+    {
+      "name": "verdict.py's refusal ignored",
+      "old": "  ((rc == 0)) && return 0\n  VWHY=${out#not accepted: }",
+      "new": "  return 0\n  VWHY=${out#not accepted: }"
+    },
+    {
+      "name": "comment verdicts skip review_model",
+      "old": "--require-sha \"$REQUIRE_SHA\" --model \"$REVIEW_MODEL\" 2>&1)",
+      "new": "--require-sha \"$REQUIRE_SHA\" --model \"\" 2>&1)"
+    },
+    {
+      "name": "record verdicts skip review_model",
+      "old": "--reviewers \"$REVIEWERS\" --model \"$REVIEW_MODEL\")",
+      "new": "--reviewers \"$REVIEWERS\" --model \"\")"
+    },
+    {
+      "name": "review_model defaults to no model",
+      "old": "  REVIEW_MODEL=$(crew_setting review_model opus)",
+      "new": "  REVIEW_MODEL=$(crew_setting review_model \"\")"
+    },
+    {
+      "name": "an empty review_model is ignored",
+      "old": "  REVIEW_MODEL=$(crew_setting review_model opus)",
+      "new": "  REVIEW_MODEL=opus"
+    },
+    {
+      "name": "an unnamed author is accepted",
+      "old": "    [[ -n $author ]] || { VWHY=\"the PR's author can't be named\"; return 1; }",
+      "new": "    true"
+    },
+    {
+      "name": "settings read from wherever the lander started",
+      "old": "  crew_cd_main_checkout || crew_land_config_error \"$TOOL: can't find",
+      "new": "  true || crew_land_config_error \"$TOOL: can't find"
+    }
+  ]
+}

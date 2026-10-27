@@ -1,0 +1,8 @@
+# Found by the mutation check: two tests written to kill its survivors.
+# 15d (a flake beside a real failure in another job) passed at once: the code was right and the test was missing; it kills the 'one flake is enough' mutant.
+# 2b failed: a normal exit 20 (PRs dropped before batching) was reported as a PARTIAL LANDING by the exit trap.
+
+1..1
+not ok 1 2b a normal finish with some PRs dropped is not reported as a partial landing
+# (in test file tests/land-batch.bats, line 39)
+#   `[[ $output != *PARTIAL* ]]' failed

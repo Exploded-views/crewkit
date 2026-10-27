@@ -1,0 +1,24 @@
+# lib/checks.py fail-closed fix, from the second Opus delta review of the coordinator-tools PR: a failed or empty jobs read, or a newer run that hadn't listed its jobs, let an older green run vouch, and checks.py never read a run's own status or conclusion. The new fixture cases against the old checks.py (six RED; the skipped-job fallback and the ignored combined failure are guards that already passed):
+RED newest-required-run-has-no-jobs: want pending got green
+RED other-workflow-run-has-no-jobs: want pending got green
+RED other-workflow-run-failed-no-jobs: want red got green
+RED other-workflow-run-in-progress: want pending got green
+RED required-run-failed-jobs-green: want red got green
+RED statuses-beyond-the-first-page-red: want red got green
+
+# Then the lane-land review found a second HIGH: a newer ci.workflow run whose required job was
+# skipped but whose other job failed was ignored, because the older run the required job fell back to
+# spoke for the whole workflow. The cases against the first fix (both RED):
+RED newer-run-required-skipped-other-red: want red got green
+RED newer-run-required-skipped-other-red-no-conclusion: want red got green
+# Fixed: every workflow's newest run always counts for its own jobs; the fallback only finds the
+# required job. The mutation check then found two cases to add: a newer finished run without the
+# required job is pending (it can't vouch), and an ignored job name in the newest run. 27/27 killed.
+
+# Then the lane-land re-review found a regression in that fix: when the newest run skipped the required job,
+# the older run it fell back to supplied only its required job, so its other red jobs and its own
+# red conclusion no longer counted. The cases against 16f4613 (both RED):
+RED older-fallback-run-red-elsewhere: want red got green
+RED older-fallback-run-red-elsewhere-no-conclusion: want red got green
+# Fixed: that older run counts in full too (its jobs and the run itself). 28/28 mutants killed,
+# including "the older run the required job came from doesn't count in full".

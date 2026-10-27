@@ -1,0 +1,15 @@
+# tests/coverage-sh.bats against the old tools/coverage.sh (install.bats only, the pinned image fixed, no per-file lines): all 4 fail.
+
+1..4
+not ok 1 every suite but docs and settings runs under kcov
+# (in test file tests/coverage-sh.bats, line 30)
+#   `for s in install lane-new land-batch crew-log; do grep -qx "tests/$s.bats" "$DOCKER_ARGS"; done' failed
+not ok 2 it covers install.sh and the plugins' scripts, with no network
+# (in test file tests/coverage-sh.bats, line 37)
+#   `grep -qx -- '--include-pattern=/src/install.sh,/src/plugins/crew-' "$DOCKER_ARGS"' failed
+not ok 3 KCOV_IMAGE replaces the pinned image; the default is the digest
+# (in test file tests/coverage-sh.bats, line 44)
+#   `grep -qx crewkit-kcov "$DOCKER_ARGS"' failed
+not ok 4 it prints each covered file's percentage
+# (in test file tests/coverage-sh.bats, line 51)
+#   `[[ $output == *"88.5%  plugins/crew-x/bin/y"* ]]' failed

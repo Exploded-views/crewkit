@@ -1,0 +1,12 @@
+plugins/crew-lanes/bin/lane-refresh:
+  killed       patch-id check skipped
+  killed       conflict not refused
+  killed       push not verified
+  killed       unmerged parent accepted
+  killed       stacked PR not retargeted
+  killed       force push
+  killed       up-to-date check skipped
+  killed       temp worktree kept
+  killed       own change taken from the wrong base
+  killed       usage not refused
+  all 10 mutants killed

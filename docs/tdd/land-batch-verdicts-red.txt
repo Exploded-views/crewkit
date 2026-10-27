@@ -1,0 +1,82 @@
+# Reviewer identity (review.source comments|records, review.reviewers) tests before the code.
+# Test 52 passed at once: with no records support every record reads as 'no verdict', its expected result; its mutants are the proof it bites. The self-review, round and schema tests were added after this run, with the code.
+
+1..66
+ok 1 1 all green: merged in order, batch branch deleted, batch PR closed
+ok 2 2 a conflict drops one PR, the rest land
+ok 3 3 main moved while the batch ran: abort, nothing merged
+ok 4 4 a PR head changed while the batch ran: abort, nothing merged
+ok 5 5 a known flake reruns once, then everything lands
+ok 6 6 a real failure bisects to the culprit
+ok 7 7 an up-to-date requirement refusal is reported once, not retried
+ok 8 8 strict branch protection: stop before opening a batch PR
+ok 9 9 a draft PR is skipped
+ok 10 10 a skipped check, or the aggregate check with no other green job, is not green
+ok 11 11 a batch run with only skipped jobs times out (exit 75), nothing merged
+ok 12 12 the batch PR is not a draft, and is labelled and titled do-not-merge
+ok 13 13 a pending check is not red: poll until it succeeds
+ok 14 14 a flake rerun waits for the new attempt, ignoring the stale failure
+ok 15 15a flakes match only FAIL lines
+ok 16 15b one unknown FAIL line among flakes is not a flake
+ok 17 15c flake entries are literal text, not patterns
+ok 18 16a a PR not based on the main branch is skipped
+ok 19 16b a base change found at the recheck aborts with nothing merged
+ok 20 17a batch branch heads and blocked labels are refused
+ok 21 17b a blocking label added before the merges aborts with nothing merged
+ok 22 18a an owner-gated PR is skipped while the owner is away
+ok 23 18b with the owner present, gated PRs land
+ok 24 19 main moves between squashes: stop with a loud partial report
+ok 25 20 a transient 'Base branch was modified' is retried
+ok 26 21 a persistent squash failure stops and names what landed
+ok 27 22 something landed between the recheck and a squash: parent mismatch
+ok 28 23 the squash tree differs from the tree tested
+ok 29 24 a timeout after a partial landing reports what landed
+ok 30 25 stale batch PRs and branches are swept, fresh ones kept
+ok 31 26 the landing lock is shared: busy means exit 75 and nothing merged
+ok 32 27 PRs sharing a commit not on main (stacked) are not batched together
+ok 33 28 the batch branch is a chain of squashes, so the tested tree is GitHub's
+ok 34 29 a merge call that errors although the PR merged counts as landed
+ok 35 30 a lingering helper process does not hold the landing lock
+ok 36 31a a later mirror run's failure is ignored: the real run's success counts
+ok 37 31b a later mirror run's success is ignored too: the real run failed
+ok 38 31c without ci.noise_step_prefix the newest run counts
+ok 39 a dry run (no --yes) reports the plan and changes nothing
+ok 40 usage errors exit 64
+ok 41 the repo setting is required (exit 78)
+ok 42 until high_risk_areas is confirmed, nothing is batched (exit 78)
+ok 43 a high-risk PR without a verdict for its head is not landed; the rest are
+ok 44 a high-risk PR with a verdict for its exact head lands alone, after the batch
+ok 45 a verdict for an older head does not count
+ok 46 a verdict written by the PR's own author does not count
+ok 47 a verdict that only quotes the marker mid-comment does not count
+not ok 48 comments: a verdict from a login not in review.reviewers does not count
+# (in test file tests/land-batch.bats, line 455)
+#   `[ "$status" -eq 2 ]' failed
+not ok 49 comments: with review.reviewers unset, no comment verdict counts
+# (in test file tests/land-batch.bats, line 465)
+#   `[ "$status" -eq 2 ]' failed
+not ok 50 records: a merge record for the exact head lands the high-risk PR
+# (in test file tests/land-batch.bats, line 481)
+#   `[ "$status" -eq 0 ]' failed
+not ok 51 records: a comment verdict does not count
+# (in test file tests/land-batch.bats, line 490)
+#   `[ "$status" -eq 2 ]' failed
+ok 52 records: a record for another head, a 'changes' verdict, no reviewer or bad JSON do not count
+not ok 53 records: review.reviewers, when set, limits who may write a record
+# (in test file tests/land-batch.bats, line 521)
+#   `[ "$status" -eq 0 ]' failed
+not ok 54 an unknown review.source is a config error
+# (in test file tests/land-batch.bats, line 528)
+#   `[ "$status" -eq 78 ]' failed
+ok 55 high-risk globs: * matches across directories; other paths are not high risk
+ok 56 required_check names the aggregate check
+ok 57 labels.do_not_merge names the batch label and the blocking label
+ok 58 branch_prefix.batch names the batch branch
+ok 59 campaign fixture: owner-gated PRs (a number and a numeric string) wait; others land
+ok 60 campaign fixture: a PR of an owner-gated lane waits too
+ok 61 campaign fixture: with the owner present, gated PRs land
+ok 62 a merge pause is ignored unless land.honor_merge_pause is true
+ok 63 an honoured merge pause holds every PR except the exempt ones
+ok 64 a missing campaign state means no gates
+ok 65 --lock-wait overrides lock_wait_seconds
+ok 66 the journal records each merge and the summary

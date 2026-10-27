@@ -1,0 +1,8 @@
+  killed       hosted-label check removed
+  killed       expression refusal removed
+  killed       matrix resolution skipped
+  killed       pull_request_target check removed
+  killed       unpinned uses allowed
+  killed       docker tag allowed
+  killed       runner group allowed
+mutate-check-workflows: all 7 mutants killed

@@ -1,0 +1,32 @@
+{
+  "description": "memory-notices: shared memory index at session start; changed-note notices from claude-memsync changes --hook (a no-op when claude-memsync is not installed).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/shared-index\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "command -v claude-memsync >/dev/null 2>&1 || exit 0; claude-memsync changes --hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v claude-memsync >/dev/null 2>&1 || exit 0; claude-memsync changes --hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

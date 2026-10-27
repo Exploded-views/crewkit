@@ -1,0 +1,14 @@
+memsync pins (v0.3.0-ev.1): RED runs, 2026-10-26.
+
+1) Before the tag rule allowed a pre-release suffix:
+ok 1 a tag that isn't vMAJOR.MINOR.PATCH is refused before any download
+not ok 2 memsync: a pre-release tag (vX.Y.Z-suffix) is installed
+not ok 3 memsync: the unpacked claude-memsync must report the pinned tag, or its bootstrap never runs
+FAILED (failures=1)
+
+2) After the tag fix, before the version check: 'not ok 3 memsync: the unpacked claude-memsync must report the pinned tag, or its bootstrap never runs'
+
+3) Review of b9f245c (MEDIUM): pin checks were locale-dependent. Before LC_ALL=C in load_pin and re.ASCII in the lint:
+not ok 1 pin checks are ASCII whatever the locale: a non-ASCII tag or URL is refused
+ok 2 memsync: only the version's first line counts, so extra lines after it don't fail the check
+FAILED (failures=1)

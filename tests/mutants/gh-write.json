@@ -1,0 +1,80 @@
+{
+  "target": "plugins/crew-lanes/bin/gh-write",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/gh-write.bats"
+  ],
+  "mutants": [
+    {
+      "name": "duplicate check piped into grep -q (SIGPIPE race)",
+      "old": "  bodies=$(gh api \"repos/$repo/$3?per_page=100\" --paginate --jq '.[].body' 2>/dev/null) || return 1\n  grep -qxF \"### $2\" <<<\"$bodies\"",
+      "new": "  gh api \"repos/$repo/$3?per_page=100\" --paginate --jq '.[].body' 2>/dev/null | grep -qxF \"### $2\""
+    },
+    {
+      "name": "duplicate check matches a prefix",
+      "old": "  grep -qxF \"### $2\" <<<\"$bodies\"",
+      "new": "  grep -qF \"### $2\" <<<\"$bodies\""
+    },
+    {
+      "name": "no duplicate check on issues",
+      "old": "    if already \"$n\" \"$header\" \"issues/$n/comments\"; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "no duplicate check on reviews",
+      "old": "    if already \"$n\" \"$header\" \"pulls/$n/reviews\"; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "PR comments not capped",
+      "old": "      capped=no; [[ $kind == pr-comment ]] && capped=yes",
+      "new": "      capped=no"
+    },
+    {
+      "name": "no retries",
+      "old": "    ((n >= retries)) && return 1",
+      "new": "    return 1"
+    },
+    {
+      "name": "retry count ignored",
+      "old": "    ((n >= retries)) && return 1",
+      "new": "    ((n >= 10)) && return 1"
+    },
+    {
+      "name": "no spacing between writes",
+      "old": "if ((elapsed < gap_ms)); then",
+      "new": "if false; then"
+    },
+    {
+      "name": "busy lock not 75",
+      "old": "  exit 75",
+      "new": "  exit 1"
+    },
+    {
+      "name": "missing repo not 78",
+      "old": "repo=$(crew_require repo) || exit 78",
+      "new": "repo=$(crew_setting repo o/r)"
+    },
+    {
+      "name": "not journalled",
+      "old": "echo \"$(date -u +%FT%TZ) gh-write $kind $1 rc=$rc\" >> \"$campaign/journal.md\"",
+      "new": ":"
+    },
+    {
+      "name": "failure reported as success",
+      "old": "exit \"$rc\"",
+      "new": "exit 0"
+    },
+    {
+      "name": "label removal dropped",
+      "old": "[[ -n $remove ]] && args+=(--remove-label \"$remove\")",
+      "new": ":"
+    },
+    {
+      "name": "header not prefixed",
+      "old": "    { printf '### %s\\n\\n' \"$header\"; cat \"$file\"; } > \"$body\"",
+      "new": "    cat \"$file\" > \"$body\""
+    }
+  ]
+}

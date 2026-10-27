@@ -1,0 +1,5 @@
+check_mutants_apply: RED run, 2026-10-26, python3 -m unittest tests.test_lint_mutant_suites before the function existed:
+
+FAILED (errors=4)
+
+Why: repeatedly, an edit to a guarded line broke its mutant's old text, found only by a mutation run.

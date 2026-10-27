@@ -1,0 +1,275 @@
+{
+  "target": "lib/checks.py",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/checks.bats"
+  ],
+  "mutants": [
+    {
+      "name": "skipped is green",
+      "old": "    return \"green\" if job[\"conclusion\"] == \"success\" else \"red\"",
+      "new": "    return \"green\" if job[\"conclusion\"] in (\"success\", \"skipped\") else \"red\""
+    },
+    {
+      "name": "neutral is green",
+      "old": "    return \"green\" if job[\"conclusion\"] == \"success\" else \"red\"",
+      "new": "    return \"green\" if job[\"conclusion\"] in (\"success\", \"neutral\") else \"red\""
+    },
+    {
+      "name": "only failure is red",
+      "old": "    return \"green\" if job[\"conclusion\"] == \"success\" else \"red\"",
+      "new": "    return \"red\" if job[\"conclusion\"] == \"failure\" else \"green\""
+    },
+    {
+      "name": "an unfinished job is green",
+      "old": "    if job.get(\"status\") != \"completed\" or job.get(\"conclusion\") is None:\n        return \"pending\"\n    return \"green\" if",
+      "new": "    if job.get(\"status\") != \"completed\" and job.get(\"conclusion\") is None:\n        return \"pending\"\n    return \"green\" if"
+    },
+    {
+      "name": "a completed job with no conclusion is fine",
+      "old": "if job.get(\"status\") != \"completed\" or job.get(\"conclusion\") is None:",
+      "new": "if job.get(\"status\") != \"completed\":"
+    },
+    {
+      "name": "mixed attempts are trusted",
+      "old": "    if any(j.get(\"run_attempt\") != run.get(\"run_attempt\") for j in js):\n        return \"pending\", {}",
+      "new": "    if False:\n        return \"pending\", {}"
+    },
+    {
+      "name": "ignored jobs count",
+      "old": "        if j.get(\"name\") not in ignored:\n            jobs[",
+      "new": "        if True:\n            jobs["
+    },
+    {
+      "name": "an unfinished run is fine",
+      "old": "    if status != \"completed\" or concl is None:\n        return \"pending\", jobs",
+      "new": "    if status != \"completed\" and concl is None:\n        return \"pending\", jobs"
+    },
+    {
+      "name": "a run that finished red is fine",
+      "old": "    if concl != \"success\":\n        # Finished",
+      "new": "    if concl == \"never\":\n        # Finished"
+    },
+    {
+      "name": "any ignored job excuses a red run",
+      "old": "        return (\"green\" if bad and all(j.get(\"name\") in ignored for j in bad) else \"red\"), jobs",
+      "new": "        return (\"green\" if bad and any(j.get(\"name\") in ignored for j in bad) else \"red\"), jobs"
+    },
+    {
+      "name": "a red run with no jobs is green",
+      "old": "        return (\"green\" if bad and all(",
+      "new": "        return (\"green\" if all("
+    },
+    {
+      "name": "a green run with no jobs is green",
+      "old": "    return (\"green\" if js else \"pending\"), jobs",
+      "new": "    return \"green\", jobs"
+    },
+    {
+      "name": "noise runs speak",
+      "old": "            return True   # a mirror run speaks for nothing",
+      "new": "            return False   # a mirror run speaks for nothing"
+    },
+    {
+      "name": "skipped runs are never passed over",
+      "old": "        return (run.get(\"status\") == \"completed\" and run.get(\"conclusion\") == \"skipped\"",
+      "new": "        return (False and run.get(\"conclusion\") == \"skipped\""
+    },
+    {
+      "name": "a skipped run that executed a job is passed over",
+      "old": "                and all(j.get(\"conclusion\") == \"skipped\" for j in js))",
+      "new": "                and True)"
+    },
+    {
+      "name": "a run's own conclusion 'skipped' isn't needed",
+      "old": "run.get(\"status\") == \"completed\" and run.get(\"conclusion\") == \"skipped\"\n",
+      "new": "run.get(\"status\") == \"completed\"\n"
+    },
+    {
+      "name": "other heads count",
+      "old": "r.get(\"head_sha\") == a.head and not passed_over(r)]",
+      "new": "not passed_over(r)]"
+    },
+    {
+      "name": "the oldest run decides",
+      "old": "        top = max((r.get(\"created_at\") for r in rs), default=None)",
+      "new": "        top = min((r.get(\"created_at\") for r in rs), default=None)"
+    },
+    {
+      "name": "other workflows don't count",
+      "old": "    for path in dict.fromkeys(r.get(\"path\") for r in live):",
+      "new": "    for path in [a.workflow]:"
+    },
+    {
+      "name": "any workflow's run carries the required check",
+      "old": "r.get(\"path\") == a.workflow and (not a.event",
+      "new": "True and (not a.event"
+    },
+    {
+      "name": "any event's run carries the required check",
+      "old": "(not a.event or r.get(\"event\") == a.event)",
+      "new": "True"
+    },
+    {
+      "name": "the required run doesn't count in full",
+      "old": "    counted += [(f\"run {r.get('path')} ({r.get('event')})\", r) for r in req_runs\n                if all(r is not run for _, run in counted)]",
+      "new": "    counted += []"
+    },
+    {
+      "name": "a deciding run's state is dropped",
+      "old": "        if st != \"green\":\n            states[rkey + why]",
+      "new": "        if False:\n            states[rkey + why]"
+    },
+    {
+      "name": "other jobs don't count",
+      "old": "                states[jname] = worst([states.get(jname, \"green\"), jst])",
+      "new": "                pass"
+    },
+    {
+      "name": "the required job hides same-named jobs elsewhere",
+      "old": "            if all(run is not r for r in req_runs) or jname != name:",
+      "new": "            if jname != name:"
+    },
+    {
+      "name": "unread statuses are ignored",
+      "old": "    if (statuses.get(\"total_count\") or 0) > len(statuses.get(\"statuses\") or []) and statuses.get(\"state\") != \"success\":",
+      "new": "    if False:"
+    },
+    {
+      "name": "the combined state overrides ignored contexts",
+      "old": "(statuses.get(\"total_count\") or 0) > len(statuses.get(\"statuses\") or [])",
+      "new": "(statuses.get(\"total_count\") or 0) >= len(statuses.get(\"statuses\") or [])"
+    },
+    {
+      "name": "ignored contexts count",
+      "old": "        if ctx in ignored:\n            continue",
+      "new": "        if False:\n            continue"
+    },
+    {
+      "name": "contexts don't count",
+      "old": "            states[ctx] = worst([states.get(ctx, \"green\"), st])",
+      "new": "            pass"
+    },
+    {
+      "name": "error is not red",
+      "old": "    if state in (\"failure\", \"error\"):",
+      "new": "    if state in (\"failure\",):"
+    },
+    {
+      "name": "an unknown context state is green",
+      "old": "        return \"red\"\n    return \"pending\"\n\n\ndef job_state",
+      "new": "        return \"red\"\n    return \"green\"\n\n\ndef job_state"
+    },
+    {
+      "name": "the required job of an older attempt counts",
+      "old": "j.get(\"name\") == name and j.get(\"run_attempt\") == req_run.get(\"run_attempt\")]",
+      "new": "j.get(\"name\") == name]"
+    },
+    {
+      "name": "the required job alone decides",
+      "old": "            required += [job_state(j) for j in mine]",
+      "new": "            required = [job_state(j) for j in mine]"
+    },
+    {
+      "name": "min-green ignored",
+      "old": "company < a.min_green:",
+      "new": "company < 0:"
+    },
+    {
+      "name": "ignored jobs make company",
+      "old": "if j.get(\"name\") not in ignored and j.get(\"name\") != name\n",
+      "new": "if j.get(\"name\") != name\n"
+    },
+    {
+      "name": "no required check is green",
+      "old": "    st = worst(required) if required else \"pending\"",
+      "new": "    st = worst(required) if required else \"green\""
+    },
+    {
+      "name": "the required check hides a same-named red job",
+      "old": "    states[name] = worst([states.get(name, \"green\"), st])",
+      "new": "    states[name] = st"
+    },
+    {
+      "name": "any head accepted",
+      "old": "    if not SHA.match(a.head):",
+      "new": "    if False:"
+    },
+    {
+      "name": "a mirror step of any conclusion passes a run over",
+      "old": "startswith(noise) and s.get(\"conclusion\") in (\"success\", \"failure\")",
+      "new": "startswith(noise)"
+    },
+    {
+      "name": "min-green capped at 1",
+      "old": "company < a.min_green:",
+      "new": "company < min(a.min_green, 1):"
+    },
+    {
+      "name": "ignored names matched as substrings",
+      "old": "ignored, name = set(listing(a.ignored)), a.required_check",
+      "new": "ignored, name = a.ignored, a.required_check"
+    },
+    {
+      "name": "a skipped run passed over whatever its status",
+      "old": "        return (run.get(\"status\") == \"completed\" and run.get(\"conclusion\") == \"skipped\"",
+      "new": "        return (run.get(\"conclusion\") == \"skipped\""
+    },
+    {
+      "name": "same-second runs: only one decides",
+      "old": "        return [r for r in rs if r.get(\"created_at\") == top]",
+      "new": "        return [r for r in rs if r.get(\"created_at\") == top][:1]"
+    },
+    {
+      "name": "unplaceable runs are dropped",
+      "old": "    if unreadable:\n        states[",
+      "new": "    if False:\n        states["
+    },
+    {
+      "name": "a run without created_at can be placed",
+      "old": "r.get(\"id\") is not None and r.get(\"created_at\")\n",
+      "new": "r.get(\"id\") is not None\n"
+    },
+    {
+      "name": "a context without a name is dropped",
+      "old": "    if any(not s.get(\"context\") for s in listed):",
+      "new": "    if False:"
+    },
+    {
+      "name": "wrong-shape JSON crashes",
+      "old": "except (OSError, ValueError, TypeError, AttributeError, KeyError) as e:",
+      "new": "except (OSError, ValueError) as e:"
+    },
+    {
+      "name": "--ignored may name the required check",
+      "old": "    if a.required_check in listing(a.ignored):",
+      "new": "    if False:"
+    },
+    {
+      "name": "a mixed-attempt pending doesn't say why",
+      "old": "return \"pending\", {}, \" (jobs from more than one attempt)\"",
+      "new": "return \"pending\", {}, \"\""
+    },
+    {
+      "name": "only the first same-second required run is judged",
+      "old": "    for req_run in req_runs:",
+      "new": "    for req_run in req_runs[:1]:"
+    },
+    {
+      "name": "only the last same-second required run is judged",
+      "old": "    for req_run in req_runs:",
+      "new": "    for req_run in req_runs[-1:]:"
+    },
+    {
+      "name": "a run without an id can be placed",
+      "old": "r.get(\"head_sha\") and r.get(\"id\") is not None and",
+      "new": "r.get(\"head_sha\") and"
+    },
+    {
+      "name": "a run without a path can be placed",
+      "old": "\n                                          and r.get(\"path\"))]",
+      "new": ")]"
+    }
+  ]
+}

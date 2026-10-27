@@ -1,0 +1,48 @@
+lane-land onto lib/checks.py: RED run (2026-10-26), tests/lane-land.bats before the switch.
+The stub PR has no statusCheckRollup any more; CI comes from the Actions and status APIs.
+
+not ok 1 a ready, green, approved PR is squash-merged pinned to its head, and recorded
+not ok 2 the closing issues are labelled through gh-write
+not ok 3 no verdict for the head: NO-VERDICT (33), nothing merged
+not ok 4 a verdict for an older head doesn't count
+not ok 5 a record naming a different implementer than the lane's is refused
+not ok 6 a lane with no implementer in the state can't land on records
+not ok 7 comment verdicts count only from review.reviewers and must name the full head
+not ok 8 a newer comment verdict asking for changes overrides an older merge
+not ok 9 comment verdicts need review.reviewers to be set
+not ok 10 a pending job: PENDING (30)
+not ok 11 a failed job: RED (31), naming it
+not ok 12 a red job in another workflow's run on the head blocks too
+not ok 13 an ignored check never blocks
+ok 14 the required check missing on the head: PENDING
+not ok 15 too few other green checks: PENDING
+ok 16 a CI read that fails is PENDING, never green
+not ok 17 the checks are read for the PR's exact head
+not ok 18 a dirty merge state: DIRTY (32)
+ok 19 a draft or closed PR: NOT-READY (37)
+ok 20 an already-merged PR is recorded, not merged again
+ok 21 the lane's recorded head differs from the PR's: LANE-HEAD-STALE (36)
+not ok 22 a merge pause holds everything but exempt PRs
+not ok 23 an owner-gated PR or lane needs the owner present
+not ok 24 unconfirmed high_risk_areas means every PR needs the owner present
+not ok 25 land.precheck_hook can refuse a landing (PRECHECK-REFUSED, 38)
+not ok 26 a head that moves before the merge: MERGE-FAILED (8), nothing recorded
+not ok 27 a clean lane worktree is removed after landing; a dirty one is kept
+not ok 28 a dirty lane worktree is kept, with a warning
+ok 29 a held landing lock exits 75
+ok 30 a lane with no PR in the state, or no lane name: usage (64)
+ok 31 a corrupt campaign state fails closed: STATE-UNREADABLE (39), nothing merged
+ok 32 a state that parses but breaks the schema fails closed too
+not ok 33 a marker that only starts the verdict word doesn't count (MERGE-WITH-FIXES is not MERGE)
+not ok 34 the latest verdict comment by createdAt wins, whatever the list order
+not ok 35 a merge call that returns but doesn't merge: MERGE-FAILED, nothing recorded
+not ok 36 ci.workflow is required: unset, a config error (78), nothing merged
+not ok 37 the required check must come from ci.workflow and ci.event
+ok 38 a run that only mirrors another (ci.noise_step_prefix) speaks for nothing
+not ok 39 commit status contexts count by their state
+not ok 40 a pending or failed status context blocks
+not ok 41 a merge call that errors but did merge is recorded as merged
+not ok 42 a precheck hook that hangs is refused after land.precheck_timeout_seconds
+not ok 43 merged but the state can't be written: a loud failure, not a warning
+not ok 44 the PR author's own verdict comment never counts, even from a listed reviewer
+not ok 45 an unknown review.source is a config error (78), nothing merged

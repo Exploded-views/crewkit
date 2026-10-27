@@ -1,0 +1,33 @@
+{
+  "runs": 20,
+  "ci_headroom": 2.0,
+  "budgets": {
+    "shared-index-150-notes": {
+      "p95_ms": 100
+    },
+    "changes-hook-absent-overhead": {
+      "p95_ms": 3
+    },
+    "install-dry-run": {
+      "p95_ms": 100
+    },
+    "install-plugins-rerun": {
+      "p95_ms": 150
+    },
+    "settings-lookup": {
+      "p95_ms": 7,
+      "note": "one cold lookup: finding the files includes one find fork for the world-writable check (security), plus the lookup awk"
+    },
+    "lane-hygiene-clean": {
+      "p95_ms": 25
+    },
+    "settings-lookup-10": {
+      "p95_ms": 35,
+      "note": "ten lookups in one process: the file list is found once (cached per directory), then one awk per lookup"
+    },
+    "land-batch-checks-one-pr": {
+      "p95_ms": 300,
+      "note": "a dry run over one PR with the stub gh: settings, a local clone and every eligibility check; about 190 ms measured"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "target": "tools/ci-ok.py",
+  "suite": [
+    "bash",
+    "-c",
+    "git init -q . && python3 -m unittest tests.test_ci_ok"
+  ],
+  "mutants": [
+    {
+      "name": "a non-success result passes",
+      "old": "if r != \"success\" and not (r == \"skipped\" and job in allowed)]",
+      "new": "if False]"
+    },
+    {
+      "name": "no results passes",
+      "old": "    if not named:",
+      "new": "    if False:"
+    },
+    {
+      "name": "a non-list, non-object passes",
+      "old": "    else:\n        named = {}",
+      "new": "    else:\n        named = {\"x\": \"success\"}"
+    },
+    {
+      "name": "unreadable RESULTS passes",
+      "old": "        print(\"ci-ok: RESULTS is missing or not JSON\")\n        return 1",
+      "new": "        results = [\"success\"]"
+    },
+    {
+      "name": "a skip passes on a public repo",
+      "old": "os.environ.get(\"PRIVATE\") == \"true\"",
+      "new": "os.environ.get(\"PRIVATE\") != \"false\""
+    },
+    {
+      "name": "a skip passes whatever PRIVATE says",
+      "old": "and os.environ.get(\"PRIVATE\") == \"true\":",
+      "new": ":"
+    },
+    {
+      "name": "an unguarded job's skip passes",
+      "old": "not (r == \"skipped\" and job in allowed)]",
+      "new": "not (r == \"skipped\")]"
+    },
+    {
+      "name": "a guarded job's failure passes",
+      "old": "not (r == \"skipped\" and job in allowed)]",
+      "new": "not (job in allowed)]"
+    },
+    {
+      "name": "an unreadable workflow allows every skip",
+      "old": "            print(f\"ci-ok: cannot read the workflow to find the private-repo guards ({e.__class__.__name__})\")\n            return 1",
+      "new": "            allowed = set(skipped)"
+    },
+    {
+      "name": "a job without a result passes",
+      "old": "        if not all(isinstance(v, dict) and \"result\" in v for v in results.values()):\n            print(\"ci-ok: RESULTS is not toJSON(needs): every job needs a result\")\n            return 1\n        named = {job: v[\"result\"] for job, v in results.items()}",
+      "new": "        named = {job: (v.get(\"result\", \"success\") if isinstance(v, dict) else v) for job, v in results.items()}"
+    },
+    {
+      "name": "a workflow ci-ok can't follow allows every skip",
+      "old": "        except ValueError as e:\n            print(f\"ci-ok: {e}\")\n            return 1",
+      "new": "        except ValueError as e:\n            allowed = set(skipped)"
+    }
+  ]
+}

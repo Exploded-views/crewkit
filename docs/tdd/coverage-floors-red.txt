@@ -1,0 +1,64 @@
+FFFF.FFF
+======================================================================
+FAIL: test_at_or_above_floor_passes (test_coverage_floors.CoverageFloors.test_at_or_above_floor_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_floors.py", line 34, in test_at_or_above_floor_passes
+    self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+AssertionError: 2 != 0 : /usr/bin/python3: can't open file '<repo>/tools/coverage-floors.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_below_floor_fails_and_names_the_file (test_coverage_floors.CoverageFloors.test_below_floor_fails_and_names_the_file)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_floors.py", line 39, in test_below_floor_fails_and_names_the_file
+    self.assertEqual(r.returncode, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_floored_file_missing_from_report_fails (test_coverage_floors.CoverageFloors.test_floored_file_missing_from_report_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_floors.py", line 46, in test_floored_file_missing_from_report_fails
+    self.assertEqual(r.returncode, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_lowered_floor_against_base_fails (test_coverage_floors.CoverageFloors.test_lowered_floor_against_base_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_floors.py", line 54, in test_lowered_floor_against_base_fails
+    self.assertEqual(r.returncode, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_raised_floor_against_base_passes (test_coverage_floors.CoverageFloors.test_raised_floor_against_base_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_floors.py", line 70, in test_raised_floor_against_base_passes
+    self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+AssertionError: 2 != 0 : /usr/bin/python3: can't open file '<repo>/tools/coverage-floors.py': [Errno 2] No such file or directory
+
+
+======================================================================
+FAIL: test_removed_floor_against_base_fails (test_coverage_floors.CoverageFloors.test_removed_floor_against_base_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_floors.py", line 62, in test_removed_floor_against_base_fails
+    self.assertEqual(r.returncode, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_update_raises_floors_to_current_never_lowers (test_coverage_floors.CoverageFloors.test_update_raises_floors_to_current_never_lowers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_floors.py", line 76, in test_update_raises_floors_to_current_never_lowers
+    self.assertEqual(r.returncode, 1)  # b.sh is still below its floor
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 1
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.147s
+
+FAILED (failures=7)

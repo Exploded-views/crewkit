@@ -1,0 +1,23 @@
+Gate settings file-only (CREW_FILE_ONLY / CREW_ENV_OK): RED run, 2026-10-26, before the lists existed.
+
+not ok 3 a gate (file-only) key ignores CREWKIT_*, set or empty; crew_require too
+not ok 4 a file-only prefix covers every key under it
+not ok 5 an exact entry beats a prefix: labels.do_not_merge is file-only, other labels take env
+not ok 6 a key in neither list is file-only: an unclassified key fails closed
+not ok 27 review_model is file-only: the environment is ignored, set or empty
+not ok 28 a file-only key: an empty value in a settings file still counts as set
+FAILED (failures=6)
+
+## Review of de8793b, folded into the lane-land PR (2026-10-26)
+
+(1) the lists were glob-expanded; (2) env-OK prefixes covered exact keys. Before the fixes:
+not ok 1 the classification ignores files in the current directory (no glob expansion of the lists)
+#   `[ "$output" = from-env ] || { echo "env-OK $key refused the environment"; return 1; }' failed
+# env-OK branch_prefix.probe refused the environment
+ok 2 a nested file-only prefix still wins with a file matching it in the current directory
+FAILED (failures=2)
+
+## Review of 27fcc28, folded into the lane-land PR (2026-10-26): code-only keys under env-OK prefixes; key shape
+
+FAILED (failures=2)
+not ok 1 a key that isn't a plain setting name is file-only (no match across two list entries)

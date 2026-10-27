@@ -1,0 +1,10 @@
+# review_model in the landers: the caller tests before landing.sh passed --model. The opt-out test passed at once (the old code never checked a model); its mutant ('an empty review_model is ignored') is killed.
+
+1..3
+not ok 1 review_model: a high-risk record by another model doesn't land the PR
+# (in test file tests/land-batch.bats, line 962)
+#   `[ "$status" -eq 2 ]' failed
+not ok 2 review_model: a comment verdict must name the model on its line
+# (in test file tests/land-batch.bats, line 975)
+#   `[ "$status" -eq 2 ]' failed
+ok 3 review_model: an empty review_model checks no model

@@ -1,0 +1,85 @@
+{
+  "target": "plugins/crew-lanes/bin/lane-land",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/lane-land.bats"
+  ],
+  "mutants": [
+    {
+      "name": "checks.py pending ignored",
+      "old": "  30) say \"PENDING (${cout#pending: })\" 30 ;;",
+      "new": "  30) ;;"
+    },
+    {
+      "name": "checks.py red ignored",
+      "old": "  31) say \"RED ${cout#red: }\" 31 ;;",
+      "new": "  31) ;;"
+    },
+    {
+      "name": "checks.py error read as green",
+      "old": "  *) say \"PENDING (lib/checks.py could not decide: $cout)\" 30 ;;",
+      "new": "  *) ;;"
+    },
+    {
+      "name": "runs or status read failure ignored",
+      "old": "if ! child gh api \"repos/$repo/actions/runs",
+      "new": "if false && ! child gh api \"repos/$repo/actions/runs"
+    },
+    {
+      "name": "jobs read failure ignored",
+      "old": "    || say \"PENDING (can't read the jobs of run $id on head ${head:0:9})\" 30",
+      "new": "    || true"
+    },
+    {
+      "name": "runs not read for the exact head",
+      "old": "actions/runs?head_sha=$head&",
+      "new": "actions/runs?"
+    },
+    {
+      "name": "ignored_checks not passed",
+      "old": "--ignored \"$(crew_setting ignored_checks \"\")\"",
+      "new": "--ignored \"\""
+    },
+    {
+      "name": "min_green_checks not passed",
+      "old": "--min-green \"$(crew_setting min_green_checks 1)\"",
+      "new": "--min-green 0"
+    },
+    {
+      "name": "ci.event not passed",
+      "old": "--event \"$(crew_setting ci.event pull_request)\"",
+      "new": "--event pull_request"
+    },
+    {
+      "name": "ci.noise_step_prefix not passed",
+      "old": "--noise-step-prefix \"$(crew_setting ci.noise_step_prefix \"\")\"",
+      "new": "--noise-step-prefix \"\""
+    },
+    {
+      "name": "ci.workflow optional",
+      "old": "ci_workflow=$(crew_require ci.workflow) || exit 78",
+      "new": "ci_workflow=$(crew_setting ci.workflow \".github/workflows/ci.yml\")"
+    },
+    {
+      "name": "jobs read without --paginate",
+      "old": "/jobs?filter=latest&per_page=100\" --paginate",
+      "new": "/jobs?filter=latest&per_page=100\""
+    },
+    {
+      "name": "statuses read 30 per page",
+      "old": "commits/$head/status?per_page=100\"",
+      "new": "commits/$head/status\""
+    },
+    {
+      "name": "runs read without --paginate",
+      "old": "head_sha=$head&per_page=100\" --paginate",
+      "new": "head_sha=$head&per_page=100\""
+    },
+    {
+      "name": "jobs read without filter=latest",
+      "old": "jobs?filter=latest&per_page=100\"",
+      "new": "jobs?per_page=100\""
+    }
+  ]
+}

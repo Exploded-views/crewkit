@@ -1,0 +1,25 @@
+{
+  "target": "tools/lint-skills.py",
+  "suite": [
+    "bash",
+    "-c",
+    "git init -q . && python3 -m unittest tests.test_ci_ok.CheckCiOk"
+  ],
+  "mutants": [
+    {
+      "name": "an unfollowable job key is ignored",
+      "old": "                err(ci, f\"can't follow the job line {line.strip()!r} under jobs:; write it as `  <job-id>:`\")\n",
+      "new": ""
+    },
+    {
+      "name": "a job left out of needs passes",
+      "old": "    if \"ci-ok\" not in jobs:",
+      "new": "    jobs = {k: v for k, v in jobs.items() if k in ('ci-ok', 'lint')}\n    if \"ci-ok\" not in jobs:"
+    },
+    {
+      "name": "a comment at the job indent is read as a job line",
+      "old": "        if re.match(r\"^  \\S\", line) and not line.lstrip().startswith(\"#\"):\n            # A job key",
+      "new": "        if re.match(r\"^  \\S\", line):\n            # A job key"
+    }
+  ]
+}

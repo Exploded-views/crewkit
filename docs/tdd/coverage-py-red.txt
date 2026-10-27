@@ -1,0 +1,61 @@
+# Python coverage: the coverage-floors multi-report tests and the converter tests before the code. The converter's 'unreadable input is exit 2' test passed for the wrong reason (Python's own exit 2 for a missing script).
+
+........F.EFE.
+======================================================================
+ERROR: test_a_file_outside_the_repo_is_left_out (tests.test_coverage_py_report.CoveragePyReport.test_a_file_outside_the_repo_is_left_out)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_py_report.py", line 38, in test_a_file_outside_the_repo_is_left_out
+    self.assertEqual(out["files"], [])
+                     ~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+
+======================================================================
+ERROR: test_relative_paths_are_kept (tests.test_coverage_py_report.CoveragePyReport.test_relative_paths_are_kept)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_py_report.py", line 32, in test_relative_paths_are_kept
+    self.assertEqual(out["files"][0]["file"], "plugins/p/bin/tool")
+                     ~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+
+======================================================================
+FAIL: test_two_reports_are_read_together (tests.test_coverage_floors.CoverageFloors.test_two_reports_are_read_together)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_floors.py", line 37, in test_two_reports_are_read_together
+    self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+AssertionError: 1 != 0 : ok   plugins/p/bin/tool 90.00% (floor 80.0%)
+FAIL install.sh has a floor but is not in the coverage report
+
+
+======================================================================
+FAIL: test_files_become_repo_relative_with_kcov_fields (tests.test_coverage_py_report.CoveragePyReport.test_files_become_repo_relative_with_kcov_fields)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_coverage_py_report.py", line 24, in test_files_become_repo_relative_with_kcov_fields
+    self.assertEqual(r.returncode, 0, r.stderr)
+AssertionError: 2 != 0 : /usr/bin/python3: can't open file '<repo>/tools/coverage-py-report.py': [Errno 2] No such file or directory
+
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.357s
+
+FAILED (failures=2, errors=2)
+
+# tests/coverage-py-sh.bats before tools/coverage-py.sh existed:
+1..2
+not ok 1 COVERAGE_VENV is required (exit 2)
+# (in test file tests/coverage-py-sh.bats, line 18)
+#   `[ "$status" -eq 2 ]' failed
+not ok 2 a venv whose site-packages is outside it is refused, and nothing is written
+# (in test file tests/coverage-py-sh.bats, line 26)
+#   `[ "$status" -eq 2 ]' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `env -u COVERAGE_VENV <repo>/tools/coverage-py.sh` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/coverage-py-sh.bats, line 17)
+BW01: `run`'s command `<repo>/tools/coverage-py.sh` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/coverage-py-sh.bats, line 25)

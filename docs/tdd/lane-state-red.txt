@@ -1,0 +1,92 @@
+1..13
+not ok 1 the shared fixture is valid against the schema
+# (in test file tests/lane-state.bats, line 14)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 get reads scalars raw, arrays and objects as JSON
+# (in test file tests/lane-state.bats, line 19)
+#   `run "$BIN/lane-state" get ownerPresent;               [ "$output" = false ]' failed
+not ok 3 get of a missing key prints nothing and exits 1
+# (in test file tests/lane-state.bats, line 28)
+#   `[ "$status" -eq 1 ]' failed
+not ok 4 get with no state file yet gives the schema defaults
+# (in test file tests/lane-state.bats, line 34)
+#   `[ "$status" -eq 0 ]' failed
+not ok 5 set creates the file and a lane entry, stamping updatedAt
+# (in test file tests/lane-state.bats, line 42)
+#   `[ "$status" -eq 0 ]' failed
+not ok 6 set parses JSON values and keeps other strings as strings
+# (in test file tests/lane-state.bats, line 48)
+#   `"$BIN/lane-state" set ownerPresent true' failed with status 127
+# <repo>/tests/lane-state.bats: line 48: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+not ok 7 set keeps keys it doesn't know (an adapter's own flags)
+# (in test file tests/lane-state.bats, line 56)
+#   `"$BIN/lane-state" set mergePaused true' failed with status 127
+# <repo>/tests/lane-state.bats: line 56: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+not ok 8 set refuses a value of the wrong type and leaves the file alone
+# (in test file tests/lane-state.bats, line 64)
+#   `[ "$status" -eq 2 ]' failed
+not ok 9 validate fails on a bad type and names the key
+# (in test file tests/lane-state.bats, line 75)
+#   `[ "$status" -eq 1 ]' failed
+not ok 10 concurrent writers don't lose updates
+# (in test file tests/lane-state.bats, line 83)
+#   `[ "$output" = 20 ]' failed
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+# <repo>/tests/lane-state.bats: line 80: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+not ok 11 a write goes through a temp file and a rename, never in place
+# (in test file tests/lane-state.bats, line 89)
+#   `"$BIN/lane-state" set mergePaused true' failed with status 127
+# <repo>/tests/lane-state.bats: line 89: <repo>/plugins/crew-lanes/bin/lane-state: No such file or directory
+not ok 12 a held lock makes set wait, then exit 75 (try again later)
+# (in test file tests/lane-state.bats, line 100)
+#   `[ "$status" -eq 75 ]' failed
+not ok 13 usage errors exit 2
+# (in test file tests/lane-state.bats, line 105)
+#   `[ "$status" -eq 2 ]' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state validate <repo>/tests/fixtures/campaign-state.json` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 13)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state get ownerPresent` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 19)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state get lanes.nope.status` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 27)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state get ownerPresent` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 33)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state set lanes.fix-login.status open` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 41)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state set ownerPresent yes` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 63)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state validate <tmp> exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 74)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state set mergePaused true` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 98)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-state` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-state.bats, line 104)

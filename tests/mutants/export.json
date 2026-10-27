@@ -1,0 +1,76 @@
+{
+  "target": "tools/export.py",
+  "suite": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_export"
+  ],
+  "mutants": [
+    {
+      "name": "marked regions kept",
+      "old": "        if dropping:\n            continue",
+      "new": "        if False:\n            continue"
+    },
+    {
+      "name": "definition lines kept",
+      "old": "            continue  # the placeholder's own definition",
+      "new": "            pass  # the placeholder's own definition"
+    },
+    {
+      "name": "wrapped citations not folded back",
+      "old": "    text = re.sub(r\"\\n[ \\t]*([.,;:])[ \\t]*(?=\\n)\", r\"\\1\", text)",
+      "new": "    pass"
+    },
+    {
+      "name": "See-sentences kept",
+      "old": "    text = re.sub(r\"[ \\t]*See \" + LINK + r\"\\.\", \"\", text)",
+      "new": "    pass"
+    },
+    {
+      "name": "an unknown citation form passes",
+      "old": "    if PLACEHOLDER in text and rel not in MAY_NAME:",
+      "new": "    if False:"
+    },
+    {
+      "name": "an unclosed marker passes",
+      "old": "    if dropping:\n        raise ValueError(f\"{rel}: an export:drop-start is never closed\")",
+      "new": "    if False:\n        raise ValueError(f\"{rel}: an export:drop-start is never closed\")"
+    },
+    {
+      "name": "a non-empty out dir is used",
+      "old": "    if out.exists() and any(out.iterdir()):",
+      "new": "    if False:"
+    },
+    {
+      "name": "blank lines around a dropped region doubled",
+      "old": "            if not line.strip() and out and not out[-1].strip():",
+      "new": "            if False:"
+    },
+    {
+      "name": "a dev-repo PR or issue link is let through",
+      "old": "    if DEV_LINK.search(text):",
+      "new": "    if False:"
+    },
+    {
+      "name": "only PR links are caught, not issues",
+      "old": "(?:pull|issues)",
+      "new": "(?:pull)"
+    },
+    {
+      "name": "a plain-text lesson citation is let through",
+      "old": "    if rel not in MAY_NAME and PLAIN_CITATION.search(text):",
+      "new": "    if False:"
+    },
+    {
+      "name": "a local clone path is let through",
+      "old": "    if rel not in MAY_NAME and CLONE_PATH.search(text):",
+      "new": "    if False:"
+    },
+    {
+      "name": "the tool may not describe the clone path form",
+      "old": "    if rel not in MAY_NAME and CLONE_PATH.search(text):",
+      "new": "    if CLONE_PATH.search(text):"
+    }
+  ]
+}

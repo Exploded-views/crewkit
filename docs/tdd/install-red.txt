@@ -1,0 +1,51 @@
+1..21
+not ok 1 dry run exits 0 and changes nothing
+# (in test file tests/install.bats, line 13)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 dry run downloads nothing
+# (in test file tests/install.bats, line 22)
+#   `[ "$status" -eq 0 ]' failed
+ok 3 an unknown flag is a usage error
+ok 4 an unpinned tool is skipped, not installed
+not ok 5 memsync: a matching sha installs both binaries under a versioned dir
+# (in test file tests/install.bats, line 41)
+#   `[ "$status" -eq 0 ]' failed
+not ok 6 memsync: downloads the pinned asset for this target from the pinned URL
+# (in test file tests/install.bats, line 50)
+#   `grep -qx 'curl https://example.test/OWNER/claude-utils/releases/download/v0.1.0/claude-utils-v0.1.0-linux-amd64.tar.gz' "$CALLS"' failed
+not ok 7 memsync: runs the release's bootstrap with the flags after --
+# (in test file tests/install.bats, line 56)
+#   `[ "$status" -eq 0 ]' failed
+not ok 8 memsync: a sha mismatch is refused before anything is unpacked or run
+# (in test file tests/install.bats, line 65)
+#   `[[ $output == *"sha256 mismatch"* ]]' failed
+not ok 9 memsync: bootstrap exit 3 (paused, needs a human) passes through and stops
+# (in test file tests/install.bats, line 74)
+#   `[ "$status" -eq 3 ]' failed
+ok 10 memsync: a bootstrap failure fails the install
+not ok 11 a pinned tag with no hash for this target is refused
+# (in test file tests/install.bats, line 88)
+#   `[ "$status" -eq 1 ]' failed
+not ok 12 a malformed hash is refused
+# (in test file tests/install.bats, line 97)
+#   `[ "$status" -eq 1 ]' failed
+not ok 13 pin files are parsed, never executed
+# (in test file tests/install.bats, line 106)
+#   `[ ! -e "$BATS_TEST_TMPDIR/pwned" ]' failed
+ok 14 a pinned URL must be https
+not ok 15 an archive with a path outside its root is refused
+# (in test file tests/install.bats, line 127)
+#   `[[ $output == *"unsafe path"* ]]' failed
+not ok 16 bitc: a matching sha installs bitc into ~/.local/bin
+# (in test file tests/install.bats, line 133)
+#   `[ "$status" -eq 0 ]' failed
+ok 17 bitc: a sha mismatch installs nothing
+not ok 18 bitc: skipped on macOS, which it doesn't support
+# (in test file tests/install.bats, line 151)
+#   `[[ $output == *"bitc supports linux only"* ]]' failed
+ok 19 an unsupported OS is refused
+ok 20 plugins: --yes adds the marketplace, installs both plugins and the rules fragment
+not ok 21 plugins: an edited rules file is backed up, not lost
+# (in test file tests/install.bats, line 175)
+#   `grep -qx 'my edits' "$HOME/.claude/rules/agent-practice.md.bak"' failed with status 2
+# grep: <tmp> No such file or directory

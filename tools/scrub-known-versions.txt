@@ -1,0 +1,15 @@
+# Reviewed versions of tools/scrub.sh, by git blob SHA. A blob at tools/scrub.sh gets the
+# script's self-exemption (its rule tables would match the secret and private rules) only if
+# it is listed here; any other version is scanned like any file. When you change scrub.sh,
+# add its new blob SHA (git hash-object tools/scrub.sh); tools/lint-skills.py checks it is here.
+2ac319b53021f85f718b5ed28012573da213ea02
+606ac38b647030f366f7a6957d4554fad3a1045a
+a88b847bb472307a0355b94433ee6f997fbf83e4
+b375bf377794491b7874eac0d0f50ba32e868632
+b62f9b6e67254416e0d1a6647a3519dfd5c4d87f
+bd946dedd59ca03c172ce46547c01a5d8082ec51
+1a0fd7161d0cda584e803a9759fcd55e8d0e7dee
+0a1003e7efe546ca6780646c426963c6a01fcf92
+fbc0b4561770df7463f9fc4c34904e5a459227f7
+f71edbd7e2596fb847f81097db71cce37e319966
+33572ee345eeeb987f8504134e629c35a5c658ae

@@ -1,0 +1,5 @@
+# land-batch (every lander, through crew_land_init) reads settings from the main checkout, as docs/review-verdicts.md says; the fourth review found it read them from wherever it started, so a lane worktree's .claude/crewkit.local.md could drop a high-risk area. RED: the new test on the old code:
+1..1
+not ok 1 settings come from the main checkout: a lane worktree's local file can't drop a high-risk area
+# (in test file tests/land-batch.bats, line 1129)
+#   `[ "$status" -eq 2 ]' failed

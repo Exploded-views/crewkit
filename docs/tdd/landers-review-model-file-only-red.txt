@@ -1,0 +1,6 @@
+# review_model from settings files only, in the landers (crew_setting_file_only): the test before the change. The environment could weaken it (CREWKIT_REVIEW_MODEL=claude token-matches a sonnet model) or empty it.
+
+1..1
+not ok 1 review_model: the environment can't weaken or empty it (settings files only)
+# (in test file tests/land-batch.bats, line 1049)
+#   `[ "$status" -eq 2 ]' failed

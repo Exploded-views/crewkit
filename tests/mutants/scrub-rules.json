@@ -1,0 +1,70 @@
+{
+  "target": "tools/scrub.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/scrub-history.bats"
+  ],
+  "mutants": [
+    {
+      "name": "binary content skipped",
+      "old": "    | grep -aEio -- \"$re\" \\",
+      "new": "    | grep -Eio -- \"$re\" \\"
+    },
+    {
+      "name": "a failed denylist search counts as zero",
+      "old": "      (( rc == 1 )) || { echo \"scrub: the denylist search failed",
+      "new": "      true || { echo \"scrub: the denylist search failed"
+    },
+    {
+      "name": "an empty denylist passes",
+      "old": "  if (( patterns == 0 )); then echo",
+      "new": "  if false; then echo"
+    },
+    {
+      "name": "an invalid denylist pattern passes",
+      "old": "grep -E -- \"$line\" >/dev/null 2>&1; [[ $? -eq 2 ]]; then",
+      "new": "grep -E -- \"$line\" >/dev/null 2>&1; false; then"
+    },
+    {
+      "name": "noreply allow rule unanchored",
+      "old": "^[^@]+@users\\.noreply\\.github\\.com$",
+      "new": "@users\\.noreply\\.github\\.com"
+    },
+    {
+      "name": "GitHub's address allowed anywhere",
+      "old": "|^noreply@github\\.com$|",
+      "new": "|noreply@github\\.com|"
+    },
+    {
+      "name": "known-versions exemption covers any long hex",
+      "old": "      sed -E \"$marked\" -- \"$f\" | grep -aEv '^[0-9a-f]{40}$'",
+      "new": "      grep -av '[0-9a-f]\\{40\\}' -- \"$f\""
+    },
+    {
+      "name": "pinned-hash marker hides any length",
+      "old": "  local marked='/scrub:pinned-hash/ s/[0-9a-f]{64}//g'",
+      "new": "  local marked='/scrub:pinned-hash/d'"
+    },
+    {
+      "name": "tracked paths not scanned",
+      "old": "  scan_one \"$tmp/paths\" \"tree:paths\" \"\"",
+      "new": "  :"
+    },
+    {
+      "name": "tree mode misreads quoted names",
+      "old": "    mapfile -d '' -t listed < <(git ls-files -z --cached)",
+      "new": "    mapfile -t listed < <(git ls-files --cached)"
+    },
+    {
+      "name": "a secret-shaped path is printed",
+      "old": "    if printf '%s\\n' \"$1\" | grep -aEiq -- \"$r\"; then printf '(a tracked file whose path matches a rule)'; return; fi",
+      "new": "    :"
+    },
+    {
+      "name": "a denylisted path is printed",
+      "old": "    printf '(a tracked file whose path matches the denylist)'",
+      "new": "    printf '%s' \"$1\""
+    }
+  ]
+}

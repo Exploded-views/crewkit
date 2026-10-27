@@ -1,0 +1,365 @@
+#!/usr/bin/env bash
+# land-batch [--yes] [--lock-wait SECONDS] PR [PR ...]
+#
+# Lands several reviewed PRs with one CI run. It builds a throwaway batch branch (the main
+# branch plus each PR squashed on top, in the order given), opens it as a non-draft PR labelled
+# labels.do_not_merge, and waits for that PR's required_check. Green: each PR is squash-merged in
+# order with --match-head-commit, and after every squash the new main commit must have the
+# previous main as its parent and the tree the batch tested. Red: one rerun if every FAIL line of
+# every failed job is a known flake (flakes_file), else bisect to the culprit.
+#
+# Without --yes it is a dry run: it checks every PR and prints the plan, changing nothing.
+#
+# A PR is eligible only if it is open, not a draft, based on main_branch, not from a batch
+# branch, without the do-not-merge or awaiting-approval label, not owner-gated in the campaign
+# state while the owner is away, and green on its own head. A PR touching a high_risk_areas glob
+# is never batched: it lands alone, and only with an independent verdict for its exact head,
+# written by someone other than its author. Nothing is batched until
+# high_risk_areas.confirmed_by is set.
+#
+# One lander at a time: flock on <state_dir>/locks/land.lock, shared with crew-lanes' lane-land. Exit codes are listed in the plugin README.
+set -uo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=SCRIPTDIR/../lib/settings.sh
+. "$here/../lib/settings.sh"
+# shellcheck source=SCRIPTDIR/../lib/landing.sh
+. "$here/../lib/landing.sh"
+
+usage() {
+  echo "usage: land-batch [--yes] [--lock-wait SECONDS] PR [PR ...]" >&2
+  exit 64
+}
+yes=0 lock_wait=""
+while (($#)); do
+  case $1 in
+    --yes) yes=1 ;;
+    --lock-wait) [[ ${2:-} =~ ^[0-9]+$ ]] || usage; lock_wait=$2; shift ;;
+    --) shift; break ;;
+    -*) usage ;;
+    *) break ;;
+  esac
+  shift
+done
+(($#)) || usage
+for pr in "$@"; do [[ $pr =~ ^[1-9][0-9]*$ ]] || usage; done
+
+# ---- settings ----------------------------------------------------------------------------------
+crew_land_init land-batch "$lock_wait"
+FLAKES=$(crew_land_home "$(crew_setting flakes_file "$STATE/flakes.txt")")
+STALE=$(crew_setting stale_seconds 7200)
+CHECKOUT=$(crew_land_home "$(crew_setting checkout "$(git rev-parse --show-toplevel 2>/dev/null)")")
+[[ $STALE =~ ^[0-9]+$ ]] || crew_land_config_error "setting 'stale_seconds' must be a whole number (got '$STALE')"
+URL=$(git -C "$CHECKOUT" remote get-url origin 2>/dev/null) ||
+  crew_land_config_error "setting 'checkout' ('$CHECKOUT') is not a git checkout with an origin remote"
+
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+
+if ((yes)); then
+  exec > >(tee -a "$STATE/logs/land-batch-$TS.log") 2>&1
+  crew_land_lock
+fi
+
+declare -A HEAD TREE AREA   # pr -> verified head ; pr -> tree after its squash in the batch ; pr -> high-risk area
+LANDED=() CULPRITS=() DROPPED=() INCL=()
+BASE="" BR="" BPR="" SEQ=0 WT="" REPORTED="" FINISHED="" PROB="" PR_HEAD="" RISK="" VWHY="" WC="" WA=0
+
+loud_partial() { # loud_partial REASON NOT_LANDED
+  REPORTED=1
+  say "!!! PARTIAL LANDING: $1"
+  say "!!! landed on main so far: ${LANDED[*]:-none}; not landed: ${2:-unknown}. Main now holds a combination that was NOT tested as such. Look before landing anything else."
+  note "!!! PARTIAL LANDING: $1 | landed ${LANDED[*]:-none} | not landed ${2:-unknown} | main holds an untested combination"
+}
+cleanup_batch() { # close the batch PR and delete its branch (batch branches only)
+  [[ -z $BPR ]] || g pr close "$BPR" -R "$R" --delete-branch >/dev/null 2>&1 || true
+  if [[ -n $BR && $BR == "$BPFX"* && -n $WT ]]; then git -C "$WT" push -q origin --delete "$BR" >/dev/null 2>&1 || true; fi
+  BPR="" BR=""
+}
+# shellcheck disable=SC2317,SC2329  # only the EXIT trap below calls it
+final_cleanup() {
+  local rc=$?
+  cleanup_batch
+  [[ -z $WT ]] || rm -rf "$WT"
+  # A run that reached its summary reports itself; this catches any other exit after a merge.
+  if ((rc != 0 && ${#LANDED[@]} > 0)) && [[ -z $REPORTED && -z $FINISHED ]]; then
+    loud_partial "run ended with exit $rc after some PRs had already landed" "the rest of the requested PRs"
+  fi
+}
+trap final_cleanup EXIT
+
+# ---- CI ----------------------------------------------------------------------------------------
+wait_ci() { # wait_ci SHA [MIN_ATTEMPT]: sets WC (conclusion, or timeout) and WA (attempt)
+  local sha=$1 min=${2:-0} i att c
+  for ((i = 0; i < MAXPOLLS; i++)); do
+    read -r att c <<<"$(ci_state "$sha")"
+    if [[ -n ${c:-} ]] && ((${att:-0} >= min)); then WC=$c WA=$att; return 0; fi
+    sleep "$POLL"
+  done
+  WC=timeout
+}
+
+# A failed job is a known flake only if its log has FAIL lines and every one of them contains a
+# flakes_file entry (literal text of 4 or more characters; # starts a comment).
+try_flake_rerun() {
+  local sha=$1 runs id jid jname log fails unmatched nf nfail=0 nmatch=0 rerun_runs=() pats
+  pats=$(mktemp "$STATE/tmp/flakes.XXXX")
+  { grep -Ev '^[[:space:]]*(#|$)' "$FLAKES" 2>/dev/null || true; } | awk 'length($0) >= 4' > "$pats"
+  runs=$(g api "repos/$R/actions/runs?head_sha=$sha&per_page=50") || { rm -f "$pats"; return 1; }
+  for id in $(jq -r '.workflow_runs[].id' <<<"$runs"); do
+    while IFS=$'\t' read -r jid jname; do
+      [[ -n $jid ]] || continue
+      nfail=$((nfail + 1))
+      log=$(g api "repos/$R/actions/jobs/$jid/logs" 2>/dev/null)
+      fails=$(grep -E '(^|[[:space:]])(FAIL|×|✗)([[:space:]]|$)' <<<"$log" || true)
+      nf=0; [[ -z $fails ]] || nf=$(wc -l <<<"$fails")
+      unmatched=$fails
+      [[ ! -s $pats || -z $fails ]] || unmatched=$(grep -vF -f "$pats" <<<"$fails" || true)
+      if ((nf > 0)) && [[ -s $pats && -z $unmatched ]]; then
+        nmatch=$((nmatch + 1)); rerun_runs+=("$id"); say "failed job '$jname': all $nf FAIL line(s) are known flakes"
+      else
+        say "failed job '$jname' is not a known flake (FAIL lines: $nf)"
+      fi
+    done < <(g api "repos/$R/actions/runs/$id/jobs?per_page=100" |
+      jq -r --arg check "$CHECK" '.jobs[] | select(.conclusion == "failure" and .name != $check) | "\(.id)\t\(.name)"')
+  done
+  rm -f "$pats"
+  ((nfail > 0 && nfail == nmatch)) || return 1
+  for id in $(printf '%s\n' "${rerun_runs[@]}" | sort -u); do
+    g api -X POST "repos/$R/actions/runs/$id/rerun-failed-jobs" >/dev/null || return 1
+  done
+}
+
+# ---- eligibility -------------------------------------------------------------------------------
+# pr_check PR: pr_state, then the head fetched into the clone and the high-risk rule. Sets
+# PR_HEAD, RISK, and PROB ("" when the PR may be landed).
+pr_check() {
+  local fetched
+  RISK=""
+  pr_state "$1"
+  [[ -z $PROB ]] || return
+  git -C "$WT" fetch -q origin "+refs/pull/$1/head:refs/crewkit/pr/$1" 2>/dev/null || { PROB="head-unfetchable"; return; }
+  fetched=$(git -C "$WT" rev-parse "refs/crewkit/pr/$1")
+  [[ $fetched == "$PR_HEAD" ]] || { PROB="head-moved-while-reading"; return; }
+  # Every path the PR touches, both sides of a rename, NUL-separated so no path is quoted.
+  # Unreadable changed files fail closed: the PR is not landed.
+  git -C "$WT" diff --no-renames -z --name-only "origin/$MAIN...$PR_HEAD" > "$WT/.git/lb-files" 2>/dev/null ||
+    { PROB="changed-files-unreadable"; return; }
+  RISK=$(risk_area < "$WT/.git/lb-files") || { PROB="changed-files-unreadable"; return; }
+  if [[ -n $RISK ]] && ! has_verdict "$1" "$PR_HEAD"; then
+    PROB="high-risk($RISK): no independent verdict for ${PR_HEAD:0:9}${VWHY:+; $VWHY}"
+  fi
+}
+
+# ---- batch build and test ----------------------------------------------------------------------
+main_is() { [[ $(git -C "$WT" ls-remote origin "refs/heads/$MAIN" | cut -f1) == "$1" ]]; }
+
+build_group() {
+  local pr sha title="" br out
+  SEQ=$((SEQ + 1))
+  br="$BPFX$TS"; ((SEQ == 1)) || br="$br-$SEQ"
+  git -C "$WT" fetch -q origin "$MAIN" || { say "fetch of $MAIN failed; try again later"; exit 75; }
+  BASE=$(git -C "$WT" rev-parse "origin/$MAIN")
+  git -C "$WT" checkout -q -B "$br" "$BASE" || exit 75
+  INCL=() TREE=()
+  : > "$WT/.git/lb-seen"
+  for pr in "$@"; do
+    sha=${HEAD[$pr]}
+    if ! git -C "$WT" fetch -q origin "+refs/pull/$pr/head:refs/crewkit/pr/$pr" 2>/dev/null; then
+      say "#$pr: cannot fetch its head; dropped"; DROPPED+=("#$pr(fetch)"); continue
+    fi
+    if [[ $(git -C "$WT" rev-parse "refs/crewkit/pr/$pr") != "$sha" ]]; then
+      say "#$pr: head moved since verification; dropped"; DROPPED+=("#$pr(head-changed)"); continue
+    fi
+    # Commits not yet on main that an earlier member already carries: stacked or shared branches.
+    git -C "$WT" rev-list "origin/$MAIN..$sha" | sort > "$WT/.git/lb-cur"
+    if [[ -s $WT/.git/lb-seen && -n $(comm -12 "$WT/.git/lb-seen" "$WT/.git/lb-cur") ]]; then
+      say "#$pr: shares commits not on $MAIN with an earlier batch member (stacked?); dropped"; DROPPED+=("#$pr(overlap)"); continue
+    fi
+    # A chain of squash commits, so the batch tree is exactly what GitHub's squashes produce.
+    if git -C "$WT" merge --squash "$sha" >/dev/null 2>&1 && ! git -C "$WT" diff --cached --quiet &&
+      git -C "$WT" commit -q -m "batch: squash #$pr (${sha:0:9})"; then
+      INCL+=("$pr"); TREE[$pr]=$(git -C "$WT" rev-parse 'HEAD^{tree}'); say "#$pr squashed into $br"
+      sort -u "$WT/.git/lb-seen" "$WT/.git/lb-cur" -o "$WT/.git/lb-seen"
+    else
+      git -C "$WT" reset -q --hard HEAD
+      say "#$pr: CONFLICT (or empty) against $MAIN and the earlier batch members; dropped"; DROPPED+=("#$pr(conflict)")
+    fi
+  done
+  ((${#INCL[@]})) || return 1
+  for pr in "${INCL[@]}"; do title="$title #$pr"; done
+  BR=$br
+  git -C "$WT" push -q origin "refs/heads/$BR:refs/heads/$BR" || { say "push of $BR failed; try again later"; BR=""; exit 75; }
+  out=$(g pr create -R "$R" --base "$MAIN" --head "$BR" --title "batch:$title (do not merge, closed automatically)" \
+    --label "$DNM" --body "Throwaway batch CI run for$title, opened by land-batch. Not a draft, so CI runs. Closed automatically; do not merge.") ||
+    { say "could not open the batch PR; try again later"; exit 75; }
+  BPR=${out##*/}
+  say "opened batch PR #$BPR for$title (base ${BASE:0:9}, tip $(git -C "$WT" rev-parse --short=9 HEAD))"
+}
+
+test_group() { # 0 green, 1 red; exits 75 on a timeout
+  local sha rerun=0 min=0
+  sha=$(git -C "$WT" rev-parse HEAD)
+  while :; do
+    wait_ci "$sha" "$min"
+    case $WC in
+      success) say "batch $CHECK success on ${sha:0:9} (attempt $WA)"; return 0 ;;
+      timeout) say "batch $CHECK did not finish (or never ran real jobs); try again later"; cleanup_batch; exit 75 ;;
+      *)
+        say "batch $CHECK $WC on ${sha:0:9} (attempt $WA)"
+        if ((rerun == 0)) && try_flake_rerun "$sha"; then
+          rerun=1 min=$((WA + 1)); say "known flake: reran the failed jobs once; waiting for attempt $min or later"; sleep "$POLL"; continue
+        fi
+        return 1 ;;
+    esac
+  done
+}
+
+# ---- merging -----------------------------------------------------------------------------------
+stop_merge() { # stop_merge EXIT REASON NOT_LANDED...
+  local code=$1 why=$2; shift 2
+  if ((${#LANDED[@]})); then loud_partial "$why" "$*"; else say "$why; nothing landed"; note "batch stopped: $why"; fi
+  exit "$code"
+}
+
+merge_group() {
+  local prs=("$@") pr prev out rc try mc pending i c
+  for pr in "${prs[@]}"; do
+    pr_check "$pr"
+    if [[ -n $PROB || $PR_HEAD != "${HEAD[$pr]}" ]]; then
+      stop_merge 9 "#$pr changed or became ineligible since batching (${PROB:-head ${PR_HEAD:0:9} != ${HEAD[$pr]:0:9}})" "${prs[*]}"
+    fi
+    # The batch waited on its own tip; a late run or status on the PR's head may have gone red.
+    read -r _ c <<<"$(ci_state "$PR_HEAD")"
+    [[ $c == success ]] || stop_merge 9 "#$pr: CI on its head is no longer green (${c:-pending})" "${prs[*]}"
+  done
+  prev=$BASE
+  for i in "${!prs[@]}"; do
+    pr=${prs[$i]} pending="${prs[*]:$i}" try=0
+    while :; do
+      main_is "$prev" || stop_merge 7 "$MAIN moved before the squash of #$pr (expected ${prev:0:9})" "$pending"
+      out=$(g pr merge "$pr" -R "$R" --squash --match-head-commit "${HEAD[$pr]}" 2>&1); rc=$?
+      ((rc != 0)) || break
+      # An error reply doesn't prove the squash failed: a MERGED PR counts, and is verified below.
+      if [[ $(g pr view "$pr" -R "$R" --json state 2>/dev/null | jq -r '.state // empty' 2>/dev/null) == MERGED ]]; then
+        say "#$pr: the merge call errored but the PR is MERGED; verifying it as landed"; break
+      fi
+      if grep -qi 'base branch was modified' <<<"$out" && ((try < RETRIES)); then
+        try=$((try + 1)); say "#$pr: base branch was modified (transient); retry $try/$RETRIES"; sleep "$POLL"; continue
+      fi
+      if grep -Eqi 'not up to date|out of date|up-to-date|behind' <<<"$out"; then
+        stop_merge 10 "#$pr REFUSED: $MAIN's branch protection requires branches to be up to date before merging" "$pending"
+      fi
+      stop_merge 8 "squash of #$pr failed: $(tr '\n' ' ' <<<"$out")" "$pending"
+    done
+    LANDED+=("#$pr"); say "#$pr squash-merged (head ${HEAD[$pr]:0:9})"
+    note "merged #$pr (head ${HEAD[$pr]:0:9}) via ${BR:-batch $TS}"
+    mc=$(g pr view "$pr" -R "$R" --json mergeCommit 2>/dev/null | jq -r '.mergeCommit.oid // empty' 2>/dev/null)
+    git -C "$WT" fetch -q origin "$MAIN" ||
+      stop_merge 12 "cannot fetch $MAIN after #$pr, so its squash can't be checked" "${prs[*]:$((i + 1))}"
+    [[ -n $mc ]] || mc=$(git -C "$WT" rev-parse "origin/$MAIN")
+    git -C "$WT" cat-file -e "$mc^{commit}" 2>/dev/null ||
+      stop_merge 12 "cannot inspect $MAIN's new commit ${mc:0:9} after #$pr" "${prs[*]:$((i + 1))}"
+    [[ $(git -C "$WT" rev-parse "$mc^" 2>/dev/null) == "$prev" ]] ||
+      stop_merge 12 "after #$pr: new $MAIN commit ${mc:0:9} does not have the expected parent ${prev:0:9} (something else landed in between)" "${prs[*]:$((i + 1))}"
+    [[ $(git -C "$WT" rev-parse "$mc^{tree}") == "${TREE[$pr]}" ]] ||
+      stop_merge 12 "after #$pr: the tree of ${mc:0:9} differs from the tree tested in the batch" "${prs[*]:$((i + 1))}"
+    prev=$mc
+  done
+}
+
+land_group() {
+  local rc members half pr
+  build_group "$@" || { say "nothing left to batch"; return 0; }
+  members=("${INCL[@]}")
+  local -A tested
+  for pr in "${members[@]}"; do tested[$pr]=${TREE[$pr]}; done
+  test_group; rc=$?
+  cleanup_batch
+  if ((rc == 0)); then
+    for pr in "${members[@]}"; do TREE[$pr]=${tested[$pr]}; done
+    merge_group "${members[@]}"; return 0
+  fi
+  if ((${#members[@]} == 1)); then
+    say "CULPRIT: #${members[0]} fails CI in the batch"; CULPRITS+=("#${members[0]}"); return 0
+  fi
+  half=$((${#members[@]} / 2))
+  say "bisecting ${members[*]}: [${members[*]:0:half}] / [${members[*]:half}]"
+  land_group "${members[@]:0:half}"
+  land_group "${members[@]:half}"
+}
+
+# ---- stale sweep -------------------------------------------------------------------------------
+stale_branch() { # BRANCH: a batch branch older than stale_seconds
+  local rest d t ts
+  [[ $1 == "$BPFX"* ]] || return 1
+  rest=${1#"$BPFX"}
+  [[ $rest =~ ^([0-9]{8})T([0-9]{6})Z(-[0-9]+)?$ ]] || return 1
+  d=${BASH_REMATCH[1]} t=${BASH_REMATCH[2]}
+  ts=$(date -u -d "${d:0:4}-${d:4:2}-${d:6:2} ${t:0:2}:${t:2:2}:${t:4:2}" +%s 2>/dev/null) || return 1
+  (($(date -u +%s) - ts > STALE))
+}
+sweep_stale() {
+  local n br ref title
+  # A stale batch PR has the label, a batch branch name and a batch title: all three.
+  while IFS=$'\t' read -r n br title; do
+    [[ -n $n && $title == "batch:"* ]] || continue
+    if stale_branch "$br"; then say "sweep: closing stale batch PR #$n ($br)"; g pr close "$n" -R "$R" --delete-branch >/dev/null 2>&1 || true; fi
+  done < <(g pr list -R "$R" --state open --label "$DNM" --json number,headRefName,title --limit 100 2>/dev/null |
+    jq -r '.[] | "\(.number)\t\(.headRefName)\t\(.title // "")"' 2>/dev/null)
+  while read -r _ ref; do
+    br=${ref#refs/heads/}
+    if stale_branch "$br"; then say "sweep: deleting stale branch $br"; git -C "$WT" push -q origin --delete "$br" >/dev/null 2>&1 || true; fi
+  done < <(git -C "$WT" ls-remote origin "refs/heads/$BPFX*")
+}
+
+# ---- main --------------------------------------------------------------------------------------
+strict=$(g api "repos/$R/branches/$MAIN/protection" 2>/dev/null | jq -r '.required_status_checks.strict // empty' 2>/dev/null || true)
+if [[ $strict == true ]]; then
+  say "$MAIN's branch protection requires branches to be up to date before merging, so batches can't land. Nothing was done."
+  exit 10
+fi
+
+say "== land-batch: $*"
+[[ -f $CAMPAIGN ]] || say "note: no campaign state at $CAMPAIGN; owner gates skipped"
+WT=$(mktemp -d "$STATE/tmp/batch-$TS-XXXX")
+git clone -q --reference-if-able "$CHECKOUT" "$URL" "$WT" 2>/dev/null || { say "clone failed; try again later"; exit 75; }
+git -C "$WT" config user.name land-batch
+git -C "$WT" config user.email land-batch@localhost
+git -C "$WT" config commit.gpgsign false
+
+ELIG=() ALONE=()
+for pr in "$@"; do
+  pr_check "$pr"
+  if [[ -n $PROB ]]; then say "#$pr: skipped ($PROB)"; DROPPED+=("#$pr($PROB)"); continue; fi
+  read -r _ c <<<"$(ci_state "$PR_HEAD")"
+  # Each PR's own check must be green on its head: branch protection checks it at the squash.
+  if [[ ${c:-} != success ]]; then
+    say "#$pr: $CHECK is '${c:-pending/not proven}' on ${PR_HEAD:0:9}; skipped"; DROPPED+=("#$pr($CHECK-${c:-pending})"); continue
+  fi
+  HEAD[$pr]=$PR_HEAD
+  if [[ -n $RISK ]]; then
+    AREA[$pr]=$RISK; ALONE+=("$pr"); say "#$pr eligible (head ${PR_HEAD:0:9}); high-risk ($RISK), lands alone"
+  else
+    ELIG+=("$pr"); say "#$pr eligible (head ${PR_HEAD:0:9})"
+  fi
+done
+((${#ELIG[@]} + ${#ALONE[@]})) || { say "no eligible PRs"; exit 2; }
+
+if ((!yes)); then
+  say "dry run: would batch [${ELIG[*]:-}] and land alone [${ALONE[*]:-}]; nothing changed. Run with --yes to land."
+  exit 0
+fi
+
+g label create "$DNM" -R "$R" --color B60205 --description "land-batch throwaway batch PR" >/dev/null 2>&1 || true
+sweep_stale
+
+((${#ELIG[@]} == 0)) || land_group "${ELIG[@]}"
+for pr in ${ALONE[@]+"${ALONE[@]}"}; do
+  say "#$pr lands alone (high-risk: ${AREA[$pr]})"
+  land_group "$pr"
+done
+
+say "== batch done. landed: ${LANDED[*]:-none}; culprits: ${CULPRITS[*]:-none}; dropped: ${DROPPED[*]:-none}"
+note "batch done: landed ${LANDED[*]:-none}; culprits ${CULPRITS[*]:-none}; dropped ${DROPPED[*]:-none}"
+FINISHED=1
+((${#CULPRITS[@]} == 0 && ${#DROPPED[@]} == 0)) || exit 20
+exit 0

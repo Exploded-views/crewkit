@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2016  # the single-quoted strings are jq programs: $pr and friends are jq's
+# lane-land LANE: land one lane's PR, if and only if every gate passes.
+#
+# The PR comes from the campaign state (lanes.<lane>.pr). Under the landing lock
+# (<state_dir>/locks/land.lock, shared with every crewkit lander), in order:
+#   1. the merge pause (unless the PR is in mergePauseExempt);
+#   2. the PR: already merged (recorded, not merged again), not open or a draft;
+#   3. the lane's recorded head, if set, must be the PR's head;
+#   4. checks on the exact head, decided by the shared lib/checks.py: required_check green in
+#      the newest run of ci.workflow from ci.event, nothing else red or pending (every
+#      workflow's newest run, every status context, ignored_checks aside), and at least
+#      min_green_checks others green. A CI read that fails is PENDING;
+#   5. the merge state is not DIRTY;
+#   6. the owner gate: ownerGatedPrs, ownerGatedLanes, and every PR while high_risk_areas is
+#      unconfirmed, need ownerPresent;
+#   7. land.precheck_hook, if set (a project's own gate), must exit 0;
+#   8. an independent verdict for the exact head (review.source: records or comments, see
+#      docs/review-verdicts.md), naming review_model (every landing, until lane gates can
+#      tell a high-risk PR from another).
+# Then a squash merge pinned with --match-head-commit, checked MERGED, recorded in the campaign
+# state and journal; the closing issues get labels.fixed_in_main through gh-write, and the lane
+# worktree is removed if lane-hygiene finds it clean.
+#
+# The last line printed is the verdict. Exit codes (docs/exit-codes.md): 0 MERGED or
+# ALREADY-MERGED, 8 MERGE-FAILED, 30 PENDING, 31 RED, 32 DIRTY, 33 NO-VERDICT,
+# 34 NEEDS-OWNER-PRESENT, 35 MERGE-PAUSED, 36 LANE-HEAD-STALE, 37 NOT-READY,
+# 38 PRECHECK-REFUSED, 39 STATE-UNREADABLE, 64 usage, 75 lock busy, 78 config.
+set -uo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=SCRIPTDIR/../lib/settings.sh
+source "$here/../lib/settings.sh"
+
+say() { echo "$1"; exit "$2"; }
+if (($# != 1)) || [[ -z $1 || $1 == -* ]]; then
+  awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0" >&2
+  exit 64
+fi
+lane=$1
+# Every setting comes from the main checkout, never the current directory: a lane could write
+# .claude/crewkit.local.md in its own worktree, and a lander run there would obey it.
+crew_cd_main_checkout || { echo "lane-land: can't find this repository's main checkout to read settings from; run lane-land there" >&2; exit 78; }
+repo=$(crew_require repo) || exit 78
+campaign=$(crew_setting campaign_dir "$HOME/.local/state/crewkit/campaign")
+campaign=${campaign/#\~/$HOME}
+# Fail closed on a state that doesn't parse or breaks the schema: read as empty, every gate
+# below (the pause, the owner gate) would quietly open.
+if [[ -e $campaign/state.json ]] && ! sout=$("$here/lane-state" validate 2>&1); then
+  printf '%s\n' "$sout"
+  echo "STATE-UNREADABLE ($campaign/state.json is not a valid campaign state; fix it before landing)"
+  exit 39
+fi
+st=$("$here/lane-state" get "lanes.$lane.pr" 2>/dev/null) || st=""
+[[ $st =~ ^[0-9]+$ ]] || { echo "lane-land: no PR for lane '$lane' in the campaign state (lanes.$lane.pr)" >&2; exit 64; }
+pr=$st
+required=$(crew_setting required_check ci-ok)
+ci_workflow=$(crew_require ci.workflow) || exit 78
+# Ignoring the required check could never be green: checks.py refuses it (64). Say so as config.
+IFS=, read -ra _ign <<<"$(crew_setting ignored_checks "")"
+for _n in ${_ign[@]+"${_ign[@]}"}; do
+  _n=${_n#"${_n%%[![:space:]]*}"}; _n=${_n%"${_n##*[![:space:]]}"}
+  [[ $_n != "$required" ]] || { echo "lane-land: ignored_checks names the required check '$required'; remove it from ignored_checks" >&2; exit 78; }
+done
+state_dir=$(crew_setting state_dir "$HOME/.local/state/crewkit")
+state_dir=${state_dir/#\~/$HOME}
+wait_s=$(crew_setting lock_wait_seconds 3600)
+
+mkdir -p "$state_dir/locks" "$campaign"
+exec 9>"$state_dir/locks/land.lock"
+flock -w "$wait_s" 9 || { echo "lane-land: the landing lock stayed busy for ${wait_s}s; try again later" >&2; exit 75; }
+# Children never inherit the lock: a helper that lingers can't hold it after we exit.
+child() { "$@" 9>&-; }
+
+get() { child "$here/lane-state" get "$1" 2>/dev/null; }
+
+# 1. merge pause
+if [[ $(get mergePaused) == true ]]; then
+  if ! child jq -e --argjson pr "$pr" 'map(tostring) | index($pr | tostring) != null' <<<"$(get mergePauseExempt)" >/dev/null; then
+    say "MERGE-PAUSED ($(get mergePausedNote))" 35
+  fi
+fi
+
+# 2. the PR
+view=$(child gh pr view "$pr" -R "$repo" --json state,isDraft,mergeStateStatus,headRefOid,comments,closingIssuesReferences,mergeCommit) \
+  || { echo "lane-land: can't read PR #$pr" >&2; exit 1; }
+field() { jq -r "$1" <<<"$view"; }
+record_merged() { # SHA
+  child "$here/lane-state" set "lanes.$lane.status" merged >/dev/null &&
+    child "$here/lane-state" set "lanes.$lane.mergedSha" "$1" >/dev/null &&
+    child "$here/lane-state" set "lanes.$lane.mergedAt" "$(date -u +%FT%TZ)" >/dev/null
+}
+if [[ $(field .state) == MERGED ]]; then
+  sha=$(field '.mergeCommit.oid // ""')
+  [[ $(get "lanes.$lane.status") == merged ]] || record_merged "$sha"
+  say "ALREADY-MERGED ${sha:0:9}" 0
+fi
+[[ $(field .state) == OPEN && $(field .isDraft) == false ]] || say "NOT-READY (state $(field .state), draft $(field .isDraft))" 37
+head=$(field .headRefOid)
+
+# 3. the lane's view of its head
+lane_head=$(get "lanes.$lane.headSha") || lane_head=""
+if [[ -n $lane_head && $lane_head != null && $lane_head != "$head" ]]; then
+  say "LANE-HEAD-STALE (lane recorded ${lane_head:0:9}, PR head is ${head:0:9})" 36
+fi
+
+# 4. checks on the exact head. lane-land gathers; the shared lib/checks.py decides.
+cdir=$(mktemp -d)
+trap 'rm -rf "$cdir" "${cfile:-}"' EXIT
+if ! child gh api "repos/$repo/actions/runs?head_sha=$head&per_page=100" --paginate | jq -s '[.[].workflow_runs[]?]' > "$cdir/runs.json" ||
+  ! child gh api "repos/$repo/commits/$head/status?per_page=100" > "$cdir/statuses.json"; then
+  say "PENDING (can't read the CI runs or commit status for head ${head:0:9})" 30
+fi
+# Every run's jobs, or PENDING: a run whose jobs can't be read could hide a red one.
+: > "$cdir/jobs.ndjson"
+for id in $(jq -r '.[].id' "$cdir/runs.json"); do
+  child gh api "repos/$repo/actions/runs/$id/jobs?filter=latest&per_page=100" --paginate \
+    | jq --argjson id "$id" '.jobs[]? | . + {run_id: $id}' >> "$cdir/jobs.ndjson" \
+    || say "PENDING (can't read the jobs of run $id on head ${head:0:9})" 30
+done
+jq -s . "$cdir/jobs.ndjson" > "$cdir/jobs.json"
+crc=0
+cout=$(child python3 "$here/../lib/checks.py" --head "$head" --required-check "$required" --workflow "$ci_workflow" \
+  --event "$(crew_setting ci.event pull_request)" --runs-json "$cdir/runs.json" --jobs-json "$cdir/jobs.json" \
+  --statuses-json "$cdir/statuses.json" --ignored "$(crew_setting ignored_checks "")" \
+  --min-green "$(crew_setting min_green_checks 1)" --noise-step-prefix "$(crew_setting ci.noise_step_prefix "")" 2>&1) || crc=$?
+cout=$(head -1 <<<"$cout")
+case $crc in
+  0) ;;
+  30) say "PENDING (${cout#pending: })" 30 ;;
+  31) say "RED ${cout#red: }" 31 ;;
+  *) say "PENDING (lib/checks.py could not decide: $cout)" 30 ;;
+esac
+
+# 5. mergeability
+[[ $(field .mergeStateStatus) != DIRTY ]] || say "DIRTY (conflicts with the base)" 32
+
+# 6. the owner gate
+if [[ $(get ownerPresent) != true ]]; then
+  why=""
+  jq -e --argjson pr "$pr" 'map(tostring) | index($pr | tostring) != null' <<<"$(get ownerGatedPrs)" >/dev/null && why="PR #$pr is owner-gated"
+  jq -e --arg l "$lane" 'index($l) != null' <<<"$(get ownerGatedLanes)" >/dev/null && why="lane $lane is owner-gated"
+  [[ -n $(crew_setting high_risk_areas.confirmed_by "") ]] || why="high_risk_areas is not confirmed for this project yet"
+  [[ -z $why ]] || say "NEEDS-OWNER-PRESENT ($why; ownerPresent is false)" 34
+fi
+
+# 7. the project's own gate
+hook=$(crew_setting land.precheck_hook "")
+if [[ -n $hook ]]; then
+  hook_timeout=$(crew_setting land.precheck_timeout_seconds 300)
+  hrc=0
+  hout=$(PR=$pr HEAD=$head LANE=$lane child timeout "$hook_timeout" bash -c "$hook" 2>&1) || hrc=$?
+  if ((hrc == 124)); then
+    printf '%s\n' "$hout"
+    say "PRECHECK-REFUSED (land.precheck_hook timed out after ${hook_timeout}s)" 38
+  elif ((hrc != 0)); then
+    printf '%s\n' "$hout"
+    say "PRECHECK-REFUSED (land.precheck_hook)" 38
+  fi
+fi
+
+# 8. the independent verdict for this exact head, from review_model: lane-land can't yet tell
+# a high-risk PR from another, so it asks for the review model on every landing (empty: none).
+source_kind=$(crew_setting review.source comments)
+# review_model is file-only (lib/settings.sh CREW_FILE_ONLY): CREWKIT_REVIEW_MODEL can't weaken it.
+model=$(crew_setting review_model opus)
+if [[ $source_kind == records ]]; then
+  impl=$(get "lanes.$lane.implementer") || impl=""
+  [[ -n $impl && $impl != null ]] || say "NO-VERDICT (lane $lane has no implementer in the campaign state, so a self-review can't be ruled out)" 33
+  vout=$(child "$here/lane-verdict" check "$pr" "$head" --implementer "$impl" --model "$model") || say "NO-VERDICT ($vout)" 33
+elif [[ $source_kind == comments ]]; then
+  # Every conversation comment, every page (REST: user.login, created_at), and the PR's author;
+  # the shared lib/verdict.py applies the rules (only the first "Verdict:" line counts, a
+  # word-bounded marker, the full head, the author excluded, the latest by created_at).
+  author=$(child gh pr view "$pr" -R "$repo" --json author --jq '.author.login // ""') || say "NO-VERDICT (can't read PR #$pr's author)" 33
+  # No login (a deleted account shows as none) would exclude no one from the reviewers.
+  [[ -n $author ]] || say "NO-VERDICT (PR #$pr has no author login, so the author's own verdict can't be ruled out)" 33
+  cfile=$(mktemp)
+  child gh api "repos/$repo/issues/$pr/comments?per_page=100" --paginate | jq -s 'add // []' > "$cfile" \
+    || say "NO-VERDICT (can't read PR #$pr's comments)" 33
+  vout=$(child python3 "$here/../lib/verdict.py" comments --head "$head" --author "$author" \
+    --comments-json "$cfile" --reviewers "$(crew_setting review.reviewers "")" \
+    --markers "$(crew_setting review.markers "Verdict: MERGE")" \
+    --require-sha "$(crew_setting review.require_sha true)" --model "$model") || say "NO-VERDICT (${vout#not accepted: })" 33
+else
+  say "lane-land: review.source must be records or comments, not '$source_kind'" 78
+fi
+
+# Merge, pinned to the head every gate saw.
+merge_rc=0
+mout=$(child gh pr merge "$pr" -R "$repo" --squash --match-head-commit "$head" --subject "Lane $lane (#$pr)" 2>&1) || merge_rc=$?
+# Whatever the call said, GitHub's own answer decides: a call can error after the merge went
+# through (a timeout), and a call can return without merging.
+sha=$(child gh pr view "$pr" -R "$repo" --json state,mergeCommit --jq 'select(.state == "MERGED") | .mergeCommit.oid')
+if [[ ! $sha =~ ^[0-9a-f]{40}$ ]]; then
+  ((merge_rc != 0)) && say "MERGE-FAILED ($(tail -1 <<<"$mout"))" 8
+  say "MERGE-FAILED (the merge call returned but the PR is not MERGED)" 8
+fi
+((merge_rc == 0)) || echo "lane-land: the merge call failed ($(tail -1 <<<"$mout")), but the PR is merged; recording it"
+# A merged PR that isn't recorded leaves the campaign wrong: retry, then fail loudly.
+recorded=no
+for _ in 1 2 3; do
+  if record_merged "$sha" && echo "$(date -u +%FT%TZ) landed lane $lane PR #$pr -> ${sha:0:9} (head ${head:0:9})" >> "$campaign/journal.md"; then
+    recorded=yes
+    break
+  fi
+  sleep 1
+done
+[[ $recorded == yes ]] || say "MERGED but NOT RECORDED: PR #$pr is merged as ${sha:0:9}, but the campaign state or journal could not be written; record it by hand (lane-state set lanes.$lane.status merged)" 1
+
+label=$(crew_setting labels.fixed_in_main "")
+if [[ -n $label ]]; then
+  for n in $(field '.closingIssuesReferences[].number'); do
+    child "$here/gh-write" label "$n" "$label" >/dev/null || echo "lane-land: warning: labelling issue #$n failed" >&2
+  done
+fi
+
+checkout=$(crew_setting checkout "")
+[[ -n $checkout ]] || checkout=$(git rev-parse --show-toplevel 2>/dev/null) || checkout=""
+safe=${lane//[^A-Za-z0-9._-]/-}
+wt=$checkout/$(crew_setting lane.worktree_dir .claude/worktrees)/$safe
+branch=$(crew_setting branch_prefix.lane lane/)$safe
+if [[ -n $checkout && -d $wt ]]; then
+  if child "$here/lane-hygiene" "$wt" "$branch" >/dev/null 2>&1; then
+    git -C "$checkout" worktree remove "$wt" 2>/dev/null && echo "worktree removed"
+  else
+    echo "worktree kept: $wt is not clean (lane-hygiene); look before removing it"
+  fi
+fi
+say "MERGED ${sha:0:9}" 0

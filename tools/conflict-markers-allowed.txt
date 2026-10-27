@@ -1,0 +1,2 @@
+# Tracked files allowed to hold merge-conflict markers (tools/lint-skills.py, check_conflict_markers):
+# test fixtures that need them, one repo-relative path per line. None so far.

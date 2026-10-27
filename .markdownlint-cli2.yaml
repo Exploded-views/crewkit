@@ -1,0 +1,11 @@
+# markdownlint-cli2 config. Prose is wrapped by hand and tables carry long cells.
+config:
+  default: true
+  MD013: false          # line length
+  MD024:
+    siblings_only: true # repeated headings in different sections are fine
+  MD033: false          # inline HTML
+  MD060: false          # table column alignment style
+ignores:
+  - "node_modules/**"
+  - ".cache/**"

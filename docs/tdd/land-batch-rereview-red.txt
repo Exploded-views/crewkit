@@ -1,0 +1,51 @@
+# The delta re-review of land-batch (items A-D): the new tests against the reviewed code. The real-tie test passed there (the all-rule already refused it); its any/all mutant is killed now that one file can carry a tie.
+
+1..28
+ok 1 records: review.reviewers narrows the accepted fixture to its reviewer
+ok 2 review 8: a real tie at the top round (two round-2 records) with any 'changes' refuses
+not ok 3 review A: file names .1 and leading zeros are not rounds: the head is refused
+# (in test file tests/landing-lib.bats, line 98)
+#   `[ "$status" -ne 0 ]' failed
+not ok 4 review C: the landers need bash 4.4 or later
+# (in test file tests/landing-lib.bats, line 104)
+#   `[ "$status" -eq 78 ]' failed
+not ok 5 review C: a failed read of the changed files is not 'no high-risk files'
+# (in test file tests/landing-lib.bats, line 117)
+#   `[ "$status" -ne 0 ]' failed
+ok 6 comments: a verdict from a login not in review.reviewers does not count
+ok 7 comments: with review.reviewers unset, no comment verdict counts
+ok 8 records: a record for another head, a 'changes' verdict, no reviewer or bad JSON do not count
+ok 9 records: review.reviewers, when set, limits who may write a record
+ok 10 records: a self-review, a later 'changes' round, or an unknown schema do not count
+ok 11 an unknown review.source is a config error
+ok 12 records: the lane's implementer must match the record's, and may not review
+ok 13 records: a reviewer who is the lane's implementer does not count, whatever the record says
+ok 14 review 1a: a rename out of a high-risk directory is high risk
+ok 15 review 1b: a non-ASCII path in a high-risk directory is high risk
+ok 16 review 2: a corrupt or unreadable campaign state holds every PR
+ok 17 review 3a: a marker must end at whitespace or the line's end (MERGE-WITH-FIXES is not MERGE)
+ok 18 review 3b: the latest verdict on the head decides; a later CHANGES-REQUESTED overrides a MERGE
+ok 19 review 3c: comment order on the page doesn't matter, createdAt does
+ok 20 review 5a: ci.workflow and ci.event pick the runs that count
+ok 21 review 5b: the newest run decides, whatever its attempt number
+ok 22 review 6: in records mode, a PR with no lane needs review.reviewers
+ok 23 review 7: a failed fetch after a squash stops the run (exit 12)
+ok 24 review 9: the stale sweep leaves a labelled batch-shaped PR whose title isn't a batch's
+not ok 25 review B: ci.workflow is required (exit 78); ci.event defaults to pull_request
+# (in test file tests/land-batch.bats, line 892)
+#   `[ "$status" -eq 78 ]' failed
+not ok 26 review D: a later marker-shaped verdict without the SHA, or for another head, blocks an earlier MERGE
+# (in test file tests/land-batch.bats, line 910)
+#   `[ "$status" -eq 2 ]' failed
+not ok 27 review D: a later verdict for another head blocks too
+# (in test file tests/land-batch.bats, line 923)
+#   `[ "$status" -eq 2 ]' failed
+not ok 28 review D: comments are read from the paginated issue-comments API
+# (in test file tests/land-batch.bats, line 932)
+#   `grep -q '^api repos/OWNER/REPO/issues/12/comments?per_page=100 --paginate' "$STUB/calls.log"' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `bash -c source "$1/plugins/crew-orchestrator/lib/settings.sh"; source "$1/plugins/crew-orchestrator/lib/landing.sh"
+    crew_land_bash_ok 4 3 _ <repo>` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/landing-lib.bats, line 102)

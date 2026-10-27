@@ -1,0 +1,16 @@
+plugins/crew-lanes/bin/gh-write:
+  killed       duplicate check piped into grep -q (SIGPIPE race)
+  killed       duplicate check matches a prefix
+  killed       no duplicate check on issues
+  killed       no duplicate check on reviews
+  killed       PR comments not capped
+  killed       no retries
+  killed       retry count ignored
+  killed       no spacing between writes
+  killed       busy lock not 75
+  killed       missing repo not 78
+  killed       not journalled
+  killed       failure reported as success
+  killed       label removal dropped
+  killed       header not prefixed
+  all 14 mutants killed

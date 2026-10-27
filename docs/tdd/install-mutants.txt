@@ -1,0 +1,29 @@
+  killed       sha256 compare always passes
+  killed       curl without https-only
+  killed       TODO tag counts as pinned
+  killed       blank hash allowed
+  killed       hash format unchecked
+  killed       URL scheme unchecked
+  killed       special files allowed in archives
+  killed       .. allowed in archive paths
+  killed       absolute archive paths allowed
+  killed       tag format unchecked
+  killed       bitc binary presence unchecked
+  killed       inherited tmp honoured
+  killed       ERR trap removed
+  killed       earlier backup overwritten
+  killed       bootstrap flags echoed
+  killed       bitc fetched on macOS
+  killed       bootstrap pause becomes a failure
+  killed       bootstrap failure ignored
+  killed       edited rules not backed up
+  killed       SHA256SUMS cross-check skipped
+  killed       bootstrap not given --prebuilt-dir
+  killed       release layout unchecked
+  killed       already-added marketplace not detected
+  killed       installed plugins not detected
+  killed       current rules fragment rewritten
+  killed       dry run queries claude
+  killed       usage errors exit 0
+  killed       pin file sourced
+mutate: all 28 mutants killed

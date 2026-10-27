@@ -1,0 +1,14 @@
+plugins/crew-lanes/bin/lane-state:
+  killed       no lock taken
+  killed       written in place, not renamed
+  killed       type check skipped on set
+  killed       unknown keys dropped
+  killed       busy lock not reported as 75
+  killed       defaults not applied on get
+  killed       updatedAt not stamped
+  killed       lane status not checked
+  killed       bool keys accept anything
+  killed       PR lists accept non-numbers
+  killed       strings not kept as strings
+  killed       missing key not exit 1
+  all 12 mutants killed

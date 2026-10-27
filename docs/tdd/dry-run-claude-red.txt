@@ -1,0 +1,6 @@
+1..1
+not ok 1 plugins: a dry run makes no claude calls (it stays fast)
+# (from function `none' in file tests/helpers.bash, line 75,
+#  in test file tests/install.bats, line 384)
+#   `none -q '^claude' "$CALLS"' failed
+# unexpected match: grep -q ^claude <tmp>

@@ -1,0 +1,62 @@
+1..10
+not ok 1 a PR that already contains main is left alone
+# (in test file tests/lane-refresh.bats, line 21)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 main is merged in, pushed without force, and the PR's diff is unchanged
+# (in test file tests/lane-refresh.bats, line 31)
+#   `[ "$status" -eq 0 ]' failed
+not ok 3 a conflict lists the files, pushes nothing and exits 3
+# (in test file tests/lane-refresh.bats, line 46)
+#   `[ "$status" -eq 3 ]' failed
+not ok 4 a merge that silently changes the PR's diff is not pushed (exit 4)
+# (in test file tests/lane-refresh.bats, line 56)
+#   `[ "$status" -eq 4 ]' failed
+not ok 5 a stacked PR whose parent isn't merged is refused (exit 6)
+# (in test file tests/lane-refresh.bats, line 65)
+#   `[ "$status" -eq 6 ]' failed
+not ok 6 a stacked PR whose parent was squash-merged gets its own change on main, retargeted first
+# (in test file tests/lane-refresh.bats, line 79)
+#   `[ "$status" -eq 0 ]' failed
+# Squash commit -- not updating HEAD
+not ok 7 a push that doesn't land on the remote exits 5
+# (in test file tests/lane-refresh.bats, line 92)
+#   `[ "$status" -eq 5 ]' failed
+not ok 8 the lane's own worktree is never touched, and the temp worktree is removed
+# (in test file tests/lane-refresh.bats, line 100)
+#   `"$BIN/lane-refresh" 12 >/dev/null' failed with status 127
+# <repo>/tests/lane-refresh.bats: line 100: <repo>/plugins/crew-lanes/bin/lane-refresh: No such file or directory
+not ok 9 it never force-pushes
+# (in test file tests/lane-refresh.bats, line 109)
+#   `[ "$status" -eq 0 ]' failed
+not ok 10 usage errors exit 2
+# (in test file tests/lane-refresh.bats, line 115)
+#   `[ "$status" -eq 2 ]' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh 12` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 20)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh 12` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 30)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh 12` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 45)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh 12` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 55)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh 13` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 64)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh 13` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 78)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh 12` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 91)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh 12` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 108)
+BW01: `run`'s command `<repo>/plugins/crew-lanes/bin/lane-refresh` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/lane-refresh.bats, line 114)

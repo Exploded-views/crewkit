@@ -1,0 +1,121 @@
+.FF.F...F.FF..F..
+======================================================================
+FAIL: test_description_on_the_next_line_passes (tests.test_lint_inputs.CheckInputs.test_description_on_the_next_line_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 88, in test_description_on_the_next_line_passes
+    self.assertEqual(self.check(page), [])
+AssertionError: Lists differ: ['page.md: Inputs bullet must have the for[185 chars]uts'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\''
+
++ []
+- ['page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: '
+-  'description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\'',
+-  'page.md: <path to your crewkit clone> in a shell block is not declared in ## '
+-  'Inputs']
+
+======================================================================
+FAIL: test_good_page_passes (tests.test_lint_inputs.CheckInputs.test_good_page_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 56, in test_good_page_passes
+    self.assertEqual(self.check(GOOD), [])
+AssertionError: Lists differ: ['page.md: Inputs bullet must have the for[185 chars]uts'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\''
+
++ []
+- ['page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: '
+-  'description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\'',
+-  'page.md: <path to your crewkit clone> in a shell block is not declared in ## '
+-  'Inputs']
+
+======================================================================
+FAIL: test_inputs_as_a_subsection_passes (tests.test_lint_inputs.CheckInputs.test_inputs_as_a_subsection_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 107, in test_inputs_as_a_subsection_passes
+    self.assertEqual(self.check(page), [])
+AssertionError: Lists differ: ['page.md: Inputs bullet must have the for[185 chars]uts'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\''
+
++ []
+- ['page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: '
+-  'description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\'',
+-  'page.md: <path to your crewkit clone> in a shell block is not declared in ## '
+-  'Inputs']
+
+======================================================================
+FAIL: test_path_input_under_home_passes (tests.test_lint_inputs.CheckInputs.test_path_input_under_home_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 124, in test_path_input_under_home_passes
+    self.assertEqual(self.check(GOOD), [])
+AssertionError: Lists differ: ['page.md: Inputs bullet must have the for[185 chars]uts'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\''
+
++ []
+- ['page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: '
+-  'description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\'',
+-  'page.md: <path to your crewkit clone> in a shell block is not declared in ## '
+-  'Inputs']
+
+======================================================================
+FAIL: test_quoted_assignment_passes (tests.test_lint_inputs.CheckInputs.test_quoted_assignment_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 110, in test_quoted_assignment_passes
+    self.assertEqual(self.check(GOOD), [])
+AssertionError: Lists differ: ['page.md: Inputs bullet must have the for[185 chars]uts'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\''
+
++ []
+- ['page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: '
+-  'description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\'',
+-  'page.md: <path to your crewkit clone> in a shell block is not declared in ## '
+-  'Inputs']
+
+======================================================================
+FAIL: test_quoted_path_input_without_home_fails (tests.test_lint_inputs.CheckInputs.test_quoted_path_input_without_home_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 121, in test_quoted_path_input_without_home_fails
+    self.assertTrue(any("CREWKIT_DIR" in e and "$HOME" in e for e in errs), errs)
+AssertionError: False is not true : []
+
+======================================================================
+FAIL: test_text_blocks_are_exempt (tests.test_lint_inputs.CheckInputs.test_text_blocks_are_exempt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_inputs.py", line 63, in test_text_blocks_are_exempt
+    self.assertEqual(self.check(GOOD.replace("<a tag>", "<anything>")), [])
+AssertionError: Lists differ: ['page.md: Inputs bullet must have the for[185 chars]uts'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\''
+
++ []
+- ['page.md: Inputs bullet must have the format "- `NAME` = `<placeholder>`: '
+-  'description": \'- `CREWKIT_DIR` = `$HOME/<path to your crewkit clo\'',
+-  'page.md: <path to your crewkit clone> in a shell block is not declared in ## '
+-  'Inputs']
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.039s
+
+FAILED (failures=7)

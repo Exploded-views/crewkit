@@ -1,0 +1,14 @@
+plugins/crew-lanes/bin/lane-verdict:
+  killed       lowest round used
+  killed       unknown schema accepted
+  killed       path/body mismatch accepted
+  killed       changes verdict accepted
+  killed       empty reviewer accepted
+  killed       self-review accepted on check
+  killed       reviewer list ignored
+  killed       unreadable record accepted
+  killed       self-review recorded
+  killed       short SHA recorded
+  killed       rounds overwrite one file
+  killed       implementer optional on check
+  all 12 mutants killed

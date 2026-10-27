@@ -1,0 +1,68 @@
+1..48
+ok 1 dry run exits 0 and changes nothing
+ok 2 dry run downloads nothing
+ok 3 an unknown flag is a usage error
+ok 4 an unpinned tool is skipped, not installed
+ok 5 memsync: a matching sha hands the unpacked release to its bootstrap as --prebuilt-dir
+ok 6 memsync: downloads the pinned asset and SHA256SUMS from the pinned URL
+ok 7 memsync: an archive the release's SHA256SUMS disagrees with is refused
+ok 8 memsync: an archive missing from SHA256SUMS is refused
+ok 9 memsync: runs the release's bootstrap with the flags after --
+ok 10 memsync: a sha mismatch is refused before anything is unpacked or run
+ok 11 memsync: bootstrap exit 3 (paused, needs a human) passes through and stops
+ok 12 memsync: a bootstrap failure fails the install
+ok 13 a pinned tag with no hash for this target is refused
+ok 14 a malformed hash is refused
+ok 15 pin files are parsed, never executed
+ok 16 a pinned URL must be https
+ok 17 an archive with a path outside its root is refused
+ok 18 an archive containing a link is refused
+ok 19 memsync: an archive without its claude-utils-<tag>-<os>-<arch>/ dir is refused
+ok 20 memsync: a release missing a binary is refused before its bootstrap runs
+ok 21 bitc: a matching sha installs bitc into ~/.local/bin
+ok 22 bitc: a sha mismatch installs nothing
+not ok 23 bitc: on macOS the darwin build is installed
+# (in test file tests/install.bats, line 201)
+#   `[ -x "$HOME/.local/bin/bitc" ]' failed
+ok 24 an unsupported OS is refused
+ok 25 plugins: --yes adds the marketplace, installs both plugins and the rules fragment
+ok 26 plugins: an edited rules file is backed up, not lost
+ok 27 --help prints usage and exits 0
+ok 28 an unsupported architecture is refused
+ok 29 a missing pin file is an error
+ok 30 plugins: without claude on PATH, a dry run warns and --yes fails
+ok 31 a tag that isn't vMAJOR.MINOR.PATCH is refused before any download
+ok 32 an archive with an absolute path is refused
+ok 33 an archive with a FIFO or other special file is refused
+ok 34 bitc: an archive without a bitc binary is refused
+ok 35 an inherited tmp variable doesn't redirect the work dir
+ok 36 a failing step exits 1 whatever the failing command's own code
+ok 37 plugins: a second edit keeps the first backup too
+ok 38 bootstrap flags are not echoed in the plan
+ok 39 flags after -- are reported when the memsync step isn't run
+ok 40 plugins: a re-run with everything installed adds and installs nothing
+ok 41 plugins: only the missing plugin is installed
+ok 42 plugins: a plugin from another marketplace with the same name doesn't count
+ok 43 plugins: a current rules fragment is left alone on a re-run
+ok 44 plugins: a dry run makes no claude calls (it stays fast)
+not ok 45 bitc: the release's checksums.txt must list the pinned hash
+# (in test file tests/install.bats, line 392)
+#   `[ "$status" -eq 1 ]' failed
+not ok 46 bitc: the installed binary must report the pinned version as a release
+# (in test file tests/install.bats, line 400)
+#   `[ "$status" -eq 1 ]' failed
+not ok 47 bitc: a development build (release=false) is refused
+# (in test file tests/install.bats, line 408)
+#   `[ "$status" -eq 1 ]' failed
+not ok 48 bitc: a failed version check leaves an existing bitc in place
+# (in test file tests/install.bats, line 417)
+#   `[ "$status" -eq 1 ]' failed
+
+## 2026-10-26: version check moves to bitc version --json
+
+The fake answers only `version --json`; install.sh still parses the plain line:
+
+```text
+not ok 21 bitc: a matching sha installs bitc into ~/.local/bin
+not ok 23 bitc: on macOS the darwin build is installed
+```

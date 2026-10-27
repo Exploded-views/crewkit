@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+"""lane-state: read and write the campaign state, <campaign_dir>/state.json.
+
+  lane-state get KEY            print a value (scalars raw, arrays and objects as JSON)
+  lane-state set KEY VALUE      set a value (parsed as JSON if it is JSON, else a string)
+  lane-state validate [FILE]    check a state file against the schema (default: the live one)
+  lane-state show               print the whole state
+
+KEY is dotted: ownerPresent, ownerGatedPrs, lanes.<lane>.status. The schema is in crewkit's
+docs/campaign-state.md. Setting a lane's field also stamps lanes.<lane>.updatedAt.
+
+Writes take an exclusive lock on <campaign_dir>/state.lock (waiting up to lock_wait_seconds),
+then write a temp file in the same directory and rename it over state.json, so a reader never
+sees half a file and readers need no lock. Keys the schema doesn't know are kept.
+
+Exit (docs/exit-codes.md): 0 = ok, 1 = missing key (get) or invalid file (validate),
+64 = usage, 65 = a value of the wrong type (nothing is written), 75 = the lock stayed busy.
+"""
+import datetime
+import fcntl
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import tempfile
+import time
+
+HERE = pathlib.Path(__file__).resolve().parent
+STATUSES = ["open", "implementing", "gates", "review", "ready", "landing", "merged", "parked", "failed"]
+DEFAULTS = {"ownerPresent": False, "ownerGatedPrs": [], "ownerGatedLanes": [], "mergePaused": False,
+            "mergePauseExempt": [], "mergePausedNote": "", "lanes": {}}
+
+
+def is_pr(v):
+    return (isinstance(v, int) and not isinstance(v, bool)) or (isinstance(v, str) and v.isdigit())
+
+
+TOP = {
+    "ownerPresent": ("a boolean", lambda v: isinstance(v, bool)),
+    "ownerGatedPrs": ("a list of PR numbers", lambda v: isinstance(v, list) and all(is_pr(x) for x in v)),
+    "ownerGatedLanes": ("a list of lane names", lambda v: isinstance(v, list) and all(isinstance(x, str) for x in v)),
+    "mergePaused": ("a boolean", lambda v: isinstance(v, bool)),
+    "mergePauseExempt": ("a list of PR numbers", lambda v: isinstance(v, list) and all(is_pr(x) for x in v)),
+    "mergePausedNote": ("a string", lambda v: isinstance(v, str)),
+    "lanes": ("an object of lanes", lambda v: isinstance(v, dict)),
+}
+nullable_str = lambda v: v is None or isinstance(v, str)
+nullable_sha = lambda v: v is None or (isinstance(v, str) and len(v) == 40 and all(c in "0123456789abcdef" for c in v))
+LANE = {
+    "status": ("one of " + ", ".join(STATUSES), lambda v: v in STATUSES),
+    "pr": ("a PR number or null", lambda v: v is None or is_pr(v)),
+    "headSha": ("a full 40-hex SHA or null", nullable_sha),
+    "implementer": ("a string (the implementing session or agent)", lambda v: isinstance(v, str)),
+    "mergedSha": ("a full 40-hex SHA or null", nullable_sha),
+    "mergedAt": ("an ISO time or null", nullable_str),
+    "updatedAt": ("an ISO time", lambda v: isinstance(v, str)),
+}
+
+
+def setting(key, default):
+    # Key and default go in as arguments, never as shell text: a value can hold quotes or $(...).
+    out = subprocess.run(["bash", "-c", 'source "$1" && crew_setting "$2" "$3"', "bash",  # settings-keys: campaign_dir lock_wait_seconds
+                          str(HERE.parent / "lib" / "settings.sh"), key, default], capture_output=True, text=True)
+    return os.path.expanduser(out.stdout.rstrip("\n")) if out.returncode == 0 else default
+
+
+def campaign_dir():
+    return pathlib.Path(setting("campaign_dir", "~/.local/state/crewkit/campaign"))
+
+
+def problems(state):
+    out = []
+    if not isinstance(state, dict):
+        return ["the state is not a JSON object"]
+    for key, (want, ok) in TOP.items():
+        if key in state and not ok(state[key]):
+            out.append(f"{key} must be {want}")
+    for lane, entry in (state.get("lanes") or {}).items() if isinstance(state.get("lanes"), dict) else []:
+        if not isinstance(entry, dict):
+            out.append(f"lanes.{lane} must be an object")
+            continue
+        for key, (want, ok) in LANE.items():
+            if key in entry and not ok(entry[key]):
+                out.append(f"lanes.{lane}.{key} must be {want}")
+    return out
+
+
+def load(path):
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError:
+        return {}
+
+
+def lookup(state, key):
+    cur = {**DEFAULTS, **state}
+    for part in key.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            raise KeyError(key)
+        cur = cur[part]
+    return cur
+
+
+def show(value):
+    if isinstance(value, str):
+        return value
+    return json.dumps(value)
+
+
+def parse_value(raw):
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return raw
+
+
+def assign(state, key, value):
+    parts = key.split(".")
+    if parts[0] == "lanes" and len(parts) == 3:
+        lanes = state.setdefault("lanes", {})
+        entry = lanes.setdefault(parts[1], {})
+        entry[parts[2]] = value
+        entry["updatedAt"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elif len(parts) == 1:
+        state[parts[0]] = value
+    else:
+        raise ValueError(f"can't set {key}: use a top-level key or lanes.<lane>.<field>")
+
+
+def locked_write(directory, mutate):
+    directory.mkdir(parents=True, exist_ok=True)
+    wait = float(setting("lock_wait_seconds", "3600"))
+    with open(directory / "state.lock", "w") as lock:
+        deadline = time.monotonic() + wait
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    print(f"lane-state: {directory / 'state.lock'} stayed busy for {wait:g}s; try again later", file=sys.stderr)
+                    sys.exit(75)
+                time.sleep(0.05)
+        path = directory / "state.json"
+        state = load(path)
+        mutate(state)
+        fd, tmp = tempfile.mkstemp(dir=directory, prefix=".state.", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(state, f, indent=2, sort_keys=True)
+                f.write("\n")
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
+        except BaseException:
+            os.unlink(tmp)
+            raise
+
+
+def usage():
+    print(__doc__.strip(), file=sys.stderr)
+    return 64
+
+
+def main(argv):
+    if not argv:
+        return usage()
+    cmd, args = argv[0], argv[1:]
+    directory = campaign_dir()
+    if cmd == "get" and len(args) == 1:
+        try:
+            print(show(lookup(load(directory / "state.json"), args[0])))
+            return 0
+        except KeyError:
+            return 1
+    if cmd == "show" and not args:
+        print(json.dumps({**DEFAULTS, **load(directory / "state.json")}, indent=2, sort_keys=True))
+        return 0
+    if cmd == "validate" and len(args) <= 1:
+        path = pathlib.Path(args[0]) if args else directory / "state.json"
+        try:
+            found = problems(json.loads(path.read_text()))
+        except (OSError, ValueError) as e:
+            found = [f"can't read {path}: {e.__class__.__name__}"]
+        for p in found:
+            print(f"lane-state: {p}")
+        return 1 if found else 0
+    if cmd == "set" and len(args) == 2:
+        key, value = args[0], parse_value(args[1])
+
+        def mutate(state):
+            trial = json.loads(json.dumps(state))
+            assign(trial, key, value)
+            found = problems(trial)
+            if found:
+                print(f"lane-state: refusing {key}={args[1]!r}: {'; '.join(found)}", file=sys.stderr)
+                sys.exit(65)
+            state.clear()
+            state.update(trial)
+
+        try:
+            locked_write(directory, mutate)
+        except ValueError as e:
+            print(f"lane-state: {e}", file=sys.stderr)
+            return 64
+        return 0
+    return usage()
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

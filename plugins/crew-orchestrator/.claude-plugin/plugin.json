@@ -1,0 +1,16 @@
+{
+  "name": "crew-orchestrator",
+  "version": "0.1.0",
+  "description": "The coordinating session's tooling for crews of Claude Code sessions: a batch lander with every merge check, and the skill for running it. More landers and a decision log are planned. In development.",
+  "author": {
+    "name": "crewkit maintainers"
+  },
+  "license": "MIT",
+  "keywords": [
+    "multi-agent",
+    "orchestration",
+    "landing",
+    "merge-queue",
+    "decision-log"
+  ]
+}

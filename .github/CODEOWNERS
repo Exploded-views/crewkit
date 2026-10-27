@@ -1,0 +1,7 @@
+# Review routing only; branch rules don't enforce it.
+* @gitgat
+
+# The installer downloads and runs binaries: changes here get the owner's eyes.
+/install.sh @gitgat
+/pins/ @gitgat
+/.github/workflows/ @gitgat

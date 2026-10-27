@@ -1,0 +1,111 @@
+{
+  "target": "plugins/crew-orchestrator/lib/landing.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/landing-lib.bats",
+    "tests/land-batch.bats"
+  ],
+  "mutants": [
+    {
+      "name": "merge pause exemption ignored",
+      "old": "(.mergePauseExempt // []) | map(tostring) | index($pr) != null' \"$CAMPAIGN\") != true",
+      "new": "(.mergePauseExempt // []) | map(tostring) | index($pr) != null' \"$CAMPAIGN\") != false"
+    },
+    {
+      "name": "stale lane head ignored",
+      "old": "  if [[ -n $lane && ${lane#*$'\\t'} != \"\" && ${lane#*$'\\t'} != \"$PR_HEAD\" ]]; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "lane head compared by prefix",
+      "old": "${lane#*$'\\t'} != \"$PR_HEAD\" ]]; then",
+      "new": "$PR_HEAD != \"${lane#*$'\\t'}\"* ]]; then"
+    },
+    {
+      "name": "corrupt campaign state opens the gates",
+      "old": "if [[ ! -r $CAMPAIGN ]] || ! jq -e 'type == \"object\"' \"$CAMPAIGN\" >/dev/null 2>&1; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "merge pause ignored by default",
+      "old": "HONOR_PAUSE=$(crew_setting land.honor_merge_pause true)",
+      "new": "HONOR_PAUSE=$(crew_setting land.honor_merge_pause false)"
+    },
+    {
+      "name": "old bash accepted",
+      "old": "crew_land_bash_ok() {\n  (($1 > 4 || ($1 == 4 && $2 >= 4))) ||",
+      "new": "crew_land_bash_ok() {\n  true ||"
+    },
+    {
+      "name": "ci.workflow optional",
+      "old": "  CI_WORKFLOW=$(crew_require ci.workflow) || exit 78",
+      "new": "  CI_WORKFLOW=$(crew_setting ci.workflow .github/workflows/ci.yml)"
+    },
+    {
+      "name": "any event counts by default",
+      "old": "  CI_EVENT=$(crew_setting ci.event pull_request)",
+      "new": "  CI_EVENT=$(crew_setting ci.event \"\")"
+    },
+    {
+      "name": "the workflow isn't passed",
+      "old": "--required-check \"$CHECK\" --workflow \"$CI_WORKFLOW\" \\",
+      "new": "--required-check \"$CHECK\" --workflow \".github/workflows/x.yml\" \\"
+    },
+    {
+      "name": "statuses aren't read",
+      "old": "    ! g api \"repos/$R/commits/$1/status?per_page=100\" > \"$d/statuses.json\"; then",
+      "new": "    ! echo '{\"statuses\":[]}' > \"$d/statuses.json\"; then"
+    },
+    {
+      "name": "ignored checks aren't passed",
+      "old": "    --ignored \"$IGNORED\" --min-green",
+      "new": "    --ignored \"\" --min-green"
+    },
+    {
+      "name": "a failed read is green",
+      "old": "\"$d/statuses.json\"; then\n    rm -rf \"$d\"; echo \"0 \"; return 0",
+      "new": "\"$d/statuses.json\"; then\n    rm -rf \"$d\"; echo \"1 success\"; return 0"
+    },
+    {
+      "name": "pending reads as success",
+      "old": "    *) echo \"${att:-0} \" ;;",
+      "new": "    *) echo \"${att:-1} success\" ;;"
+    },
+    {
+      "name": "only ci.workflow's jobs are read",
+      "old": "  for id in $(jq -r '.[].id' \"$d/runs.json\"); do",
+      "new": "  for id in $(jq -r --arg wf \"$CI_WORKFLOW\" '.[] | select(.path == $wf) | .id' \"$d/runs.json\"); do"
+    },
+    {
+      "name": "statuses read 30 per page",
+      "old": "commits/$1/status?per_page=100\"",
+      "new": "commits/$1/status\""
+    },
+    {
+      "name": "jobs listed without filter=latest",
+      "old": "actions/runs/$id/jobs?filter=latest&per_page=100\"",
+      "new": "actions/runs/$id/jobs?per_page=100\""
+    },
+    {
+      "name": "ignored_checks may name the required check",
+      "old": "    [[ $v != \"$CHECK\" ]] || { echo \"$TOOL: ignored_checks names",
+      "new": "    true || { echo \"$TOOL: ignored_checks names"
+    },
+    {
+      "name": "ignored_checks names aren't trimmed",
+      "old": "    v=${v#\"${v%%[![:space:]]*}\"}; v=${v%\"${v##*[![:space:]]}\"}\n",
+      "new": ""
+    },
+    {
+      "name": "a failed status read is ignored",
+      "old": "    ! g api \"repos/$R/commits/$1/status?per_page=100\" > \"$d/statuses.json\"; then",
+      "new": "    ! { g api \"repos/$R/commits/$1/status?per_page=100\" > \"$d/statuses.json\"; true; }; then"
+    },
+    {
+      "name": "an App author isn't mapped to its [bot] login",
+      "old": "    [[ $author != app/* ]] || author=\"${author#app/}[bot]\"\n",
+      "new": ""
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+# The first independent review of land-batch (CHANGES-REQUESTED): one test per finding, run against the reviewed code.
+# Review 8 (a tie at the top round) first passed for the wrong reason (jq's max_by picks the last of a tie, and the merge record came first); the test now checks both read orders. The file-round rule (a body round that disagrees with its file name refuses the head) was added after review, test first.
+
+1..24
+ok 1 25 stale batch PRs and branches are swept, fresh ones kept
+ok 2 comments: a verdict from a login not in review.reviewers does not count
+ok 3 comments: with review.reviewers unset, no comment verdict counts
+ok 4 records: a record for another head, a 'changes' verdict, no reviewer or bad JSON do not count
+ok 5 records: review.reviewers, when set, limits who may write a record
+ok 6 records: a self-review, a later 'changes' round, or an unknown schema do not count
+ok 7 an unknown review.source is a config error
+ok 8 records: the lane's implementer must match the record's, and may not review
+ok 9 records: a reviewer who is the lane's implementer does not count, whatever the record says
+not ok 10 a merge pause is honoured by default; land.honor_merge_pause false ignores it
+# (in test file tests/land-batch.bats, line 685)
+#   `[ "$status" -eq 2 ]' failed
+not ok 11 an honoured merge pause holds every PR except the exempt ones
+# (in test file tests/land-batch.bats, line 695)
+#   `[ "$status" -eq 20 ]' failed
+not ok 12 review 1a: a rename out of a high-risk directory is high risk
+# (in test file tests/land-batch.bats, line 759)
+#   `[ "$status" -eq 2 ]' failed
+not ok 13 review 1b: a non-ASCII path in a high-risk directory is high risk
+# (in test file tests/land-batch.bats, line 767)
+#   `[ "$status" -eq 2 ]' failed
+not ok 14 review 2: a corrupt or unreadable campaign state holds every PR
+# (in test file tests/land-batch.bats, line 776)
+#   `[ "$status" -eq 2 ]' failed
+not ok 15 review 3a: a marker must end at whitespace or the line's end (MERGE-WITH-FIXES is not MERGE)
+# (in test file tests/land-batch.bats, line 800)
+#   `[ "$status" -eq 2 ]' failed
+not ok 16 review 3b: the latest verdict on the head decides; a later CHANGES-REQUESTED overrides a MERGE
+# (in test file tests/land-batch.bats, line 813)
+#   `[ "$status" -eq 2 ]' failed
+not ok 17 review 3c: comment order on the page doesn't matter, createdAt does
+# (in test file tests/land-batch.bats, line 826)
+#   `[ "$status" -eq 2 ]' failed
+not ok 18 review 5a: ci.workflow and ci.event pick the runs that count
+# (in test file tests/land-batch.bats, line 844)
+#   `[ "$status" -eq 2 ]' failed
+not ok 19 review 5b: the newest run decides, whatever its attempt number
+# (in test file tests/land-batch.bats, line 854)
+#   `[ "$status" -eq 2 ]' failed
+not ok 20 review 6: in records mode, a PR with no lane needs review.reviewers
+# (in test file tests/land-batch.bats, line 865)
+#   `[ "$status" -eq 2 ]' failed
+not ok 21 review 7: a failed fetch after a squash stops the run (exit 12)
+# (in test file tests/land-batch.bats, line 875)
+#   `[[ $output == *"cannot fetch main after #11"* ]]' failed
+not ok 22 review 9: the stale sweep leaves a labelled batch-shaped PR whose title isn't a batch's
+# (in test file tests/land-batch.bats, line 884)
+#   `[ ! -e "$STUB/closed-77" ]' failed
+ok 23 records: review.reviewers narrows the accepted fixture to its reviewer
+ok 24 review 8: a tie at the top round with any 'changes' refuses

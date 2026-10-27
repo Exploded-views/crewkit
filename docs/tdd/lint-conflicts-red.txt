@@ -1,0 +1,110 @@
+# The conflict-marker lint (tools/lint-skills.py check_conflict_markers), added after a merge left markers in perf-budgets.json.
+# RED: the tests before the check existed. On the slipped commit the new check reports exactly the three marker lines (29, 35, 38). Mutation: 6 of 6 killed after a test for a bare marker was added; 'markers anywhere in a line' was dropped as equivalent (re.match anchors at the start).
+
+EEEEEEEE
+======================================================================
+ERROR: test_a_clean_tree_passes (tests.test_lint_conflicts.CheckConflictMarkers.test_a_clean_tree_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_conflicts.py", line 34, in test_a_clean_tree_passes
+    self.assertEqual(self.check({"a.json": '{"x": 1}\n'}), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_conflicts.py", line 30, in check
+    lint.check_conflict_markers()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_conflict_markers'
+
+======================================================================
+ERROR: test_a_lone_closing_marker_fails (tests.test_lint_conflicts.CheckConflictMarkers.test_a_lone_closing_marker_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_conflicts.py", line 42, in test_a_lone_closing_marker_fails
+    errs = self.check({"x.md": "text\n>>>>>>> m2-orchestrator\n"})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_conflicts.py", line 30, in check
+    lint.check_conflict_markers()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_conflict_markers'
+
+======================================================================
+ERROR: test_a_markdown_heading_underline_alone_passes (tests.test_lint_conflicts.CheckConflictMarkers.test_a_markdown_heading_underline_alone_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_conflicts.py", line 46, in test_a_markdown_heading_underline_alone_passes
+    self.assertEqual(self.check({"doc.md": "Title\n=======\n\nBody.\n"}), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_conflicts.py", line 30, in check
+    lint.check_conflict_markers()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_conflict_markers'
+
+======================================================================
+ERROR: test_an_allowlist_entry_for_a_missing_file_fails (tests.test_lint_conflicts.CheckConflictMarkers.test_an_allowlist_entry_for_a_missing_file_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_conflicts.py", line 56, in test_an_allowlist_entry_for_a_missing_file_fails
+    errs = self.check({}, allow="tests/fixtures/gone.txt\n")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_conflicts.py", line 30, in check
+    lint.check_conflict_markers()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_conflict_markers'
+
+======================================================================
+ERROR: test_an_allowlisted_fixture_passes (tests.test_lint_conflicts.CheckConflictMarkers.test_an_allowlisted_fixture_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_conflicts.py", line 53, in test_an_allowlisted_fixture_passes
+    self.assertEqual(self.check(files, allow="# fixtures that need markers\ntests/fixtures/merge/conflicted.txt\n"), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_conflicts.py", line 30, in check
+    lint.check_conflict_markers()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_conflict_markers'
+
+======================================================================
+ERROR: test_committed_markers_fail_and_name_the_file_and_line (tests.test_lint_conflicts.CheckConflictMarkers.test_committed_markers_fail_and_name_the_file_and_line)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_conflicts.py", line 37, in test_committed_markers_fail_and_name_the_file_and_line
+    errs = self.check({"perf.json": '{\n<<<<<<< HEAD\n  "a": 1\n=======\n  "a": 2\n>>>>>>> other\n}\n'})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_conflicts.py", line 30, in check
+    lint.check_conflict_markers()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_conflict_markers'
+
+======================================================================
+ERROR: test_markers_not_at_the_start_of_a_line_pass (tests.test_lint_conflicts.CheckConflictMarkers.test_markers_not_at_the_start_of_a_line_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_conflicts.py", line 49, in test_markers_not_at_the_start_of_a_line_pass
+    self.assertEqual(self.check({"t.sh": 'echo "<<<<<<< not a marker"\n'}), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_conflicts.py", line 30, in check
+    lint.check_conflict_markers()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_conflict_markers'
+
+======================================================================
+ERROR: test_untracked_files_are_not_checked (tests.test_lint_conflicts.CheckConflictMarkers.test_untracked_files_are_not_checked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_conflicts.py", line 68, in test_untracked_files_are_not_checked
+    lint.check_conflict_markers()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_conflict_markers'
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.100s
+
+FAILED (errors=8)
+
+tools/lint-skills.py:
+  killed       every ======= line counts
+  killed       the allowlist is ignored
+  killed       a stale allowlist entry passes
+  killed       a marker needs a label after it
+  killed       untracked files are checked
+  killed       the middle marker isn't reported
+  all 6 mutants killed

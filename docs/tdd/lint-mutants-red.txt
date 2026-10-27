@@ -1,0 +1,67 @@
+# The mutant-matrix lint tests before check_mutant_matrix existed.
+
+EEEEE
+======================================================================
+ERROR: test_a_matrix_entry_without_a_spec_fails (tests.test_lint_mutants.CheckMutantMatrix.test_a_matrix_entry_without_a_spec_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 51, in test_a_matrix_entry_without_a_spec_fails
+    errs = self.check(["a.json"], ["a.json", "gone.json"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_mutants.py", line 40, in check
+    lint.check_mutant_matrix()
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_mutant_matrix'
+
+======================================================================
+ERROR: test_a_spec_missing_from_the_matrix_fails_and_is_named (tests.test_lint_mutants.CheckMutantMatrix.test_a_spec_missing_from_the_matrix_fails_and_is_named)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 47, in test_a_spec_missing_from_the_matrix_fails_and_is_named
+    errs = self.check(["a.json", "b.json"], ["a.json"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_mutants.py", line 40, in check
+    lint.check_mutant_matrix()
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_mutant_matrix'
+
+======================================================================
+ERROR: test_a_spec_named_only_in_another_job_does_not_count (tests.test_lint_mutants.CheckMutantMatrix.test_a_spec_named_only_in_another_job_does_not_count)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 61, in test_a_spec_named_only_in_another_job_does_not_count
+    errs = self.check(["a.json", "b.json"], [], ci=ci)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_mutants.py", line 40, in check
+    lint.check_mutant_matrix()
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_mutant_matrix'
+
+======================================================================
+ERROR: test_every_spec_listed_passes (tests.test_lint_mutants.CheckMutantMatrix.test_every_spec_listed_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 44, in test_every_spec_listed_passes
+    self.assertEqual(self.check(["a.json", "b.json"], ["a.json", "b.json"]), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_mutants.py", line 40, in check
+    lint.check_mutant_matrix()
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_mutant_matrix'
+
+======================================================================
+ERROR: test_no_mutants_job_fails_when_specs_exist (tests.test_lint_mutants.CheckMutantMatrix.test_no_mutants_job_fails_when_specs_exist)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 55, in test_no_mutants_job_fails_when_specs_exist
+    errs = self.check(["a.json"], [], ci="jobs:\n  lint:\n    runs-on: ubuntu-latest\n")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/tests/test_lint_mutants.py", line 40, in check
+    lint.check_mutant_matrix()
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'lint_skills' has no attribute 'check_mutant_matrix'
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.019s
+
+FAILED (errors=5)

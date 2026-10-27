@@ -1,0 +1,40 @@
+{
+  "target": "tools/lint-skills.py",
+  "suite": [
+    "bash",
+    "-c",
+    "git init -q . && python3 -m unittest tests.test_lint_conflicts"
+  ],
+  "mutants": [
+    {
+      "name": "every ======= line counts",
+      "old": "        if not any(edge.match(line) for line in lines):\n            continue\n",
+      "new": "        if False:\n            continue\n"
+    },
+    {
+      "name": "the allowlist is ignored",
+      "old": "        if rel in allowed or not path.is_file():",
+      "new": "        if not path.is_file():"
+    },
+    {
+      "name": "a stale allowlist entry passes",
+      "old": "                if not (ROOT / line).is_file():\n                    err(allow_file, f\"allows {line}, which doesn't exist\")",
+      "new": "                pass"
+    },
+    {
+      "name": "a marker needs a label after it",
+      "old": "edge = re.compile(r\"^(<<<<<<<|>>>>>>>)( |$)\")",
+      "new": "edge = re.compile(r\"^(<<<<<<<|>>>>>>>) \")"
+    },
+    {
+      "name": "untracked files are checked",
+      "old": "[\"git\", \"ls-files\", \"-z\"]",
+      "new": "[\"git\", \"ls-files\", \"-z\", \"-o\", \"-c\"]"
+    },
+    {
+      "name": "the middle marker isn't reported",
+      "old": "            if edge.match(line) or middle.match(line):",
+      "new": "            if edge.match(line):"
+    }
+  ]
+}

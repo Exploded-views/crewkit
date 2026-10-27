@@ -1,0 +1,36 @@
+# lib/checks.py: tests/checks.bats before the code (all fail), then the cases added after crewkit's rule set (no other red, every workflow's newest run, status contexts) against the first version, then the land-batch tests against the old ci_state. The ignored-context lander test passed on the old code: it ignored every context.
+
+1..7
+not ok 1 every shared fixture case gets its expected answer and exit code
+# (in test file tests/checks.bats, line 22)
+#   `[ "$status" -eq "$want" ] || { echo "case $case: expected $expect ($want), got $status: $output"; return 1; }' failed
+# case green: expected green (0), got 2: python3: can't open file '<repo>/lib/checks.py': [Errno 2] No such file or directory
+not ok 2 red and pending name what is red or pending
+# (in test file tests/checks.bats, line 30)
+#   `[ "$output" = "red: security/scan" ]' failed
+not ok 3 --noise-step-prefix names the mirror step
+# (in test file tests/checks.bats, line 38)
+#   `[ "$status" -eq 0 ]' failed
+not ok 4 --min-green 0 lets a run whose other jobs were all skipped count
+# (in test file tests/checks.bats, line 46)
+#   `[ "$status" -eq 0 ]' failed
+not ok 5 an empty --event counts runs from any event
+# (in test file tests/checks.bats, line 52)
+#   `[ "$status" -eq 0 ]' failed
+not ok 6 a head that isn't 40 lowercase hex, or unreadable JSON, is bad data (65)
+# (in test file tests/checks.bats, line 57)
+#   `[ "$status" -eq 65 ]' failed
+not ok 7 usage errors exit 64
+# (in test file tests/checks.bats, line 66)
+#   `[ "$status" -eq 64 ]' failed
+1..1
+not ok 1 every shared fixture case gets its expected answer and exit code
+# (in test file tests/checks.bats, line 23)
+#   `[ "$status" -eq "$want" ] || { echo "case $case: expected $expect ($want), got $status: $output"; return 1; }' failed
+# case other-job-in-run-red: expected red (31), got 0: green
+# attempt: 1
+1..2
+not ok 1 checks: a red commit status context on a PR's head holds it, unless ignored
+# (in test file tests/land-batch.bats, line 940)
+#   `[ "$(merged)" = "11 " ]' failed
+ok 2 checks: an ignored status context doesn't hold a PR

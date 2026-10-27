@@ -1,0 +1,10 @@
+FAIL: test_a_guarded_job_skipped_on_a_private_repo_passes (tests.test_ci_ok.CiOkScript.test_a_guarded_job_skipped_on_a_private_repo_passes)
+FAIL: test_a_guarded_job_skipped_on_a_public_repo_fails (tests.test_ci_ok.CiOkScript.test_a_guarded_job_skipped_on_a_public_repo_fails)
+FAIL: test_an_unguarded_job_skipped_on_a_private_repo_fails (tests.test_ci_ok.CiOkScript.test_an_unguarded_job_skipped_on_a_private_repo_fails)
+FAIL: test_needs_object_all_success_passes (tests.test_ci_ok.CiOkScript.test_needs_object_all_success_passes)
+FAIL: test_needs_object_failure_fails_and_names_the_job (tests.test_ci_ok.CiOkScript.test_needs_object_failure_fails_and_names_the_job)
+Ran 23 tests in 0.513s
+FAILED (failures=5)
+FAIL: test_a_job_key_the_lint_cannot_follow_fails (tests.test_ci_ok.CheckCiOk.test_a_job_key_the_lint_cannot_follow_fails)
+Ran 29 tests in 0.766s
+FAILED (failures=1)
