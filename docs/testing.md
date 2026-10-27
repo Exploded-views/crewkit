@@ -109,7 +109,8 @@ doesn't occur exactly once in its target, so editing a guarded line shows the mu
 at lint time, not after a mutation run. Keep each spec well inside the job's
 `timeout-minutes`: when one grows past about ten minutes, split its mutants into specs by area,
 with the same target and suite, as lane-land's `-checks`, `-config`, `-gates`, `-verdict` and
-`-merge` specs do. `tools/mutate.sh` (install.sh's mutants) runs in a job
+`-merge` specs and the landing-lib and land-batch specs do. Those run two bats suites per mutant,
+about a minute each on CI's runners, so keep them to about six mutants. `tools/mutate.sh` (install.sh's mutants) runs in a job
 of its own too, against `tests/install.bats` only, the suite that runs `install.sh`.
 
 ## The checks invariant

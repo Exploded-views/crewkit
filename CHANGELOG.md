@@ -6,6 +6,10 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ### Added
 
+- `tools/export.py` copies its own files (the tool, its lint and their tests) verbatim, and a
+  test checks that exporting the repo changes Markdown prose only. The export had dropped a
+  fixture from the public copy of its own tests, which let a mutant live there.
+
 - CI runs install.sh's dry runs under bash 3.2 on Linux (`bash32`, the `bash:3.2` image pinned
   by digest) on every PR. The `macos` job and the `mutants` matrix are off while the repo is
   private, and `ci-ok` accepts their skip only then. `tools/check-workflows.py` fails a macOS

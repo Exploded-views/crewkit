@@ -69,9 +69,14 @@ jobs:
           - export.json
           - gh-write.json
           - land-batch.json
+          - land-batch-merge.json
           - landing-lib-ci.json
+          - landing-lib-gates.json
+          - landing-lib-inputs.json
+          - landing-lib-model.json
           - landing-lib-risk.json
           - landing-lib-verdict.json
+          - landing-lib-workflow.json
           - lane-hygiene.json
           - lane-land-checks.json
           - lane-land-config.json

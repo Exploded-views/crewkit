@@ -29,7 +29,7 @@
     },
     {
       "name": "an unknown citation form passes",
-      "old": "    if PLACEHOLDER in text and rel not in MAY_NAME:",
+      "old": "    if PLACEHOLDER in text:",
       "new": "    if False:"
     },
     {
@@ -49,8 +49,8 @@
     },
     {
       "name": "a dev-repo PR or issue link is let through",
-      "old": "    if DEV_LINK.search(text):",
-      "new": "    if False:"
+      "old": "    if DEV_LINK.search(text):\n        raise ValueError(",
+      "new": "    if False:\n        raise ValueError("
     },
     {
       "name": "only PR links are caught, not issues",
@@ -59,18 +59,18 @@
     },
     {
       "name": "a plain-text lesson citation is let through",
-      "old": "    if rel not in MAY_NAME and PLAIN_CITATION.search(text):",
+      "old": "    if PLAIN_CITATION.search(text):",
       "new": "    if False:"
     },
     {
       "name": "a local clone path is let through",
-      "old": "    if rel not in MAY_NAME and CLONE_PATH.search(text):",
+      "old": "    if CLONE_PATH.search(text):",
       "new": "    if False:"
     },
     {
-      "name": "the tool may not describe the clone path form",
-      "old": "    if rel not in MAY_NAME and CLONE_PATH.search(text):",
-      "new": "    if CLONE_PATH.search(text):"
+      "name": "the tool's own files are transformed",
+      "old": "        refuse_dev_links(rel, text)\n        return text\n",
+      "new": "        refuse_dev_links(rel, text)\n"
     }
   ]
 }

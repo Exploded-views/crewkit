@@ -8,31 +8,6 @@
   ],
   "mutants": [
     {
-      "name": "squash not pinned to the verified head",
-      "old": "--squash --match-head-commit \"${HEAD[$pr]}\"",
-      "new": "--squash"
-    },
-    {
-      "name": "parent check skipped",
-      "old": "    [[ $(git -C \"$WT\" rev-parse \"$mc^\" 2>/dev/null) == \"$prev\" ]] ||",
-      "new": "    true ||"
-    },
-    {
-      "name": "tree check skipped",
-      "old": "    [[ $(git -C \"$WT\" rev-parse \"$mc^{tree}\") == \"${TREE[$pr]}\" ]] ||",
-      "new": "    true ||"
-    },
-    {
-      "name": "main not re-checked before each squash",
-      "old": "      main_is \"$prev\" || stop_merge 7",
-      "new": "      true || stop_merge 7"
-    },
-    {
-      "name": "no recheck before merging",
-      "old": "    if [[ -n $PROB || $PR_HEAD != \"${HEAD[$pr]}\" ]]; then",
-      "new": "    if false; then"
-    },
-    {
       "name": "high-risk PRs batched with the rest",
       "old": "  if [[ -n $RISK ]]; then\n    AREA[$pr]=$RISK; ALONE+=(\"$pr\")",
       "new": "  if false; then\n    AREA[$pr]=$RISK; ALONE+=(\"$pr\")"
@@ -63,24 +38,9 @@
       "new": "    if false; then"
     },
     {
-      "name": "up-to-date refusal retried as a generic failure",
-      "old": "        stop_merge 10 \"#$pr REFUSED",
-      "new": "        stop_merge 8 \"#$pr REFUSED"
-    },
-    {
-      "name": "partial landing not reported",
-      "old": "  if ((${#LANDED[@]})); then loud_partial \"$why\" \"$*\"; else",
-      "new": "  if false; then loud_partial \"$why\" \"$*\"; else"
-    },
-    {
       "name": "unreadable changed files fail open",
       "old": "    { PROB=\"changed-files-unreadable\"; return; }",
       "new": "    true"
-    },
-    {
-      "name": "a normal exit 20 reported as a partial landing",
-      "old": "FINISHED=1\n",
-      "new": "true\n"
     },
     {
       "name": "renames show only the new path",
@@ -93,19 +53,9 @@
       "new": "diff --no-renames --name-only"
     },
     {
-      "name": "an unchecked fetch after a squash",
-      "old": "    git -C \"$WT\" fetch -q origin \"$MAIN\" ||\n      stop_merge 12 \"cannot fetch",
-      "new": "    git -C \"$WT\" fetch -q origin \"$MAIN\" ||\n      true || stop_merge 12 \"cannot fetch"
-    },
-    {
       "name": "the sweep closes any labelled batch-shaped PR",
       "old": "[[ -n $n && $title == \"batch:\"* ]] || continue",
       "new": "[[ -n $n ]] || continue"
-    },
-    {
-      "name": "PR heads aren't re-checked before the squash",
-      "old": "    [[ $c == success ]] || stop_merge 9 \"#$pr: CI on its head is no longer green",
-      "new": "    true || stop_merge 9 \"#$pr: CI on its head is no longer green"
     }
   ]
 }

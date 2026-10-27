@@ -21,3 +21,9 @@ FAILED (failures=1)
 
 The tool describing the clone-path form in its own docs (before the MAY_NAME exemption):
 FAIL: test_the_tool_itself_may_describe_the_clone_path_form
+
+The tool's own files transformed (found by the public repo's first CI run: the export dropped a
+drop-region fixture from tests/test_export.py, and the "blank lines around a dropped region
+doubled" mutant survived there). The new tests on the old export.py:
+FAIL: test_exporting_this_repo_leaves_the_tools_files_unchanged
+FAIL: test_the_tools_own_files_are_copied_verbatim
