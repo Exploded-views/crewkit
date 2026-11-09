@@ -57,6 +57,19 @@ class Perf(unittest.TestCase):
         self.assertEqual(self.perf.headroom(cfg, {"CI": "true"}), 2.5)
         self.assertEqual(self.perf.headroom(cfg, {}), 1.0)
 
+    def test_a_budget_can_opt_out_of_the_ci_headroom(self):
+        budgets = {"hard": {"p95_ms": 800, "ci_headroom": 1.0}, "soft": {"p95_ms": 800}}
+        fails = self.perf.over_budget({"hard": 1000.0, "soft": 1000.0}, budgets, 2.0)
+        self.assertEqual(len(fails), 1)
+        self.assertIn("hard", fails[0])
+        self.assertEqual(self.perf.over_budget({"hard": 799.0, "soft": 1599.0}, budgets, 2.0), [])
+        # Locally (factor 1) nothing changes.
+        self.assertEqual(len(self.perf.over_budget({"hard": 801.0, "soft": 801.0}, budgets, 1.0)), 2)
+
+    def test_the_timeout_budget_is_fixed_in_ci(self):
+        cfg = json.loads((SCRIPT.parent.parent / "perf-budgets.json").read_text())
+        self.assertEqual(cfg["budgets"]["changes-hook-timeout"]["ci_headroom"], 1.0)
+
     def test_the_committed_budgets_cover_every_scenario(self):
         cfg = json.loads((SCRIPT.parent.parent / "perf-budgets.json").read_text())
         self.assertEqual(set(cfg["budgets"]), set(self.perf.SCENARIOS))

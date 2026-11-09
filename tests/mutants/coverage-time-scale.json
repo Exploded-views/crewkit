@@ -1,0 +1,15 @@
+{
+  "target": "tools/coverage.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/coverage-sh.bats"
+  ],
+  "mutants": [
+    {
+      "name": "coverage.sh doesn't pass the scale",
+      "old": "  -e CREWKIT_TEST_TIME_SCALE=\"${CREWKIT_TEST_TIME_SCALE:-4}\" \\\n",
+      "new": ""
+    }
+  ]
+}

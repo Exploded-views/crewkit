@@ -1,0 +1,160 @@
+{
+  "target": "libexec/ck/watchline.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-watchline.bats"
+  ],
+  "mutants": [
+    {
+      "name": "an OWNER, MEMBER or COLLABORATOR association grants text",
+      "old": "    ck_wl_trusted \"$login\" || return 1\n",
+      "new": "    case $assoc in OWNER | MEMBER | COLLABORATOR) ;; *) ck_wl_trusted \"$login\" || return 1 ;; esac\n"
+    },
+    {
+      "name": "any login counts as trusted",
+      "old": "[[ $a == \"$1\" ]] && return 0",
+      "new": "true && return 0"
+    },
+    {
+      "name": "url number not tied to N",
+      "old": "[[ ${BASH_REMATCH[5]} == \"${2-}\" ]]",
+      "new": "true"
+    },
+    {
+      "name": "url scheme may be http",
+      "old": "^https://github\\.com/",
+      "new": "^https?://github\\.com/"
+    },
+    {
+      "name": "url may carry a query or fragment",
+      "old": "(issues|pull|discussions)/([1-9][0-9]{0,8})$ ]] &&",
+      "new": "(issues|pull|discussions)/([1-9][0-9]{0,8}) ]] &&"
+    },
+    {
+      "name": "type is free",
+      "old": "ck_wl_in \"$type\" \"$CK_WL_TYPES\" || return 1",
+      "new": "true"
+    },
+    {
+      "name": "association is free",
+      "old": "ck_wl_in \"$assoc\" \"$CK_WL_ASSOCS\" || return 1",
+      "new": "true"
+    },
+    {
+      "name": "a value with spaces can match the word list",
+      "old": "[[ -n $1 && $1 != *\" \"* ]]",
+      "new": "true"
+    },
+    {
+      "name": "text limit is 201",
+      "old": "((${#t} <= 200))",
+      "new": "((${#t} <= 201))"
+    },
+    {
+      "name": "text limit is 199",
+      "old": "((${#t} <= 200))",
+      "new": "((${#t} < 200))"
+    },
+    {
+      "name": "commas not split in the setting",
+      "old": "v=${v//,/ }",
+      "new": "true"
+    },
+    {
+      "name": "signature is 15 digits",
+      "old": "${h:0:16}",
+      "new": "${h:0:15}"
+    },
+    {
+      "name": "signature covers only the service",
+      "old": "\"$(ck_wl_sig \"$line\")\"",
+      "new": "\"$(ck_wl_sig \"log $service\")\""
+    },
+    {
+      "name": "check accepts any signature",
+      "old": "== \"${line%% sig:*} sig:$sig\" ]]",
+      "new": "== \"${line%% sig:*} sig:\"* ]]"
+    },
+    {
+      "name": "log count may start with zero",
+      "old": "[[ $count =~ ^(0|[1-9][0-9]{0,8})$ ]]",
+      "new": "[[ $count =~ ^[0-9]{1,9}$ ]]"
+    },
+    {
+      "name": "log window may start with zero",
+      "old": "[[ $window =~ ^[1-9][0-9]{0,5}[smhd]$ ]]",
+      "new": "[[ $window =~ ^[0-9]{1,6}[smhd]$ ]]"
+    },
+    {
+      "name": "log level is free",
+      "old": "ck_wl_in \"$level\" \"$CK_WL_LEVELS\" || return 1",
+      "new": "true"
+    },
+    {
+      "name": "log name may be upper case",
+      "old": "ck_wl_name_ok() { local LC_ALL=C; [[ ${1-} =~ ^[a-z0-9][a-z0-9._-]{0,63}$ ]]; }",
+      "new": "ck_wl_name_ok() { local LC_ALL=C; [[ ${1-} =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]; }"
+    },
+    {
+      "name": "text not limited to printable ASCII",
+      "old": "[[ $t =~ ^[\\ -~]+$ ]]",
+      "new": "true"
+    },
+    {
+      "name": "watched repository not compared",
+      "old": "[[ ${want,,} == \"${owner,,}/${repo,,}\" ]] && return 0",
+      "new": "true && return 0"
+    },
+    {
+      "name": "watched repository compared with case",
+      "old": "[[ ${want,,} == \"${owner,,}/${repo,,}\" ]]",
+      "new": "[[ ${want} == \"${owner}/${repo}\" ]]"
+    },
+    {
+      "name": "line cap is 1000",
+      "old": "((${#line} <= 2000))",
+      "new": "((${#line} <= 1000))"
+    },
+    {
+      "name": "trusted logins expand globs",
+      "old": "read -ra list <<<\"$(ck_wl_trusted_authors)\"  # words only: no glob, no pathname expansion",
+      "new": "list=($(ck_wl_trusted_authors))"
+    },
+    {
+      "name": "MANNEQUIN is not an association",
+      "old": "FIRST_TIMER MANNEQUIN NONE",
+      "new": "FIRST_TIMER NONE"
+    },
+    {
+      "name": "source not tied to the url",
+      "old": "  [[ $src == \"$(ck_wl_label \"$url\")\" ]] || return 1\n",
+      "new": ""
+    },
+    {
+      "name": "label keeps . and _",
+      "old": "r=${r//[._]/-}",
+      "new": "r=$r"
+    },
+    {
+      "name": "label not lower-cased",
+      "old": "r=${r,,}",
+      "new": "r=$r"
+    },
+    {
+      "name": "repo argument may be a path",
+      "old": "{0,99})$ ]]\n}\n\n# ck_wl_watched",
+      "new": "{0,99}) ]]\n}\n\n# ck_wl_watched"
+    },
+    {
+      "name": "a text line omits its author",
+      "old": "    line+=\" author:$login\"\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "check passes a text line without re-deriving it",
+      "old": "    [[ $(ck_wl_repo_line \"${f[1]}\" \"${f[2]}\" \"${f[3]}\" \"${f[4]}\" \"${f[5]}\" \"$login\" \"$text\") == \"$line\" ]] &&",
+      "new": "    true &&"
+    }
+  ]
+}

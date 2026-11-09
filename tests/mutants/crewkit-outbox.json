@@ -1,0 +1,115 @@
+{
+  "target": "libexec/crewkit-outbox",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-pointer.bats"
+  ],
+  "mutants": [
+    {
+      "name": "outbox id not checked",
+      "old": "ck_pointer_id_ok \"$id\" || ck_die 65 \"the id must be a short lowercase prefix, a hyphen and a number (ob-12)\"",
+      "new": "true"
+    },
+    {
+      "name": "outbox owner flag not checked",
+      "old": "[[ $owner == yes || $owner == no ]] || ck_die 65 \"--owner is yes or no\"",
+      "new": "true"
+    },
+    {
+      "name": "outbox empty line allowed",
+      "old": "[[ -n $line ]] || ck_die 65 \"the line is empty\"",
+      "new": "true"
+    },
+    {
+      "name": "outbox second line allowed",
+      "old": "[[ $line != *$'\\n'* ]] || ck_die 65 \"the line must be one line\"",
+      "new": "true"
+    },
+    {
+      "name": "outbox line limit is 199",
+      "old": "((${#line} <= 200))",
+      "new": "((${#line} <= 199))"
+    },
+    {
+      "name": "outbox line limit is 201",
+      "old": "((${#line} <= 200))",
+      "new": "((${#line} <= 201))"
+    },
+    {
+      "name": "outbox control character allowed",
+      "old": "  [[ ! $line =~ [[:cntrl:]] ]]",
+      "new": "  true"
+    },
+    {
+      "name": "outbox url not checked",
+      "old": "if [[ -n $url ]]; then ck_pointer_url_ok \"$url\" || ck_die 78 \"nodes.hub.pointer_url is not a plain http(s) URL\"; fi",
+      "new": "true"
+    },
+    {
+      "name": "outbox token not checked",
+      "old": "if [[ -n $token ]]; then ck_pointer_token_ok \"$token\" || ck_die 78 \"nodes.hub.pointer_token is not a plain token\"; fi",
+      "new": "true"
+    },
+    {
+      "name": "outbox dry run writes",
+      "old": "if [[ ${CK_YES:-0} != 1 ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "outbox takes no lock",
+      "old": "ck_lock outbox\ntrap",
+      "new": "true\ntrap"
+    },
+    {
+      "name": "outbox duplicate id not looked for",
+      "old": "if [[ -z $have ]]; then",
+      "new": "if true; then"
+    },
+    {
+      "name": "outbox other line accepted",
+      "old": "elif [[ $have == \"owner:$owner $line\" ]]; then",
+      "new": "elif true; then"
+    },
+    {
+      "name": "outbox log is world-readable",
+      "old": "  chmod 600 \"$dir/$session.log\"",
+      "new": "  true"
+    },
+    {
+      "name": "outbox log dir is world-readable",
+      "old": "mkdir -p \"$dir\" && chmod 700 \"$dir\"",
+      "new": "mkdir -p \"$dir\""
+    },
+    {
+      "name": "outbox sends without a url",
+      "old": "if [[ -n $url && -n $token ]] && ck_pointer_send",
+      "new": "if [[ -n $token ]] && ck_pointer_send"
+    },
+    {
+      "name": "outbox sends without a token",
+      "old": "if [[ -n $url && -n $token ]] && ck_pointer_send",
+      "new": "if [[ -n $url ]] && ck_pointer_send"
+    },
+    {
+      "name": "outbox send failure is fatal",
+      "old": "  echo \"pointer not sent (the 10-minute poll will pick it up)\"",
+      "new": "  ck_die 1 \"pointer not sent\""
+    },
+    {
+      "name": "outbox sends something else",
+      "old": "body=\"$id owner:$owner\"",
+      "new": "body=\"$id owner:$owner $line\""
+    },
+    {
+      "name": "outbox default session changed",
+      "old": "owner='' session=default pos=()",
+      "new": "owner='' session=main pos=()"
+    },
+    {
+      "name": "outbox session not checked",
+      "old": "ck_name_ok \"$session\" || ck_die 64 \"bad --session name\"",
+      "new": "true"
+    }
+  ]
+}

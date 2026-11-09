@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Stub ntfy for the holder-tokens tests: a user database kept as text in $NTFY_AUTH_FILE (one
+# line per fact), calls logged in $PSTUB/ntfy.log (never the password). Supports:
+#   ntfy serve                             writes a header into the database, as a server start makes one
+#   ntfy user add [--role=user] NAME       (the password is $NTFY_PASSWORD, required)
+#   ntfy user del NAME                     (its tokens go with it)
+#   ntfy access NAME TOPIC write-only
+#   ntfy token add NAME                    prints "token tk_stubN created for user NAME"
+printf '%s\n' "$*" >> "$PSTUB/ntfy.log"
+echo "default_access ${NTFY_AUTH_DEFAULT_ACCESS-unset}" >> "$PSTUB/ntfy.env"
+db=${NTFY_AUTH_FILE:?ntfy stub: NTFY_AUTH_FILE is not set}
+touch "$db"
+[[ $1 == serve ]] && { echo ntfy-auth-db >> "$db"; exit 0; }
+case "$1 $2" in
+  "user add")
+    [[ -n ${NTFY_PASSWORD-} ]] || { echo "ntfy: password required" >&2; exit 1; }
+    echo "password $NTFY_PASSWORD" >> "$PSTUB/ntfy.env"
+    name=${*: -1}
+    grep -q "^user $name\$" "$db" && { echo "ntfy: user $name exists" >&2; exit 1; }
+    echo "user $name" >> "$db" ;;
+  "user del")
+    name=$3
+    grep -v -e "^user $name\$" -e "^access $name " -e "^token $name " "$db" > "$db.new" || true
+    mv "$db.new" "$db" ;;
+  "token add")
+    name=$3
+    grep -q "^user $name\$" "$db" || { echo "ntfy: no user $name" >&2; exit 1; }
+    k=$(($(cat "$PSTUB/ntfy.tokens" 2>/dev/null || echo 0) + 1))
+    echo "$k" > "$PSTUB/ntfy.tokens"
+    echo "token $name tk_stub$k" >> "$db"
+    echo "token tk_stub$k created for user $name" ;;
+  access*)
+    echo "access $2 $3 $4" >> "$db" ;;
+  *) echo "ntfy stub: unexpected: $*" >&2; exit 98 ;;
+esac

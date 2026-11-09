@@ -15,3 +15,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: lint-markdown
+        name: markdownlint (staged Markdown; needs npx)
+        entry: tools/lint-markdown.sh
+        language: script
+        pass_filenames: false
+        always_run: true

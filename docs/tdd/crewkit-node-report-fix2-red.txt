@@ -1,0 +1,4 @@
+# crewkit node report, fix round 2: a steps.sh that fails to load (RED: the report died silently), and two gaps closed with tests that pass on the existing code: a directory or FIFO for the state file is 78 (not a regular file, no hang), and the read-only-TMPDIR fallback scratch directory is removed.
+$ bats tests/crewkit-node-report.bats
+1..43
+not ok 41 a steps.sh that fails to load does not fail the report: boot_start absent, one fixed stderr line

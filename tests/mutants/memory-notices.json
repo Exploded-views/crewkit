@@ -1,0 +1,145 @@
+{
+  "target": "plugins/memory-notices/bin/changes-hook",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/memory-notices.bats"
+  ],
+  "mutants": [
+    {
+      "name": "timeout kill skipped",
+      "old": "    : > \"$flag\"\n    stop_group \"$cpid\"\n",
+      "new": "    : > \"$flag\"\n    true\n"
+    },
+    {
+      "name": "process group not killed (only the child's own pid)",
+      "old": "signal_group() { kill \"-$1\" -- \"-$2\" 2>/dev/null; }",
+      "new": "signal_group() { kill \"-$1\" -- \"$2\" 2>/dev/null; }"
+    },
+    {
+      "name": "KILL never sent after TERM",
+      "old": "  sleep 0.2 9>&-\n  signal_group KILL \"$1\"\n",
+      "new": "  sleep 0.2 9>&-\n"
+    },
+    {
+      "name": "lock not taken (flock)",
+      "old": "  flock -n 9 || exit 0\n",
+      "new": "  true\n"
+    },
+    {
+      "name": "lock not taken (mkdir)",
+      "old": "  if try_lock; then\n    have_lockd=1",
+      "new": "  if true; then\n    have_lockd=1"
+    },
+    {
+      "name": "stale mkdir lock never broken",
+      "old": "    [ \"$stale\" = 1 ] || exit 0\n",
+      "new": "    exit 0\n"
+    },
+    {
+      "name": "live mkdir lock broken",
+      "old": "        if ! kill -0 \"$holder\" 2>/dev/null; then\n",
+      "new": "        if true; then\n"
+    },
+    {
+      "name": "timeout logged every time",
+      "old": "  [ $((now - last)) -ge 60 ] || return 0\n",
+      "new": ""
+    },
+    {
+      "name": "stdin not passed to memsync",
+      "old": "2>\"$err\" 9>&- 8>&- &",
+      "new": "2>\"$err\" 9>&- 8>&- </dev/null &"
+    },
+    {
+      "name": "bad timeout value used as is",
+      "old": "case $ms in\n  '' | *[!0-9]* | ??????????*) ms=2000 ;;",
+      "new": "case $ms in\n  '') ms=2000 ;;"
+    },
+    {
+      "name": "timeout read as octal",
+      "old": "ms=$((10#$ms))",
+      "new": "ms=$((ms))"
+    },
+    {
+      "name": "timeout lower clamp removed",
+      "old": "    [ \"$ms\" -ge 100 ] || ms=100\n",
+      "new": ""
+    },
+    {
+      "name": "timeout upper clamp removed",
+      "old": "    [ \"$ms\" -le 5000 ] || ms=5000\n",
+      "new": ""
+    },
+    {
+      "name": "group not swept after a normal exit",
+      "old": "if signal_group TERM \"$cpid\"; then\n  sleep 0.2",
+      "new": "if false; then\n  sleep 0.2"
+    },
+    {
+      "name": "swept group never KILLed",
+      "old": "  sleep 0.2 9>&-\n  signal_group KILL \"$cpid\"\n",
+      "new": "  sleep 0.2 9>&-\n"
+    },
+    {
+      "name": "timer not stopped after a normal exit",
+      "old": "rc=$?\nsignal_group TERM \"$wpid\"\n",
+      "new": "rc=$?\n"
+    },
+    {
+      "name": "failing memsync's output passed through",
+      "old": "if [ -e \"$flag\" ] || [ \"$rc\" -ne 0 ]; then\n  if",
+      "new": "if [ -e \"$flag\" ]; then\n  if"
+    },
+    {
+      "name": "mkdir lock removed by a non-owner",
+      "old": "if [ \"$owner\" = \"$$\" ]; then rm -f",
+      "new": "if true; then rm -f"
+    },
+    {
+      "name": "old mkdir lock of a live pid never aged out",
+      "old": "*) if [ $((started_at - since)) -gt 10 ]; then stale=1; fi ;;",
+      "new": "*) : ;;"
+    },
+    {
+      "name": "timeout output not discarded",
+      "old": "if [ -e \"$flag\" ] || [ \"$rc\" -ne 0 ]; then\n  if",
+      "new": "if [ \"$rc\" -ne 0 ] && [ -z \"$flag\" ]; then\n  if"
+    },
+    {
+      "name": "saved stderr leaked to children",
+      "old": "9>&- 8>&- &\ncpid=$!",
+      "new": "9>&- &\ncpid=$!"
+    },
+    {
+      "name": "output files shared between runs",
+      "old": "out=$state/changes-hook.$$.out",
+      "new": "out=$state/changes-hook.out"
+    },
+    {
+      "name": "lock taken without reading back the owner",
+      "old": "    if [ \"$owner\" = \"$$\" ]; then return 0; fi\n",
+      "new": "    return 0\n"
+    },
+    {
+      "name": "moved-back lock nests into a new lock",
+      "old": "      rm -rf \"$broken\" \"$lockd/${broken##*/}\"\n",
+      "new": "      rm -rf \"$broken\"\n"
+    },
+    {
+      "name": "saved stderr leaked to the timer",
+      "old": ">/dev/null 2>&1 8>&- &",
+      "new": ">/dev/null 2>&1 &"
+    },
+    {
+      "name": "killed wrapper's files left behind by its timer",
+      "old": "  if ! kill -0 \"$$\" 2>/dev/null; then\n    rm -f \"$out\" \"$err\" \"$flag\"\n  fi\n",
+      "new": ""
+    },
+    {
+      "name": "kill grace sleep holds the lock",
+      "old": "  sleep 0.2 9>&-\n  signal_group KILL \"$1\"\n",
+      "new": "  sleep 0.2\n  signal_group KILL \"$1\"\n"
+    }
+  ]
+}

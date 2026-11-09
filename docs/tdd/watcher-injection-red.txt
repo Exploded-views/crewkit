@@ -1,0 +1,18 @@
+watcher injection tests: RED run, 2026-10-27, before public-watch and check-watcher-settings.py existed:
+
+1..15
+not ok 1 every line matches the content-free format, for every repository
+not ok 2 the label is the repository's lower-case name
+ok 3 no body text, payload or foreign URL reaches the output
+not ok 4 a title appears only for OWNER, MEMBER or COLLABORATOR items
+not ok 5 a trusted title is sanitized: no escapes or control characters, no URLs, no @, at most 15 words
+not ok 6 a trusted title that addresses agents is withheld
+not ok 7 URLs are built from the repository and number, never taken from the data
+not ok 8 an association outside GitHub's set reads UNKNOWN, and gets no title
+not ok 9 a malformed number or comment id is skipped, and counted on stderr only
+not ok 10 only GET reads: no write flag, no body field selected, a title fetched only for trusted items
+not ok 11 a since that isn't an ISO UTC time, or a repo that isn't owner/name, is usage (64)
+not ok 12 a gh failure fails the run (exit 1), never 'nothing new'
+not ok 13 the generated watcher settings allow no write tool, for every repository
+not ok 14 the settings check refuses each kind of write tool
+ok 15 a real watcher's settings (WATCHER_SETTINGS) pass the check # skip WATCHER_SETTINGS not set

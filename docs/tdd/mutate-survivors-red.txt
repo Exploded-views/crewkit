@@ -1,0 +1,22 @@
+# tools/mutate.py (issue 88): two mutants of tests/mutants/mutate.json that survived the Linux gate, and the tests that kill them now.
+
+Gate run, mutate.json in the Linux container under load:
+  SURVIVED     flush removed
+  SURVIVED     second signal not ignored during cleanup
+
+"second signal not ignored during cleanup": an equivalent mutant for the old test since fix round 3. The KILL after the
+2 s grace is in a finally, so a second signal during the grace still ends in KILL and cleanup with or without the
+SIG_IGN. The new test, test_the_first_signal_makes_every_handled_signal_ignored, checks the first signal leaves every
+handled signal ignored. On the mutant:
+  FAIL: test_the_first_signal_makes_every_handled_signal_ignored
+  FAILED (failures=1)
+
+"flush removed": a race in test_lines_are_flushed_when_stdout_is_a_file. Its hang slept 30 s and the test waited 30 s,
+so under load a late wake read the file after mutate.py had exited, and the exit flushed the line. Alone, the old test
+kills it (container: Ran 1 test in 30.123s, FAILED). The hang now sleeps 300 s (mutant_timeout 120), and the test checks
+mutate.py was still running when the line was read.
+
+After: 50 tests OK; mutate.py on the two mutants:
+  killed       flush removed  [by: tests.test_mutate.Mutate.test_lines_are_flushed_when_stdout_is_a_file]
+  killed       second signal not ignored during cleanup  [by: tests.test_mutate.Mutate.test_the_first_signal_makes_every_handled_signal_ignored]
+  all 2 mutants killed

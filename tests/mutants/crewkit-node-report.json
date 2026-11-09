@@ -1,0 +1,75 @@
+{
+  "target": "libexec/crewkit-node-report",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-node-report.bats"
+  ],
+  "mutants": [
+    {
+      "name": "agent filter bypassed (raw agent list passed through)",
+      "old": "nr_agents=$(ck_herdr_agents \"$nr_session\" --access) || ck_die 1 \"herdr: cannot list the agents\"",
+      "new": "nr_agents=$(_ck_herdr_list \"$nr_session\" agent) || ck_die 1 \"herdr: cannot list the agents\""
+    },
+    {
+      "name": "extra args accepted",
+      "old": "  *) nr_usage ;;",
+      "new": "  *) ;;"
+    },
+    {
+      "name": "role fallback removed",
+      "old": ".role = (.role // (if $lm | index($i) then \"lead\" elif $bm | index($i) then \"bridge\" else null end))",
+      "new": ".role = .role"
+    },
+    {
+      "name": "SSH_ORIGINAL_COMMAND honoured",
+      "old": "nr_session='' nr_given=0",
+      "new": "set -- \"$@\" ${SSH_ORIGINAL_COMMAND-}; nr_session='' nr_given=0"
+    },
+    {
+      "name": "node state not validated",
+      "old": "jq -s -e --arg s \"$nr_session\" \"length == 1 and (.[0] | $NR_STATE_CHECK)\" \"$nr_copy\" > /dev/null 2>&1 || ck_die 65 \"node state is invalid\"",
+      "new": ":"
+    },
+    {
+      "name": "stdout printed before a failure",
+      "old": "nr_agents='[]'",
+      "new": "nr_agents='[]'; printf '{\"partial\":true}\\n'"
+    },
+    {
+      "name": "access guessed as reader",
+      "old": "else \"unknown\" end))",
+      "new": "else \"reader\" end))"
+    },
+    {
+      "name": "own session listed in other_sessions",
+      "old": "select(.[0] != $session) | ",
+      "new": ""
+    },
+    {
+      "name": "multi-document state accepted",
+      "old": "\"length == 1 and (.[0] | $NR_STATE_CHECK)\"",
+      "new": "\"(.[0] | $NR_STATE_CHECK)\""
+    },
+    {
+      "name": "name fallback matches every agent",
+      "old": "if ($n | length) == 1 then $n else [] end end",
+      "new": "if ($n | length) >= 1 then $n else [] end end"
+    },
+    {
+      "name": "stdin of the caller kept",
+      "old": "exec < /dev/null",
+      "new": ":"
+    },
+    {
+      "name": "steps.sh output not silenced",
+      "old": "source \"$CK_ROOT/libexec/ck/steps.sh\" > /dev/null 2>&1",
+      "new": "source \"$CK_ROOT/libexec/ck/steps.sh\""
+    },
+    {
+      "name": "steps.sh failure kills the report",
+      "old": "echo \"crewkit: steps.sh failed to load\" >&2",
+      "new": "exit 1"
+    }
+  ]
+}

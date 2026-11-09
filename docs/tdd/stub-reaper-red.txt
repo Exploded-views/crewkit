@@ -1,0 +1,31 @@
+# RED: tests/stub-reaper.bats before tests/stub-reaper.bash exists (all 10 fail: the helper is sourced in setup)
+1..10
+not ok 1 a stub registers its pid, its run's pid and its start time
+not ok 2 a stub of a run that is dead is stopped, and its entry goes
+not ok 3 a stub of a run that is still alive is left running, and its entry stays
+not ok 4 a process that merely has the pid of an old stub is not stopped: the start time must match
+not ok 5 an entry whose process is already gone is dropped without an error
+not ok 6 live and dead entries together: only the dead run's stub is stopped
+not ok 7 no registry file is fine
+not ok 8 a line that is not an entry is dropped and stops nothing
+not ok 9 after a bats run is killed mid-run, the next run's reaper stops the stub it left behind
+not ok 10 crewkit-holder.bats registers its stubs and reaps in setup_file
+# Why: crewkit-holder.bats starts stub daemons (one ignores TERM and loops for ever) and stops them in teardown, which an aborted bats run never reaches. Ten stub daemons of earlier aborted runs were found still running.
+
+# RED (extension: the program under test too, after a stray crewkit-holder-run was found left by a mutation run's temp copy): tests/stub-reaper.bats against the reaper that only knew the stubs
+1..11
+not ok 10 stub_exec registers the process and becomes the command, which the reaper then stops
+not ok 11 crewkit-holder.bats registers its stubs and the holder itself, and reaps in setup_file
+# (tests 1 to 9 passed: the reaper itself was unchanged)
+
+# Found by the mutation runner (its unmutated baseline failed: "the unmutated suite fails"): test 9 found bats with tools/get-bats.sh, which needs a git checkout, and the runner's copy of the tree has none ("fatal: not a git repository"). It now uses the bats that runs the test ($BATS_LIBEXEC/bats). Passes in a plain `git archive` copy.
+
+# Mutants (first full run on the final code): 10 of 11 killed; "stub_exec runs the command as a child" SURVIVED, because the test looked for "sleep 120" in the process's command line, which a wrapper shell's arguments also contain. It now compares the executable's name (ps comm), which is `sleep` only if the shell became the command.
+
+# RED (review round 1, CHANGES REQUIRED: a registry planted in a shared temp directory could get another process of this user stopped): tests/stub-reaper.bats against the reaper that took any regular file
+1..15
+not ok 9 an entry whose owner is 0 or 1 is not a dead run: nothing is stopped, the entry goes
+not ok 11 a registry that is a symbolic link is ignored: its stubs are not stopped and its target is not rewritten
+not ok 12 a stub does not register through a symbolic link
+# (test 10, an entry for pid 0 or 1 is dropped without a signal, passed at once: ps shows nothing for pid 0 and the signal to pid 1 is refused; it pins that, it does not drive a change)
+# Not testable here: a registry owned by another user (a test would need a second account or root). The check that the file is ours is one test (-O) in the same condition as the symbolic-link check, which is tested.

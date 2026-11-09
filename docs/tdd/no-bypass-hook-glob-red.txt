@@ -1,0 +1,7 @@
+no-bypass hook, glob and brace names: RED run, 2026-10-27 (macOS), with the new BLOCKED cases in place and the
+hook at a205346, whose could-run-git check counted only a named git, $ and a backquote.
+
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='bash -c "/usr/bin/g?t push --n?-verify it\'s (x)"')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='bash -c "/usr/bin/{g,x}it push --n{o,}-verify it\'s (x)"')
+Ran 9 tests in 6.244s
+FAILED (failures=2)

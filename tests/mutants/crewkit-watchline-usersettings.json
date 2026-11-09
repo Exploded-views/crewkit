@@ -1,0 +1,15 @@
+{
+  "target": "lib/settings.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-watchline.bats"
+  ],
+  "mutants": [
+    {
+      "name": "watch.trusted_authors not user-only (a project could make a stranger's text pass the watcher check)",
+      "old": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'",
+      "new": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock'"
+    }
+  ]
+}

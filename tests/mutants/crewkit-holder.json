@@ -1,0 +1,225 @@
+{
+  "target": "libexec/crewkit-holder-run",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-holder.bats"
+  ],
+  "mutants": [
+    {
+      "name": "a missing secret only warns",
+      "old": "[[ -f $f ]] || fail 78 \"missing secret: $1\"",
+      "new": "[[ -f $f ]] || return 0"
+    },
+    {
+      "name": "a loose secret mode is accepted",
+      "old": "[[ $m == 600 || $m == 400 ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "poll interval ignored",
+      "old": "next=$((SECONDS + poll))",
+      "new": "next=0"
+    },
+    {
+      "name": "pointer line not validated",
+      "old": "[[ $line =~ $name_re ]]",
+      "new": "[[ -n $line ]]"
+    },
+    {
+      "name": "a pointer pulls every node",
+      "old": "pull \"$line\"",
+      "new": "pull"
+    },
+    {
+      "name": "a dead daemon is ignored",
+      "old": "kill -0 \"$p\" 2>/dev/null ||",
+      "new": "true ||"
+    },
+    {
+      "name": "ntfy reads the mounted secret in place",
+      "old": "install -m 600 \"$secrets/ntfy_auth\" \"$state/ntfy/auth.db\"",
+      "new": ":"
+    },
+    {
+      "name": "tailscale up failure ignored",
+      "old": "fail 1 \"tailscale up failed\"",
+      "new": "true"
+    },
+    {
+      "name": "daemons left running on exit",
+      "old": "trap cleanup EXIT",
+      "new": "trap : EXIT"
+    },
+    {
+      "name": "report keys not handed to crewkit",
+      "old": "CK_REPORT_KEYS=$secrets/report_keys ",
+      "new": ""
+    },
+    {
+      "name": "sync clone failure ignored",
+      "old": "fail 1 \"sync repo unreachable (clone failed)\"",
+      "new": "true"
+    },
+    {
+      "name": "auth key passed in argv",
+      "old": "--authkey \"file:$secrets/ts_authkey\"",
+      "new": "--authkey \"$(cat \"$secrets/ts_authkey\")\""
+    },
+    {
+      "name": "deploy key not used",
+      "old": "ssh_opts=(-i \"$secrets/deploy_key\" -o",
+      "new": "ssh_opts=(-o"
+    },
+    {
+      "name": "userspace networking dropped",
+      "old": "tailscaled --tun=userspace-networking ",
+      "new": "tailscaled "
+    },
+    {
+      "name": "tailscale up unbounded",
+      "old": "--timeout=60s ",
+      "new": ""
+    },
+    {
+      "name": "host key trusted on first use",
+      "old": "-o StrictHostKeyChecking=yes",
+      "new": "-o StrictHostKeyChecking=accept-new"
+    },
+    {
+      "name": "known_hosts not required",
+      "old": "((!uses_ssh)) || check_secret known_hosts",
+      "new": ":"
+    },
+    {
+      "name": "registry id unchecked",
+      "old": "[[ $have_id == \"$CK_REGISTRY_ID\" ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "restart does not fetch",
+      "old": "git -C \"$reg\" fetch -q --prune origin ||",
+      "new": "true ||"
+    },
+    {
+      "name": "diverged local work dropped without a branch",
+      "old": "git -C \"$reg\" branch -f \"holder-aside-$(date +%s)\" HEAD",
+      "new": ":"
+    },
+    {
+      "name": "half-written clone kept",
+      "old": "rm -rf \"$reg\" # a clone that was killed half-way",
+      "new": ":"
+    },
+    {
+      "name": "remote not validated",
+      "old": "[[ $CK_REGISTRY_REMOTE =~ $remote_re ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "state path not validated",
+      "old": "[[ $state =~ $path_re ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "secrets path not validated",
+      "old": "[[ $secrets =~ $path_re ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "status table goes to the log",
+      "old": "status --pull \"$@\" >/dev/null ||",
+      "new": "status --pull \"$@\" ||"
+    },
+    {
+      "name": "a TERM-ignoring daemon is waited for forever",
+      "old": "for p in \"${pids[@]}\"; do kill -KILL \"$p\" 2>/dev/null || true; done",
+      "new": ":"
+    },
+    {
+      "name": "unreadable secret reported as missing",
+      "old": "fail 78 \"secret $1 is not readable by uid $(id -u) (own it, or run the container with --user)\"",
+      "new": "fail 78 \"missing secret: $1\""
+    },
+    {
+      "name": "node host block names the wrong host",
+      "old": "\"${h##*@}\" \"$sock\"",
+      "new": "\"$h\" \"$sock\""
+    },
+    {
+      "name": "node ssh key check is not strict",
+      "old": "StrictHostKeyChecking yes\\n",
+      "new": "StrictHostKeyChecking accept-new\\n"
+    },
+    {
+      "name": "node ssh not routed through tailscale",
+      "old": "ProxyCommand tailscale --socket=%s nc %%h %%p",
+      "new": "ProxyCommand none --socket=%s nc %%h %%p"
+    },
+    {
+      "name": "node known_hosts file not used",
+      "old": "UserKnownHostsFile %s\\n  StrictHostKeyChecking yes",
+      "new": "StrictHostKeyChecking yes"
+    },
+    {
+      "name": "nodes secret lines not validated",
+      "old": "[[ -z ${extra-} && $n =~ $node_name_re && ${i-} =~ $node_id_re && ${h-} =~ $node_host_re ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "node settings not written",
+      "old": "printf 'nodes.%s.node_id: %s\\nnodes.%s.host: %s\\n' \"${node_names[i]}\" \"${node_ids[i]}\" \"${node_names[i]}\" \"${node_hosts[i]}\"",
+      "new": ":"
+    },
+    {
+      "name": "nodes_known_hosts not required",
+      "old": "check_secret nodes_known_hosts",
+      "new": ":"
+    },
+    {
+      "name": "nodes secret not required",
+      "old": "check_secret nodes\n",
+      "new": ":\n"
+    },
+    {
+      "name": "only ssh:// is checked strictly",
+      "old": "local_remote_re='^(/|file://|https://)'",
+      "new": "local_remote_re='^(/|file://|https://|[a-z]|[A-Za-z0-9._-]+@)'"
+    },
+    {
+      "name": "restart ignores a changed remote",
+      "old": "git -C \"$reg\" remote set-url origin \"$CK_REGISTRY_REMOTE\"",
+      "new": ":"
+    },
+    {
+      "name": "stale lock blocks the restart",
+      "old": "rm -f \"$reg/.git/index.lock\"",
+      "new": ":"
+    },
+    {
+      "name": "deleted upstream branches linger",
+      "old": "fetch -q --prune origin",
+      "new": "fetch -q origin"
+    },
+    {
+      "name": "no upstream is a bare git error",
+      "old": "fail 1 \"the sync repo clone has no upstream branch; remove $reg and restart\"",
+      "new": "true"
+    },
+    {
+      "name": "a last node line without a newline is skipped",
+      "old": "while read -r n i h extra || [[ -n ${n-} ]]; do",
+      "new": "while read -r n i h extra; do"
+    },
+    {
+      "name": "a node may be listed twice",
+      "old": "[[ $seen != \"$n\" ]] || fail 78 \"the nodes secret lists $n twice\"",
+      "new": ":"
+    },
+    {
+      "name": "a node without a report key is accepted",
+      "old": "[[ -f $secrets/report_keys/$i ]] ||",
+      "new": "true ||"
+    }
+  ]
+}

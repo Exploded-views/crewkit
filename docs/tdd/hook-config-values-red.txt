@@ -1,0 +1,46 @@
+No-bypass hook, config set mode, and the gate script's summary: RED runs before the fixes (2026-10-28).
+
+1. Review of the hook at the previous commit: three bypasses, each proven against real git. The
+BLOCKED cases first, run against the hook as it was (python3 -m unittest tests.test_no_bypass_hook):
+
+FAIL (command='git config core.hooksPath ""')
+FAIL (command="git config core.hooksPath ''")
+FAIL (command='git config --global core.hooksPath ""')
+FAIL (command="git config --add core.hooksPath ''")
+FAIL (command="git config --replace-all core.hooksPath ''")
+FAIL (command='git config core.hooksPath -')
+FAIL (command='git config core.hooksPath -x')
+FAIL (command='git config core.hooksPath --local /x')
+FAIL (command='git config core.hooksPath --type=path /x')
+FAIL (command='git config core.hooksPath -- /x')
+FAIL (command='git config --global core.hooksPath --')
+FAIL (command="git config include.path ''")
+FAIL (command='git config include.path -x')
+FAIL (command='git config --comment --get core.hooksPath /x')
+FAIL (command='git config -f --get core.hooksPath /x')
+FAIL (command='git config --file --get-all core.hooksPath /x')
+FAIL (command='git config --blob --list core.hooksPath /x')
+FAIL (command='git config --default --get core.hooksPath /x')
+FAIL (command='git config --type --get core.hooksPath /x')
+Ran 9 tests ... FAILED (failures=19)
+
+An empty or dash-led word after the key is a value (the hook asked for a word that wasn't empty
+or dash-led), and a read flag that is the value of --comment, -f/--file, --blob, --default or
+--type is no read. After the fix: OK. Reads with a value-taking option in front
+(--default x --get ..., --file F --get ..., --type bool --get ...), a bare read, and a key followed
+by a redirection or a separator still pass. Three mutants survived the first set of tests and each
+got a case: a redirection read as a value (git config --remove-section >/dev/null core), a
+value-taking option's state kept across commands (git config --comment ; git config core.hooksPath /x).
+All 94 mutants of the spec killed.
+
+2. The gate script's second review round, tests/linux-gate.bats before the changes:
+
+not ok 1 mutants-only: the container gets the flag and the specs, the head line is first, the native checks stay   (no mode line)
+not ok 6 mutants-only: a summary with a mode line is not a full run, so it is no base
+not ok 7 mutants-only: the base can't be this run's own summary.txt (by resolved path), which would be overwritten
+not ok 8 mutants-only: a base path starting with - or holding = is a path, not an option
+
+3. The bare-wait scan, widened (tests/*.bats and *.bash, subdirectories too). The previous regex,
+run over these lines, missed all of: "wait # c", "wait 2>/dev/null", "wait | cat", "(wait)",
+"x=$(wait)", "wait -n". The new scan catches each and a one-line "@test ... { wait; }", and passes
+wait "$pid", wait $p1 $p2, wait $!, prose in a test's name and in comments.

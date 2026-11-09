@@ -1,0 +1,46 @@
+# pane-ask bridge-only guard: the new tests against the unguarded pane-ask (before the change)
+# tests/pane-ask.bats, GNU tools; only the failing tests are listed
+FAIL: a project's settings can't change nodes.*: its lead list, host and bridge are ignored
+FAIL: no target and no bridge is a usage error
+FAIL: a caller that is not this host's bridge is refused (45), nothing called
+FAIL: no HERDR_PANE_ID is a caller that is not the bridge (45)
+FAIL: --read from a caller that is not the bridge is refused (45) too
+FAIL: a caller whose pane resolves to some other name is refused (45)
+FAIL: a target that is not the remote node's configured bridge is refused (45)
+FAIL: a node with no bridge configured has no target a send may name (45)
+FAIL: a host given with --host that is no configured node is refused (45)
+FAIL: --machine is matched to its node, and its bridge is the target
+FAIL: the local host as the node is refused (45), by node, host and machine
+FAIL: the local host by its machine profile is refused (45)
+FAIL: a lab node that shares this host's ssh target is the local host (45)
+FAIL: no nodes.self is a config error (78) naming it, nothing called
+FAIL: this host's node with no bridge is a config error (78)
+FAIL: a refusal never prints the pane's contents
+FAIL: a daemon can't send to a local pane that is not the bridge (45)
+FAIL: a session in a pane can't send to this host's bridge (45): sessions use SendMessage
+FAIL: a caller with the pane variable unset reaches only the local bridge, no other local pane
+FAIL: cross-host stays bridge to bridge: a daemon is refused on another node (45)
+
+20 of 85 tests failed
+
+# Fix round 1: the tests updated to nodes.<name>.this_host, key-type matching, a hermetic local herdr
+# and the new cases, run against pane-ask as committed before the round
+FAIL: a node with no bridge configured is a config error (78) naming nodes.<name>.bridge
+FAIL: a local node needs neither host nor machine: a daemon runs the local herdr, no ssh
+FAIL: a node marked local is the local host whatever its host string is (45)
+FAIL: a node sharing this host's ssh target is not local unless it says so
+FAIL: no node marked local is a config error (78), nothing called
+FAIL: this host's node with no bridge is a config error (78)
+FAIL: several local nodes: any of their bridges may send; HERDR_SESSION picks the node by nodes.<name>.session
+FAIL: a pane id that looks like an option is refused (45), nothing called
+FAIL: a caller lookup that fails says herdr couldn't resolve the pane (45)
+76 of 90 tests failed (all settings now use nodes.<name>.this_host, which the old script ignores)
+
+# Fix round 2: the new tests against pane-ask as committed before the round (7 of 96 fail; the rest were already green)
+FAIL: several local nodes: HERDR_SESSION must match a node's session, and only that node's bridge may send (45 otherwise)
+FAIL: an absent HERDR_SESSION is the session named default
+FAIL: a local target runs the local herdr in its own session: two local nodes share a bridge name
+FAIL: a local target with no session, among several local nodes, is ambiguous (78) naming nodes.<name>.session
+FAIL: a bad session name is a config error (78)
+FAIL: nodes.<name>.this_host is true or false: anything else is a config error (78)
+FAIL: a node marked this_host that also has a host or machine is a contradiction (78)

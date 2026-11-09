@@ -1,0 +1,30 @@
+{
+  "target": "docker/crewkit-kcov.Dockerfile",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/coverage-sh.bats"
+  ],
+  "mutants": [
+    {
+      "name": "apt update without retries",
+      "old": "apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update",
+      "new": "apt-get -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update"
+    },
+    {
+      "name": "apt install without retries",
+      "old": "apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install",
+      "new": "apt-get -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install"
+    },
+    {
+      "name": "apt update without a timeout",
+      "old": "apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update",
+      "new": "apt-get -o Acquire::Retries=5 -o Acquire::https::Timeout=30 update"
+    },
+    {
+      "name": "apt install without a timeout",
+      "old": "apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install",
+      "new": "apt-get -o Acquire::Retries=5 -o Acquire::https::Timeout=30 install"
+    }
+  ]
+}

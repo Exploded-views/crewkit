@@ -73,9 +73,19 @@ child() { "$@" 9>&-; }
 
 get() { child "$here/lane-state" get "$1" 2>/dev/null; }
 
-# 1. merge pause
-if [[ $(get mergePaused) == true ]]; then
-  if ! child jq -e --argjson pr "$pr" 'map(tostring) | index($pr | tostring) != null' <<<"$(get mergePauseExempt)" >/dev/null; then
+# 1. merge pause. Exempt only on positive proof: mergePauseExempt must read as a JSON list that
+# holds the PR. Empty (jq 1.6 exits 0 on `-e` with empty input, 1.7+ exits 4), null, a non-list,
+# unparseable text or a failed read: not exempt. A failed read of mergePaused itself fails closed
+# too; an absent key is not a failure (lane-state get answers its default, false).
+paused=$(child "$here/lane-state" get mergePaused 2>/dev/null) \
+  || say "STATE-UNREADABLE (can't read mergePaused from $campaign/state.json; not landing)" 39
+if [[ $paused == true ]]; then
+  exempt=$(child "$here/lane-state" get mergePauseExempt 2>/dev/null) || exempt=""
+  if [[ -z ${exempt//[[:space:]]/} ]] || ! child jq -e 'type == "array"' <<<"$exempt" >/dev/null 2>&1; then
+    echo "lane-land: mergePauseExempt unreadable or not a list; not exempt" >&2
+    say "MERGE-PAUSED ($(get mergePausedNote))" 35
+  fi
+  if ! child jq -e --argjson pr "$pr" 'map(tostring) | index($pr | tostring) != null' <<<"$exempt" >/dev/null; then
     say "MERGE-PAUSED ($(get mergePausedNote))" 35
   fi
 fi

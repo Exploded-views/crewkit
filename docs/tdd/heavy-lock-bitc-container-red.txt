@@ -1,0 +1,29 @@
+# RED: tests/test_heavy_lock.py BitcHold in the Linux gate image, on the merged branch before the tests were made hermetic
+# Run (a passwd file `t:x:<uid>:<gid>::/home/t:/bin/sh`, an empty scratch dir for /home/t; --init so that python has parent pid 1, which matches the gate, where the gate's shell is pid 1 and python is its child):
+#   docker run --rm --init --network none --user "$(id -u):$(id -g)" -v <passwd>:/etc/passwd:ro \
+#     -v <worktree>:/src -v <scratch dir>:/home/t -w /src/tests crewkit-linux python3 -m unittest test_heavy_lock
+# 3 failures, all test defects that depend on the environment, not code bugs:
+FAIL: test_a_holder_that_is_the_parent_passes
+AssertionError: None is not true
+  (os.getppid() is pid 1 in the container; ancestors() stops before pid 1 by design)
+FAIL: test_the_parent_chain_is_read_with_one_ps_call
+AssertionError: 1 not found in [6]
+  (the same: the runner's parent is pid 1)
+FAIL: test_with_the_test_switch_on_BITC_DIR_reaches_bitc
+AssertionError: "['--state-dir', '/scratch/state', '--config'" not found in "(['--state-dir', '/scratch/state', 'status', '--json'], '/scratch/state')\n"
+  (--config was passed only when the passwd home had a bitc.toml; this Mac has one, the container has none)
+Ran 124 tests in 3.389s
+FAILED (failures=3, skipped=2)
+# Without --init the runner itself is pid 1, which breaks every in-process holder test (10 failures). The gate does not
+# pass --init; its shell is pid 1 and python is its child, the same shape the --init reproduction gives.
+
+# After the tests were made hermetic (a child process checks its parent; a fake home with or without
+# bitc.toml; BITC_* stripped from the outer environment), on both platforms, the only failures are the two
+# new-ruling tests (an absent host file refuses the hold), which this record's code change then turns green:
+FAIL: test_an_absent_config_refuses_the_hold_and_says_why
+FAIL: test_a_missing_config_refuses_the_hold_before_bitc_runs_and_says_why
+Ran 129 tests in 8.2s (macOS) / 127 in 3.5s (container)
+FAILED (failures=2)
+
+# After the change (an absent host file refuses the hold): macOS 179 tests OK (test_heavy_lock + test_mutate);
+# Linux gate image, the same command with test_mutate added: 179 tests OK (skipped=2: the real-bitc test and one other).

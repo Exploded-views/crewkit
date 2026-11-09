@@ -1,0 +1,317 @@
+{
+  "target": "tools/heavy_lock.py",
+  "suite": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_mutate",
+    "tests.test_heavy_lock"
+  ],
+  "mutants": [
+    {
+      "name": "the CLI always passes",
+      "old": "    if proof():\n        sys.exit(0)",
+      "new": "    if True:\n        sys.exit(0)"
+    },
+    {
+      "name": "HOME taken for the home",
+      "old": "        return pwd.getpwuid(os.getuid()).pw_dir",
+      "new": "        return os.path.expanduser(\"~\")"
+    },
+    {
+      "name": "an inherited descriptor not required",
+      "old": "    if not fds:\n        return None\n    if probe(lock, fcntl.LOCK_EX, ident) is not False:",
+      "new": "    if probe(lock, fcntl.LOCK_EX, ident) is not False:"
+    },
+    {
+      "name": "a free lock accepted",
+      "old": "    if probe(lock, fcntl.LOCK_EX, ident) is not False:   # free (or unreadable): nobody holds it\n        return None\n",
+      "new": "    if probe(lock, fcntl.LOCK_EX, ident) is None:\n        return None\n"
+    },
+    {
+      "name": "slot not required when shared",
+      "old": "    if shared:   # a shared holder: a crew-heavy run, which also holds a slot",
+      "new": "    if False:   # a shared holder: a crew-heavy run, which also holds a slot"
+    },
+    {
+      "name": "a free slot accepted",
+      "old": "probe(path, fcntl.LOCK_EX, sid) is False",
+      "new": "probe(path, fcntl.LOCK_EX, sid) is not None"
+    },
+    {
+      "name": "slot from another directory accepted",
+      "old": "            if inherited(sid) and probe(path, fcntl.LOCK_EX, sid) is False:\n                break\n",
+      "new": "            if any(os.path.basename(os.path.realpath(f\"/proc/self/fd/{fd}\")) == slot and probe(os.path.realpath(f\"/proc/self/fd/{fd}\"), fcntl.LOCK_EX, identity(os.path.realpath(f\"/proc/self/fd/{fd}\"))) is False for fd in map(int, os.listdir(\"/proc/self/fd\"))):\n                break\n"
+    },
+    {
+      "name": "EX attempted on a shared fd",
+      "old": "    shared = probe(lock, fcntl.LOCK_SH, ident)\n",
+      "new": "    shared = probe(lock, fcntl.LOCK_SH, ident)\n    try:\n        fcntl.flock(fds[0], fcntl.LOCK_EX | fcntl.LOCK_NB)\n    except OSError:\n        pass\n"
+    },
+    {
+      "name": "flock on inherited fd",
+      "old": "    fds = inherited(ident)\n    if not fds:\n        return None\n",
+      "new": "    fds = inherited(ident)\n    if not fds:\n        return None\n    try:\n        fcntl.flock(fds[0], fcntl.LOCK_EX | fcntl.LOCK_NB)\n    except OSError:\n        pass\n"
+    },
+    {
+      "name": "probe lock not released",
+      "old": "        fcntl.flock(fd, fcntl.LOCK_UN)\n        return True\n    finally:\n        os.close(fd)\n",
+      "new": "        return True\n    finally:\n        pass\n"
+    },
+    {
+      "name": "env override without test flag",
+      "old": "    if os.environ.get(TEST_FLAG) == \"1\" and os.environ.get(\"CREWKIT_HEAVY_LOCK\"):",
+      "new": "    if os.environ.get(\"CREWKIT_HEAVY_LOCK\"):"
+    },
+    {
+      "name": "setting disables guard",
+      "old": "        if not (default and os.path.isdir(os.path.dirname(default))) and not configured:",
+      "new": "        if not (default and os.path.isdir(os.path.dirname(default))) or configured:"
+    },
+    {
+      "name": "no crew state dir enforced anyway",
+      "old": "            return UNGUARDED\n",
+      "new": "            pass\n"
+    },
+    {
+      "name": "environment passed to the settings lookup",
+      "old": "    env = {\"HOME\": h, \"PATH\": \"/usr/bin:/bin\", \"LC_ALL\": \"C\"}   # nothing from the caller's environment",
+      "new": "    env = dict(os.environ, HOME=h)"
+    },
+    {
+      "name": "bash found on PATH",
+      "old": "        r = subprocess.run([BASH, \"--noprofile\"",
+      "new": "        r = subprocess.run([\"bash\", \"--noprofile\""
+    },
+    {
+      "name": "a failed settings lookup goes unguarded",
+      "old": "        if err:\n            WHY = err\n            return None\n",
+      "new": "        if err:\n            return UNGUARDED\n"
+    },
+    {
+      "name": "a timed-out settings lookup is no setting",
+      "old": "        return None, \"the heavy_lock settings lookup failed: timed out\"",
+      "new": "        return None, None"
+    },
+    {
+      "name": "the last output line not taken",
+      "old": "    value = lines[-1].strip()",
+      "new": "    value = lines[0].strip()"
+    },
+    {
+      "name": "a non-absolute setting accepted",
+      "old": "    if not os.path.isabs(value):\n        return None, f\"the heavy_lock settings lookup failed: the value is not an absolute path: {value}\"\n",
+      "new": ""
+    },
+    {
+      "name": "a symlink or FIFO as the setting accepted",
+      "old": "    if not stat.S_ISREG(st.st_mode):\n        return None, f\"the heavy_lock settings lookup failed: the value is not a regular file (or is a symlink): {value}\"\n",
+      "new": ""
+    },
+    {
+      "name": "the refusal names the lock checked wrongly",
+      "old": "    if CHECKED:\n        lock = CHECKED\n    elif WHY:",
+      "new": "    if False:\n        lock = CHECKED\n    elif WHY:"
+    },
+    {
+      "name": "bash run with profile and rc files",
+      "old": "\"--noprofile\", \"--norc\", ",
+      "new": ""
+    },
+    {
+      "name": "owner/mode check skipped",
+      "old": "    if any(v.st_uid != os.getuid() or v.st_mode & stat.S_IWOTH for v in views):",
+      "new": "    if False:"
+    },
+    {
+      "name": "bash run without the key",
+      "old": "    if not has_key:   # a superset",
+      "new": "    if False:   # a superset"
+    },
+    {
+      "name": "lstat view skipped",
+      "old": "        views = (os.lstat(user_file), os.stat(user_file))",
+      "new": "        views = (os.stat(user_file), os.stat(user_file))"
+    },
+    {
+      "name": "only slot1/slot2 accepted",
+      "old": "SLOT_NAME = re.compile(r\"heavy\\.slot[1-9][0-9]{0,2}\")",
+      "new": "SLOT_NAME = re.compile(r\"heavy\\.slot[12]\")"
+    },
+    {
+      "name": "slot regex not anchored",
+      "old": "SLOT_NAME.fullmatch(n)",
+      "new": "SLOT_NAME.search(n)"
+    },
+    {
+      "name": "slot0 accepted",
+      "old": "[1-9][0-9]{0,2}\")",
+      "new": "[0-9]{1,3}\")"
+    },
+    {
+      "name": "a symlinked slot accepted",
+      "old": "            if stat.S_ISREG(os.lstat(path).st_mode):",
+      "new": "            if stat.S_ISREG(os.stat(path).st_mode):"
+    },
+    {
+      "name": "bitc: the ancestry check dropped (any holder pid with the job id passes)",
+      "old": "        if type(pid) is int and pid in chain:",
+      "new": "        if type(pid) is int:"
+    },
+    {
+      "name": "bitc: only this process, not its parents, counts as the holder",
+      "old": "    while pid > 1 and pid not in chain:",
+      "new": "    while pid > 1 and pid not in chain and len(chain) < 1:"
+    },
+    {
+      "name": "bitc: the pool check dropped (a light holder passes)",
+      "old": "            if p[\"name\"] not in BITC_POOLS:\n                continue\n",
+      "new": ""
+    },
+    {
+      "name": "bitc: the job match dropped (any holder of ours passes)",
+      "old": "if hd[\"job\"] == job and",
+      "new": "if True and"
+    },
+    {
+      "name": "bitc: any bitc error counted as a pass",
+      "old": "return bitc_refusal(\"bitc status could not be read\")",
+      "new": "return f\"bitc job {job}\""
+    },
+    {
+      "name": "bitc: a non-zero exit not refused",
+      "old": "        if r.returncode != 0:\n            return bitc_refusal(f\"bitc status exited {r.returncode}\")\n",
+      "new": ""
+    },
+    {
+      "name": "bitc: BITC_JOB format not checked",
+      "old": "if not BITC_JOB.fullmatch(job):",
+      "new": "if False:"
+    },
+    {
+      "name": "bitc: no timeout on bitc status",
+      "old": "timeout=BITC_TIMEOUT, stdin=subprocess.DEVNULL, env=run_env)",
+      "new": "stdin=subprocess.DEVNULL, env=run_env)"
+    },
+    {
+      "name": "bitc: BITC and BITC_DIR honoured without the test switch",
+      "old": "    if test_switch():   # the tests only",
+      "new": "    if True:   # the tests only"
+    },
+    {
+      "name": "bitc: the binary taken from BITC or PATH instead of the pinned path",
+      "old": "        binary, why = pinned_bitc(h)",
+      "new": "        binary, why = os.environ.get(\"BITC\") or \"bitc\", None"
+    },
+    {
+      "name": "bitc: binary owner and mode not checked",
+      "old": " and st.st_uid == os.getuid() and not st.st_mode & (stat.S_IWGRP | stat.S_IWOTH)",
+      "new": ""
+    },
+    {
+      "name": "bitc: a symlinked binary followed",
+      "old": "        st = os.lstat(path)\n    except OSError:\n        return False\n    return bool(kind",
+      "new": "        st = os.stat(path)\n    except OSError:\n        return False\n    return bool(kind"
+    },
+    {
+      "name": "bitc: binary directory and its parent not checked",
+      "old": "    for p, kind in ((path, stat.S_ISREG), (os.path.dirname(path), stat.S_ISDIR),\n                    (os.path.dirname(os.path.dirname(path)), stat.S_ISDIR)):",
+      "new": "    for p, kind in ((path, stat.S_ISREG),):"
+    },
+    {
+      "name": "bitc: the binary's hash not compared",
+      "old": "    if digest != want.lower():",
+      "new": "    if False:"
+    },
+    {
+      "name": "bitc: environment not scrubbed",
+      "old": "run_env = {\"HOME\": h, \"PATH\": \"/usr/bin:/bin\", \"LC_ALL\": \"C\"}",
+      "new": "run_env = None"
+    },
+    {
+      "name": "bitc: global flags after the subcommand",
+      "old": "return [binary, \"--state-dir\", state, \"--config\", config, \"status\", \"--json\"]",
+      "new": "return [binary, \"status\", \"--json\", \"--state-dir\", state, \"--config\", config]"
+    },
+    {
+      "name": "bitc: a foreign BITC_DIR accepted",
+      "old": "if given and os.path.realpath(given) != os.path.realpath(state):",
+      "new": "if False:"
+    },
+    {
+      "name": "bitc: slot not checked against the pool size",
+      "old": " and type(hd[\"slot\"]) is int and 1 <= hd[\"slot\"] <= size]",
+      "new": "]"
+    },
+    {
+      "name": "bitc: a missing record accepted",
+      "old": "    if want is None:\n        return None, f\"install.sh's record (~/.local/share/crewkit/bitc.sha256) is missing, unreadable or malformed; {REINSTALL}\"\n",
+      "new": "    if want is None:\n        want = hashlib.sha256(open(path, \"rb\").read()).hexdigest()\n"
+    },
+    {
+      "name": "bitc: the record's owner and mode not checked",
+      "old": "    if not owned_private(path, stat.S_ISREG):\n        return None\n    try:\n        with open(path, encoding=\"ascii\")",
+      "new": "    try:\n        with open(path, encoding=\"ascii\")"
+    },
+    {
+      "name": "bitc: an unreadable parent chain counted as a pass",
+      "old": "return bitc_refusal(\"the parent chain could not be read\")",
+      "new": "return f\"bitc job {job}\""
+    },
+    {
+      "name": "bitc: a hash read error counted as a pass",
+      "old": "        return None, f\"{path} can't be read ({e.strerror})\"",
+      "new": "        return path, None"
+    },
+    {
+      "name": "bitc: a binary open error counted as a pass",
+      "old": "        return None, f\"{path} can't be opened ({e.strerror})\"",
+      "new": "        return path, None"
+    },
+    {
+      "name": "bitc: a record read error counted as a pass",
+      "old": "    except (OSError, ValueError):\n        return None\n    return text.strip()",
+      "new": "    except (OSError, ValueError):\n        return hashlib.sha256(open(os.path.join(h, \".local\", \"bin\", \"bitc\"), \"rb\").read()).hexdigest()\n    return text.strip()"
+    },
+    {
+      "name": "bitc: BITC_CONFIG honoured without the test switch",
+      "old": "        given = os.environ.get(\"BITC_DIR\")",
+      "new": "        config = os.environ.get(\"BITC_CONFIG\") or config\n        given = os.environ.get(\"BITC_DIR\")"
+    },
+    {
+      "name": "bitc: RecursionError from json not caught",
+      "old": "TypeError, RecursionError, subprocess",
+      "new": "TypeError, subprocess"
+    },
+    {
+      "name": "bitc: the pool size read before the pool name filter",
+      "old": "            if p[\"name\"] not in BITC_POOLS:\n                continue\n            size = p[\"slots\"]",
+      "new": "            size = p[\"slots\"]\n            if p[\"name\"] not in BITC_POOLS:\n                continue"
+    },
+    {
+      "name": "bitc: an unsafe path not named in the refusal",
+      "old": "return None, f\"{p} is not yours,",
+      "new": "return None, f\"the bitc binary is not yours,"
+    },
+    {
+      "name": "bitc: an absent config not refused (omit and continue)",
+      "old": "        if not os.path.lexists(config):\n            return bitc_refusal(f\"bitc's host file {config} does not exist (bitc 0.1.4 then lists no pools or \"\n                                f\"exits 78): install and configure bitc first (the heavy-pool cutover)\")\n",
+      "new": "        if False:\n            pass\n"
+    },
+    {
+      "name": "bitc: --config dropped from the argv",
+      "old": "return [binary, \"--state-dir\", state, \"--config\", config, \"status\", \"--json\"]",
+      "new": "return [binary, \"--state-dir\", state, \"status\", \"--json\"]"
+    },
+    {
+      "name": "bitc: an unsafe config not refused",
+      "old": "        if not owned_private(config, stat.S_ISREG):   # bitc reads",
+      "new": "        if False:   # bitc reads"
+    },
+    {
+      "name": "bitc: the config checks skipped entirely",
+      "old": "    if check_config:   # decided here, not from bitc's stderr",
+      "new": "    if False:"
+    }
+  ]
+}

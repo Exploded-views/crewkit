@@ -1,0 +1,55 @@
+{
+  "target": "bin/crewkit",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit.bats"
+  ],
+  "mutants": [
+    {
+      "name": "verb regex removed",
+      "old": "  [[ $1 =~ ^[a-z]+(-[a-z]+)*$ ]]",
+      "new": "  true"
+    },
+    {
+      "name": "cd HOME removed",
+      "old": "cd \"$HOME\" || { echo \"crewkit: cannot cd to \\$HOME\" >&2; exit 1; }",
+      "new": "true"
+    },
+    {
+      "name": "bash check skipped",
+      "old": "if [ \"$ck_major\" -lt 4 ] || { [ \"$ck_major\" -eq 4 ] && [ \"$ck_minor\" -lt 4 ]; }; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "bash 4.3 accepted",
+      "old": "[ \"$ck_minor\" -lt 4 ]; }; then",
+      "new": "[ \"$ck_minor\" -lt 3 ]; }; then"
+    },
+    {
+      "name": "link to the command not followed",
+      "old": "while [ -L \"$ck_self\" ]; do",
+      "new": "while false; do"
+    },
+    {
+      "name": "one-word node-report allowed",
+      "old": "case $1 in *-*) ck_usage ;; esac   # node-report is `node report`, never a one-word verb",
+      "new": "true"
+    },
+    {
+      "name": "CK_BASH_VERSION can loosen the check",
+      "old": "  if [ \"$((10#${BASH_REMATCH[1]}))\" -lt \"$ck_major\" ] ||",
+      "new": "  if [ \"$((10#${BASH_REMATCH[1]}))\" -gt \"$ck_major\" ] ||"
+    },
+    {
+      "name": "CK_YES inherited by verbs",
+      "old": "unset CK_YES\n",
+      "new": "true\n"
+    },
+    {
+      "name": "verb run by its shebang, not the checked bash",
+      "old": "exec \"$BASH\" \"$CK_ROOT/libexec/$script\" \"$@\"",
+      "new": "exec \"$CK_ROOT/libexec/$script\" \"$@\""
+    }
+  ]
+}

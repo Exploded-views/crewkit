@@ -1,0 +1,15 @@
+# RED: the tightened .sha256 tests (tests/install.bats) against a deliberately broken install.sh
+# copy that runs the .sha256 line check after safe_extract and check_version (but before install).
+# The tests now assert the refusal text and that no tar or herdr call happened first.
+# Run: INSTALL_SH=<broken copy> .cache/bats-v1.14.0/bin/bats -f '\.sha256 file' tests/install.bats
+# (macOS with GNU sed/grep/cut/mktemp/install first on PATH.)
+--- tightened tests, broken copy
+1..3
+not ok 1 herdr: a .sha256 file that lists another hash is refused before anything is unpacked or run
+not ok 2 herdr: a .sha256 file that does not name the asset is refused
+ok 3 herdr: a missing .sha256 file is refused
+--- the previous tests, same broken copy (all passed: the gap the review found)
+1..3
+ok 1 herdr: a .sha256 file that lists another hash is refused before anything is unpacked or run
+ok 2 herdr: a .sha256 file that does not name the asset is refused
+ok 3 herdr: a missing .sha256 file is refused

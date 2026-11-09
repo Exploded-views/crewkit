@@ -1,0 +1,7 @@
+the heavy-lock check for mutate.sh and mutate-check-workflows.py: RED run, 2026-10-27:
+
+FAIL: test_mutate_check_workflows_refuses_without_the_lock_and_runs_nothing (tests.test_heavy_lock.HeavyLock.test_mutate_check_workflows_refuses_without_the_lock_and_runs_nothing)
+FAIL: test_mutate_sh_refuses_without_the_lock_and_runs_nothing (tests.test_heavy_lock.HeavyLock.test_mutate_sh_refuses_without_the_lock_and_runs_nothing)
+FAIL: test_the_check_passes_with_the_lock_and_refuses_without (tests.test_heavy_lock.HeavyLock.test_the_check_passes_with_the_lock_and_refuses_without)
+Ran 3 tests in 20.430s
+FAILED (failures=3)

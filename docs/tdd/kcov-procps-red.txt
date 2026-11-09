@@ -1,0 +1,13 @@
+coverage.sh ps preflight: RED run, 2026-10-28, <repo>/.cache/bats-v1.14.0/bin/bats <repo>/tests/coverage-sh.bats with the new tests and the stub changes, before the preflight existed in <repo>/tools/coverage.sh:
+
+1..8
+ok 1 every suite but docs and settings runs under kcov
+ok 2 it covers install.sh and the plugins' scripts, with no network
+ok 3 KCOV_IMAGE replaces the pinned image; the default is the digest
+ok 4 --pinned-image prints the digest-pinned image and runs nothing
+ok 5 it prints each covered file's percentage
+not ok 6 an image with ps passes the preflight, which runs ps's lookup in that image
+not ok 7 an image without ps is refused before any suite runs
+ok 8 a short run fails loudly, with bats's warning in the output
+
+Test 8 passes already: the script fails loudly on a short run today, and the test pins it.

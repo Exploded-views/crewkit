@@ -1,0 +1,111 @@
+# tools/coverage-py.sh --shard K/N and --combine N: the new tests against the unsharded script (and tests/run.sh passing the tests directory after any file arguments), before the code.
+
+1..19
+ok 1 COVERAGE_VENV is required (exit 2)
+ok 2 a venv whose site-packages is outside it is refused, and nothing is written
+not ok 3 --shard rejects 0/2, 3/2, 1/0, 17/17 and junk with exit 2 and a usage line
+# (in test file tests/coverage-py-sh.bats, line 90)
+#   `[ "$status" -eq 2 ] || { echo "--shard '$bad' gave $status"; return 1; }' failed
+# --shard '0/2' gave 0
+not ok 4 --shard accepts 1/1 and 16/16
+# (in test file tests/coverage-py-sh.bats, line 110)
+#   `[ -f "$R/.cache/coverage-py/shard-1/done" ]' failed
+not ok 5 the shards' bats files cover every file exactly once, in sorted order, i % N == K-1
+# (in test file tests/coverage-py-sh.bats, line 122)
+#   `all+=$(tr '\n' ' ' < "$R/.cache/coverage-py/shard-$k/bats.args")$'\n'' failed
+# <repo>/tests/coverage-py-sh.bats: line 122: <tmp>/test/5/repo/.cache/coverage-py/shard-1/bats.args: No such file or directory
+not ok 6 a shard passes its files only: not the whole tests directory
+# (in test file tests/coverage-py-sh.bats, line 133)
+#   `[ "$(cat "$R/.cache/coverage-py/shard-2/bats.args")" = "b.bats" ]' failed
+# cat: <tmp>/test/6/repo/.cache/coverage-py/shard-2/bats.args: No such file or directory
+not ok 7 the bats files are sorted bytewise, not by the locale
+# (in test file tests/coverage-py-sh.bats, line 140)
+#   `[ "$(cat "$R/.cache/coverage-py/shard-1/bats.args")" = "B.bats" ]' failed
+# cat: <tmp>/test/7/repo/.cache/coverage-py/shard-1/bats.args: No such file or directory
+not ok 8 a shard with no bats files runs none, still passes and is marked complete
+# (in test file tests/coverage-py-sh.bats, line 148)
+#   `[ -f "$R/.cache/coverage-py/shard-3/done" ]' failed
+not ok 9 the Python unit tests run in shard 1 only
+# (in test file tests/coverage-py-sh.bats, line 155)
+#   `[ -f "$R/.cache/coverage-py/shard-1/unittest.ran" ]' failed
+not ok 10 a shard has its own coveragerc and data file, writes no report, and installs the hook
+# (in test file tests/coverage-py-sh.bats, line 165)
+#   `grep -qxF "data_file = $d/.coverage" "$d/coveragerc"' failed with status 2
+# grep: <tmp>/test/10/repo/.cache/coverage-py/shard-2/coveragerc: No such file or directory
+not ok 11 a shard leaves the other shards' directories alone, and replaces only its own
+# (in test file tests/coverage-py-sh.bats, line 182)
+#   `[ -f "$R/.cache/coverage-py/shard-2/done" ]' failed
+not ok 12 a failing shard exits 1, names its log, and leaves no completion marker
+# (in test file tests/coverage-py-sh.bats, line 190)
+#   `[ -f "$R/.cache/coverage-py/shard-1/done" ]' failed
+not ok 13 --combine refuses a missing shard, naming it, and writes no report
+# (in test file tests/coverage-py-sh.bats, line 205)
+#   `[ "$status" -eq 1 ]' failed
+not ok 14 --combine refuses a shard without its completion marker
+# (in test file tests/coverage-py-sh.bats, line 214)
+#   `rm "$R/.cache/coverage-py/shard-2/done"' failed
+# rm: cannot remove '<tmp>/test/14/repo/.cache/coverage-py/shard-2/done': No such file or directory
+not ok 15 --combine refuses when no shard has run
+# (in test file tests/coverage-py-sh.bats, line 224)
+#   `[ "$status" -eq 1 ]' failed
+not ok 16 --combine merges every shard's data and writes report.json as an unsharded run does
+# (in test file tests/coverage-py-sh.bats, line 238)
+#   `grep -F -- "combine" "$BATS_TEST_TMPDIR/py.log" | grep -q -- "--keep"' failed
+ok 17 --combine needs only the shards it names
+ok 18 no arguments: the unsharded run is unchanged (one directory, every suite, a report)
+not ok 19 tests/run.sh: bats files given as arguments replace the tests directory, flags do not
+# (in test file tests/coverage-py-sh.bats, line 281)
+#   `[ "$(cat "$bin")" = "--abort' failed
+
+# Fix round 1: the done marker records N, the commit and the shard's files; combine checks them and the shard's data files; the partition for every N; run.sh ignores a flag value ending in .bats. Against the 2e33033 script:
+
+1..29
+ok 1 COVERAGE_VENV is required (exit 2)
+ok 2 a venv whose site-packages is outside it is refused, and nothing is written
+ok 3 --shard rejects 0/2, 3/2, 1/0, 17/17 and junk with exit 2 and a usage line
+ok 4 --shard accepts 1/1 and 16/16
+ok 5 the shards' bats files cover every file exactly once, in sorted order, i % N == K-1
+ok 6 a shard passes its files only: not the whole tests directory
+ok 7 the bats files are sorted bytewise, not by the locale
+ok 8 a shard with no bats files runs none, still passes and is marked complete
+ok 9 the Python unit tests run in shard 1 only
+ok 10 a shard has its own coveragerc and data file, writes no report, and installs the hook
+ok 11 a shard leaves the other shards' directories alone, and replaces only its own
+ok 12 a failing shard exits 1, names its log, and leaves no completion marker
+ok 13 --combine refuses a missing shard, naming it, and writes no report
+ok 14 --combine refuses a shard without its completion marker
+ok 15 --combine refuses when no shard has run
+ok 16 --combine merges every shard's data and writes report.json as an unsharded run does
+ok 17 --combine needs only the shards it names
+ok 18 no arguments: the unsharded run is unchanged (one directory, every suite, a report)
+ok 19 tests/run.sh: bats files given as arguments replace the tests directory, flags do not
+not ok 20 --combine refuses shards left from a run with a different N
+# (in test file tests/coverage-py-sh.bats, line 301)
+#   `[ "$status" -eq 1 ]' failed
+not ok 21 --combine refuses shards from different commits
+# (in test file tests/coverage-py-sh.bats, line 313)
+#   `[ "$status" -eq 1 ]' failed
+not ok 22 --combine refuses shards that all ran at an older commit than this checkout
+# (in test file tests/coverage-py-sh.bats, line 323)
+#   `[ "$status" -eq 1 ]' failed
+not ok 23 --combine refuses when a bats file ran in no shard
+# (in test file tests/coverage-py-sh.bats, line 333)
+#   `[ "$status" -eq 1 ]' failed
+not ok 24 --combine refuses when a shard ran a file this checkout does not have
+# (in test file tests/coverage-py-sh.bats, line 344)
+#   `[ "$status" -eq 1 ]' failed
+not ok 25 --combine refuses a bats file that ran in two shards
+# (in test file tests/coverage-py-sh.bats, line 354)
+#   `[ "$status" -eq 1 ]' failed
+not ok 26 --combine refuses a shard directory holding data from another run
+# (in test file tests/coverage-py-sh.bats, line 363)
+#   `[ "$status" -eq 1 ]' failed
+not ok 27 --combine refuses a shard whose recorded data file is gone
+# (in test file tests/coverage-py-sh.bats, line 373)
+#   `[ "$status" -eq 1 ]' failed
+not ok 28 the partition covers every file once for every N, at several file counts
+# (in test file tests/coverage-py-sh.bats, line 394)
+#   `[ "$(printf '%s' "$seen" | grep -c .)" -eq "$count" ]' failed
+not ok 29 tests/run.sh: a flag value ending in .bats is not a file
+# (in test file tests/coverage-py-sh.bats, line 412)
+#   `[ "$(cat "$bin")" = "--filter' failed

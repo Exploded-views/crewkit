@@ -1,0 +1,20 @@
+{
+  "target": "plugins/crew-nodes/lib/settings.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/pane-ask.bats"
+  ],
+  "mutants": [
+    {
+      "name": "nodes.* takes CREWKIT_* (a session could point pane-ask at another host)",
+      "old": "branch_prefix.batch nodes.*\n  registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'\nCREW_ENV_OK='checkout",
+      "new": "branch_prefix.batch\n  registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'\nCREW_ENV_OK='nodes.* checkout"
+    },
+    {
+      "name": "nodes.* not user-only (a project could blank the lead list or redirect the host)",
+      "old": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'",
+      "new": "CREW_USER_ONLY='registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'"
+    }
+  ]
+}

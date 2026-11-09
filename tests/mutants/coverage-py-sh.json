@@ -1,0 +1,75 @@
+{
+  "target": "tools/coverage-py.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/coverage-py-sh.bats"
+  ],
+  "mutants": [
+    {
+      "name": "the planner is asked for shard 1 whatever K is",
+      "old": "files \"$shard_k/$shard_n\")",
+      "new": "files \"1/$shard_n\")"
+    },
+    {
+      "name": "unit tests in every shard",
+      "old": "if [[ $mode == all || $shard_k -eq 1 ]]; then",
+      "new": "if true; then"
+    },
+    {
+      "name": "combine accepts a missing shard",
+      "old": "    if [[ ! -f $m ]]; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "a shard deletes others' data",
+      "old": "  rm -rf \"$dir\"",
+      "new": "  rm -rf \"$out\""
+    },
+    {
+      "name": "N not checked",
+      "old": "[[ $(marker_field \"$m\" n) == \"$shard_n\" && $(marker_field \"$m\" k) == \"$k\" ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "sha not checked",
+      "old": "[[ $(marker_field \"$m\" sha) == \"$head\" ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "union not checked against tests/*.bats",
+      "old": "[[ $(printf '%s' \"$all\" | grep . | LC_ALL=C sort || true) == \"$expected\" ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "foreign data accepted",
+      "old": "[[ $listed == \"$actual\" ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "bats files sorted by the locale",
+      "old": "for f in \"$root\"/tests/*.bats; do if [[ -e $f ]]; then echo \"${f##*/}\"; fi; done | LC_ALL=C sort",
+      "new": "for f in \"$root\"/tests/*.bats; do if [[ -e $f ]]; then echo \"${f##*/}\"; fi; done | sort"
+    },
+    {
+      "name": "combine deletes the shards' data",
+      "old": "report --keep ${data[@]+\"${data[@]}\"}",
+      "new": "report ${data[@]+\"${data[@]}\"}"
+    },
+    {
+      "name": "root from git, not from the script",
+      "old": "root=$(cd \"$(dirname \"$0\")/..\" && pwd -P)",
+      "new": "root=$(git rev-parse --show-toplevel)"
+    },
+    {
+      "name": "shard/combine without a checkout not refused",
+      "old": "  git -C \"$root\" rev-parse HEAD > /dev/null 2>&1 ||\n    { echo \"coverage-py: --shard/--combine need a git checkout\" >&2; exit 2; }\n",
+      "new": "  true\n"
+    },
+    {
+      "name": "a bats file the planner names is dropped",
+      "old": "[[ -z $f ]] || bats_files+=(\"$root/tests/$f\")",
+      "new": "[[ -z $f ]] || [[ $f == a.bats ]] || bats_files+=(\"$root/tests/$f\")"
+    }
+  ]
+}

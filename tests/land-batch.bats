@@ -295,7 +295,7 @@ verdict() { # verdict PR SHA [AUTHOR]: an independent verdict comment on PR nami
   mkpr 11
   hold_lock 4
   CREWKIT_LOCK_WAIT_SECONDS=1 lb 11
-  wait
+  wait "$HOLD_PID"
   [ "$status" -eq 75 ]
   [ -z "$(merged)" ]
   [[ $output == *"landing lock busy"* ]]
@@ -745,7 +745,7 @@ campaign() { # campaign [JQ_FILTER]: the shared fixture (tests/fixtures/campaign
   mkpr 11
   hold_lock 4
   CREWKIT_LOCK_WAIT_SECONDS=60 run "$BIN/land-batch" --yes --lock-wait 1 11
-  wait
+  wait "$HOLD_PID"
   [ "$status" -eq 75 ]
 }
 

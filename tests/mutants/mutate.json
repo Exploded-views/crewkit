@@ -1,0 +1,191 @@
+{
+  "target": "tools/mutate.py",
+  "suite": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_mutate"
+  ],
+  "mutants": [
+    {
+      "name": "no heavy-lock check",
+      "old": "    if not heavy_lock.proof():",
+      "new": "    if False:"
+    },
+    {
+      "name": "a symlinked target accepted",
+      "old": "    if (root / spec[\"target\"]).is_symlink():",
+      "new": "    if False:"
+    },
+    {
+      "name": "links copied as plain files",
+      "old": "            if src.is_symlink():",
+      "new": "            if False:"
+    },
+    {
+      "name": "an absolute link into the repo copied verbatim",
+      "old": "        return str(dest / inside)",
+      "new": "        return link"
+    },
+    {
+      "name": "an absolute link out of the tree accepted",
+      "old": "inside = os.path.relpath(to, real_root)\n        if inside == os.pardir or inside.startswith(os.pardir + os.sep):",
+      "new": "inside = os.path.relpath(to, real_root)\n        if False:"
+    },
+    {
+      "name": "a relative link out of the tree accepted",
+      "old": "inside = os.path.normpath(os.path.join(os.path.dirname(rel), link))\n    if inside == os.pardir or inside.startswith(os.pardir + os.sep):",
+      "new": "inside = os.path.normpath(os.path.join(os.path.dirname(rel), link))\n    if False:"
+    },
+    {
+      "name": "the short BATS_TEST_TIMEOUT isn't exported (a hung mutant waits out the file's own watchdog)",
+      "old": "            env = dict(os.environ, BATS_TEST_TIMEOUT=test_timeout)\n",
+      "new": "            env = dict(os.environ)\n"
+    },
+    {
+      "name": "MUTATE_BATS_TEST_TIMEOUT ignored (always 45)",
+      "old": "    test_timeout = os.environ.get(\"MUTATE_BATS_TEST_TIMEOUT\", \"45\")\n",
+      "new": "    test_timeout = \"45\"\n"
+    },
+    {
+      "name": "a bad MUTATE_BATS_TEST_TIMEOUT accepted",
+      "old": "        return 2\n    for sig in (",
+      "new": "        pass\n    for sig in ("
+    },
+    {
+      "name": "timeout counted as killed",
+      "old": "            rc, output, timed_out = suite(limit)\n",
+      "new": "            rc, output, timed_out = suite(limit)\n            timed_out = False\n"
+    },
+    {
+      "name": "process group not killed on timeout",
+      "old": "    pgid = proc.pid\n    gone = False\n",
+      "new": "    proc.kill()\n    return\n    pgid = proc.pid\n    gone = False\n"
+    },
+    {
+      "name": "group not sent KILL after TERM is ignored",
+      "old": "        if not gone:\n            try:\n                os.killpg(pgid, signal.SIGKILL)\n            except (ProcessLookupError, PermissionError):\n                pass\n\n\ndef sweep_group",
+      "new": "        pass\n\n\ndef sweep_group"
+    },
+    {
+      "name": "flush removed",
+      "old": "    print(*args, flush=True)",
+      "new": "    print(*args)"
+    },
+    {
+      "name": "first failing test not stripped of control characters",
+      "old": "unicodedata.category(c)[0] != \"C\"\n",
+      "new": "True\n"
+    },
+    {
+      "name": "first failing test not capped",
+      "old": "    return name[:BY_CAP].strip()",
+      "new": "    return name.strip()"
+    },
+    {
+      "name": "default mutant_timeout not taken from the baseline",
+      "old": "max(60, math.ceil(3 * baseline_secs)) + 2 * int(test_timeout))\n\n\ndef valid",
+      "new": "60 + 2 * int(test_timeout))\n\n\ndef valid"
+    },
+    {
+      "name": "bad mutant_timeout accepted",
+      "old": "    if \"mutant_timeout\" in spec and not valid_mutant_timeout(spec[\"mutant_timeout\"]):",
+      "new": "    if False:"
+    },
+    {
+      "name": "TERM handler removed",
+      "old": "    for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):",
+      "new": "    for sig in (signal.SIGHUP, signal.SIGINT):"
+    },
+    {
+      "name": "HUP handler removed",
+      "old": "    for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):",
+      "new": "    for sig in (signal.SIGTERM, signal.SIGINT):"
+    },
+    {
+      "name": "suite group not ended when mutate.py is interrupted",
+      "old": "        if proc is not None:\n            stop_group(proc)\n        if held",
+      "new": "        if held"
+    },
+    {
+      "name": "baseline unbounded",
+      "old": "        rc, _, timed_out = suite(MAX_MUTANT_TIMEOUT)",
+      "new": "        rc, _, timed_out = suite()"
+    },
+    {
+      "name": "default limit ignores the bats watchdog",
+      "old": "+ 2 * int(test_timeout)",
+      "new": ""
+    },
+    {
+      "name": "leftovers of a finished suite not swept",
+      "old": "        sweep_group(proc.pid)\n",
+      "new": ""
+    },
+    {
+      "name": "mutant_timeout has no upper bound",
+      "old": "            and 1 <= value <= MAX_MUTANT_TIMEOUT)",
+      "new": "            and 1 <= value)"
+    },
+    {
+      "name": "first failing test keeps escape sequences",
+      "old": "    name = _ANSI.sub(\"\", name)\n",
+      "new": ""
+    },
+    {
+      "name": "first failing test keeps non-Cc other characters",
+      "old": "unicodedata.category(c)[0] != \"C\"",
+      "new": "unicodedata.category(c) != \"Cc\""
+    },
+    {
+      "name": "first failing test keeps line and paragraph separators",
+      "old": "\n                   and unicodedata.category(c) not in (\"Zl\", \"Zp\"))",
+      "new": ")"
+    },
+    {
+      "name": "INT handler removed",
+      "old": "    for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):",
+      "new": "    for sig in (signal.SIGTERM, signal.SIGHUP):"
+    },
+    {
+      "name": "second signal not ignored during cleanup",
+      "old": "    for sig in _HANDLED:\n        signal.signal(sig, signal.SIG_IGN)\n",
+      "new": "    for sig in _HANDLED:\n        pass\n"
+    },
+    {
+      "name": "signal during suite start not honoured",
+      "old": "        if _STATE[\"pending\"] is not None:",
+      "new": "        if False:"
+    },
+    {
+      "name": "signal ignored at startup overridden",
+      "old": "        if signal.getsignal(sig) is not signal.SIG_IGN:",
+      "new": "        if True:"
+    },
+    {
+      "name": "default limit not capped",
+      "old": "    return min(MAX_MUTANT_TIMEOUT, max(60, math.ceil(3 * baseline_secs)) + 2 * int(test_timeout))",
+      "new": "    return max(60, math.ceil(3 * baseline_secs)) + 2 * int(test_timeout)"
+    },
+    {
+      "name": "MUTATE_BATS_TEST_TIMEOUT upper bound removed",
+      "old": "            and 1 <= int(test_timeout) <= MAX_MUTANT_TIMEOUT):",
+      "new": "            and 1 <= int(test_timeout)):"
+    },
+    {
+      "name": "spec error doesn't name the range",
+      "old": "seconds, 1 to {MAX_MUTANT_TIMEOUT}\")\n        return 1",
+      "new": "seconds, at least 1\")\n        return 1"
+    },
+    {
+      "name": "KILL after the grace not in a finally",
+      "old": "    finally:\n        if not gone:\n            try:\n                os.killpg(pgid, signal.SIGKILL)",
+      "new": "    except BaseException:\n        raise\n    else:\n        if not gone:\n            try:\n                os.killpg(pgid, signal.SIGKILL)"
+    },
+    {
+      "name": "held signal lost when the start fails",
+      "old": "        if held is not None:\n            sys.exit(128 + held)",
+      "new": "        if False:\n            sys.exit(128 + held)"
+    }
+  ]
+}

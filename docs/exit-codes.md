@@ -45,7 +45,59 @@ Shared by `lane-land` (crew-lanes) and `land-batch` (crew-orchestrator).
 
 | Code | Tool | Meaning |
 |---|---|---|
-| 3 | `install.sh` | claude-memsync's bootstrap paused: it needs a human. Do what it says, then re-run. |
+| 3 | `install.sh` | Paused: it needs a human. Either claude-memsync's bootstrap paused (do what it says, then re-run), or the memsync step paused before its bootstrap because no bootstrap flags were given after `--` (the other steps still ran; the note gives the command to finish). |
+
+## Push gate
+
+`push-gate/push-gate.sh` ([push-gate.md](push-gate.md)).
+
+| Code | Command | Meaning |
+|---|---|---|
+| 1 | `hook` | BLOCKED: a finding, or a gate error (fails closed). Fix the commits; only the owner may bypass. |
+| 1 | `install` | Refused: someone else's global `core.hooksPath` is set, or the copy failed. Nothing replaced. |
+| 1 | `--doctor`, `gate-check` | At least one check is FAIL. |
+| 2 | `--doctor`, `gate-check` | Their own error (settings unreadable, the root can't be listed, not a repository). |
+| 78 | `install` | An owner step comes first (the denylist, or the verified gitleaks); nothing changed. |
+| 1 | `doctor-watch` | A FAIL (`--doctor` exited 1 with FAIL lines); a failed notify keeps this code. |
+| 2 | `doctor-watch` | The doctor's own error: any `--doctor` exit but 0, or 1 with FAIL lines (2, a crash's 127, a signal's 137 or 143). Never read as ok. |
+| 78 | `schedule` | The gate isn't installed yet (`install --yes` first). |
+
+## crewkit
+
+The `crewkit` command and its verbs ([crewkit.md](crewkit.md)). A verb that changes state is a dry
+run without `--yes`.
+
+| Code | Verdict | Meaning |
+|---|---|---|
+| 3 | PAUSED | Owner-only steps were printed and not run (folder trust, secrets, the push-gate denylist, ACLs). Do them, then run the same command again. |
+| 42 | DRILL-FAILED | The end-of-join drill failed in one of its parts (the report pull, the lead pane's status, or the page to the owner); the message names the part. |
+| 43 | NOT-A-TERMINAL | `crewkit open` attaches to a node's lead pane, which is for the owner at a terminal; it ran without one and attached nothing. |
+| 44 | TOKEN-REFUSED | A join token was refused: unknown, already used, expired, or issued for another node. |
+| 45 | NOT-A-BRIDGE | A herdr pane prompt that the transport rule doesn't allow (`pane-ask` is the sender; `crewkit ask` hands its message to the local hub-bridge, which runs `pane-ask`): the caller isn't this host's bridge, the target isn't the other node's configured bridge, or the target is on this host. Across hosts only bridge prompts bridge; on one host sessions use `SendMessage`. A guard rail, not enforcement. |
+| 64 | USAGE | A missing or malformed argument, or no such verb. |
+| 75 | BUSY | A lock stayed held for `lock_wait_seconds`, or a host limit (`limits.*`) refused the work. Wait, then run the same command again. |
+| 78 | CONFIG | A required setting is missing or invalid, or the machine isn't set up for the verb. One case: bash older than 4.4 (on macOS: `brew install bash`, and put it first on `PATH`). |
+
+## Node tools
+
+| Code | Tool | Meaning |
+|---|---|---|
+| 1 | `pane-ask` | An ssh or herdr call failed. If the send itself failed, the message may still have been delivered: read the target before sending again. |
+| 40 | `pane-ask` | REPLY-TIMEOUT: herdr's wait ended with `timeout` or `agent_prompt_stalled`. The message may have been delivered: never send it again blindly; read it later (`pane-ask --read`). |
+| 41 | `pane-ask` | BLOCKED: the turn ended at an approval or question dialog, which waits for the owner. The screen is printed. |
+| 45 | `pane-ask` | NOT-A-BRIDGE: the caller isn't this host's bridge (the `bridge` of a node marked `nodes.<name>.this_host`), the target isn't the node's configured bridge (`nodes.<name>.bridge`), or the target is on this host (sessions there use `SendMessage`; the one exception is a watch daemon, a caller with no `HERDR_PANE_ID`, sending to this host's bridge). Applies to `--read` too. Nothing was called on the node. This is a guard rail, not enforcement: a caller can claim another pane or unset the variable; real enforcement waits on a herdr feature. |
+| 65 | `pane-ask` | The target is one of the node's lead panes (`nodes.<name>.lead_pane`); nothing sent. |
+| 75 | `pane-ask` | The agent was busy or blocked and stayed so; nothing sent. |
+
+## Watcher tools
+
+| Code | Tool | Meaning |
+|---|---|---|
+| 1 | `public-watch` | A gh call failed; nothing was printed for that run (never "nothing new"). |
+| 1 | `tools/check-watcher-settings.py` | The settings allow a write tool, or miss a required deny. |
+| 2 | `tools/check-watcher-settings.py` | Usage, or the settings file can't be read. |
+| 0 | `watchline.py check` | Done, whatever it dropped (the count is on stderr). |
+| 2 | `watchline.py check` | Its input can't be read. |
 
 ## Lane tools
 

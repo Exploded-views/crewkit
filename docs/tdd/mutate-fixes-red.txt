@@ -1,0 +1,84 @@
+# tools/mutate.py (issue 88): the per-mutant timeout, flushed lines and first-failing-test tests before the code. The hang tests sleep 30 s on the old code, so it ran the hung suite to its end and counted no TIMEOUT; the ten helper tests fail on the missing functions.
+
+   6 AttributeError: module 'mutate' has no attribute 'default_mutant_timeout'
+   4 AttributeError: module 'mutate' has no attribute 'first_failing'
+   1 Ran 30 tests in 96.532s
+   1 FAILED (failures=14, errors=10)
+   1 FAIL: test_lines_are_flushed_when_stdout_is_a_file
+   1 FAIL: test_a_timeout_run_fails_even_when_every_other_mutant_is_killed
+   1 FAIL: test_a_mutant_that_outlasts_mutant_timeout_is_a_timeout_not_a_kill
+   1 FAIL: test_a_kill_line_names_the_unittest_test_that_caught_it
+   1 FAIL: test_a_kill_line_names_the_bats_test_that_caught_it
+   1 FAIL: test_a_hostile_test_name_cannot_inject_into_the_kill_line
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=True)
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=None)
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=2.0)
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=1.5)
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=0)
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=[3])
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad='30')
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=-5)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=95)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=95.2)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=20)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=20.1)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=19.9)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=0.2)
+   1 ERROR: test_first_failing_test_is_sanitised_and_capped
+   1 ERROR: test_first_failing_test_is_none_when_unparseable
+   1 ERROR: test_first_failing_test_from_unittest
+   1 ERROR: test_first_failing_test_from_bats_tap
+
+# Fix round 1 (Opus review of 80f299f): SIGTERM/SIGHUP left the suite running and the tree behind, the default limit ignored the bats watchdog, [by:] kept Unicode format/separator characters and ANSI sequences, a finished suite's leftovers were not ended, no upper bound on mutant_timeout, the baseline was unbounded.
+
+   1 Ran 40 tests in 87.861s
+   1 FAILED (failures=20, errors=8)
+   1 FAIL: test_two_tests_that_hit_the_bats_watchdog_are_a_kill_not_a_timeout
+   1 FAIL: test_the_largest_mutant_timeout_is_accepted
+   1 FAIL: test_first_failing_test_is_sanitised_and_capped
+   1 FAIL: test_every_unicode_other_and_separator_character_is_removed (ch='0xe000')
+   1 FAIL: test_every_unicode_other_and_separator_character_is_removed (ch='0xd800')
+   1 FAIL: test_every_unicode_other_and_separator_character_is_removed (ch='0x378')
+   1 FAIL: test_every_unicode_other_and_separator_character_is_removed (ch='0x2066')
+   1 FAIL: test_every_unicode_other_and_separator_character_is_removed (ch='0x202e')
+   1 FAIL: test_every_unicode_other_and_separator_character_is_removed (ch='0x2029')
+   1 FAIL: test_every_unicode_other_and_separator_character_is_removed (ch='0x2028')
+   1 FAIL: test_every_unicode_other_and_separator_character_is_removed (ch='0x200b')
+   1 FAIL: test_ansi_sequences_are_removed_from_a_test_name
+   1 FAIL: test_a_signal_during_a_hung_mutant_ends_the_suite_and_removes_the_tree (sig='SIGTERM')
+   1 FAIL: test_a_signal_during_a_hung_mutant_ends_the_suite_and_removes_the_tree (sig='SIGHUP')
+   1 FAIL: test_a_signal_during_a_hung_baseline_ends_the_suite_and_removes_the_tree (sig='SIGTERM')
+   1 FAIL: test_a_signal_during_a_hung_baseline_ends_the_suite_and_removes_the_tree (sig='SIGHUP')
+   1 FAIL: test_a_process_left_behind_by_a_finished_suite_is_ended
+   1 FAIL: test_a_hostile_test_name_cannot_inject_into_the_kill_line
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=3601)
+   1 FAIL: test_a_bad_mutant_timeout_is_a_spec_error (bad=1000000000000000000000000000000)
+   1 ERROR: test_the_default_mutant_timeout_leaves_room_for_two_watchdog_hits
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=95)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=95.2)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=20)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=20.1)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=19.9)
+   1 ERROR: test_the_default_mutant_timeout_comes_from_the_baseline (baseline=0.2)
+   1 ERROR: test_a_baseline_that_hangs_past_the_ceiling_stops_the_run
+
+# Fix round 2 (Opus re-review of 934d92a): a second signal during the 2 s kill grace left a TERM-ignoring suite running, a signal during Popen's fork/exec window leaked the child, an ignored-at-startup signal (nohup) was overridden, the spec error said 'at least 1', the default limit and MUTATE_BATS_TEST_TIMEOUT had no ceiling. The six new tests, run alone:
+
+   1 AttributeError: module 'mutate' has no attribute 'on_signal'. Did you mean '.signal' instead of '.on_signal'?
+   1 ERROR: test_a_signal_while_the_suite_is_being_started_still_ends_it
+   1 FAIL: test_a_second_signal_during_the_kill_grace_does_not_stop_the_cleanup (sigs=['SIGHUP', 'SIGTERM'])
+   1 FAIL: test_a_second_signal_during_the_kill_grace_does_not_stop_the_cleanup (sigs=['SIGINT', 'SIGINT'])
+   1 FAIL: test_a_second_signal_during_the_kill_grace_does_not_stop_the_cleanup (sigs=['SIGTERM', 'SIGTERM'])
+   1 FAIL: test_a_signal_that_was_ignored_at_startup_stays_ignored (sig='SIGHUP')
+   1 FAIL: test_a_signal_that_was_ignored_at_startup_stays_ignored (sig='SIGINT')
+   1 FAIL: test_mutate_bats_test_timeout_has_an_upper_bound
+   1 FAIL: test_the_default_mutant_timeout_is_capped_at_the_ceiling
+   1 FAIL: test_the_spec_error_names_the_range
+   1 FAILED (failures=8, errors=1)
+   1 Ran 6 tests in 12.361s
+
+# Fix round 3 (Opus re-review of 4232bf1): one signal during the kill grace after a timeout raised inside the except branch, so the group never got KILL (the suite was still alive); a failed start with a signal held exited 1 with a traceback.
+
+FAIL: test_one_signal_during_the_timeout_kill_grace_still_kills_the_group
+AssertionError: True is not false : the TERM-ignoring suite outlived a signal in the grace
+ERROR: test_a_failed_start_with_a_signal_held_exits_with_the_signal

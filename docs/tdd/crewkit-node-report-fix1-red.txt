@@ -1,0 +1,11 @@
+# crewkit node report, fix round 1 (review of the first commit): a state file of several JSON documents, a NUL or symlinked state file, lead/bridge names shared by several agents, steps.sh printing when sourced, a bad --session before anything is sourced, the caller's stdin. RED: the new tests against the first commit's script (tests 4 and 6 were also changed to give their agents distinct names, since a shared name no longer matches).
+$ bats tests/crewkit-node-report.bats
+1..40
+not ok 32 node state: more than one JSON document, or trailing garbage, is 65 whatever the order
+not ok 33 node state: a NUL byte is 65 with a fixed message and no warning or path on stderr
+not ok 34 node state: a symlinked state file is 65
+not ok 35 a name in node state that two agents share matches neither: no role, access unknown
+not ok 37 bridge status is null, not absent, when the bridge's agent is there with a status herdr did not name
+not ok 38 steps.sh is sourced silently: what it prints reaches neither stdout nor stderr
+not ok 39 a bad --session is 64 before steps.sh is sourced
+not ok 40 ck_boot_status and herdr get no stdin from the caller

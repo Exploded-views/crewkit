@@ -72,4 +72,6 @@ covers what a relayed approval must quote and what no relay can approve.
   when a note changed on another machine. It needs claude-memsync set up first.
 - **bitc** gives the crew one shared slot pool for heavy commands. Set `pool_command` in your
   settings once it is installed.
-- **rtk** shortens command output; see the [README](../README.md#rtk).
+- **rtk** shortens command output; see [rtk.md](rtk.md).
+- **The `crewkit` command** checks this machine's install with `crewkit doctor` (reads only, changes
+  nothing). Link it with `./install.sh --only cli`; the verbs are in [crewkit.md](crewkit.md).

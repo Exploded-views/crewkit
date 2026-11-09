@@ -1,0 +1,267 @@
+#!/usr/bin/env bash
+# crewkit doctor: check this node's install. The local cut: no NODE and no --json yet.
+#
+#   crewkit doctor
+#
+# One line per check on stdout, in this order, `ok|warn|FAIL <check>: <detail>`:
+#   bash               bash 4.4 or newer
+#   tools              jq git ssh ssh-keygen (FAIL if missing), claude (warn)
+#   cli                ~/.local/bin/crewkit links to this tree's bin/crewkit
+#   pin-herdr, pin-rtk, pin-bitc, pin-memsync
+#                      the installed tool reports the version its pins/<tool>.env names
+#   plugins            crew-nodes, agent-practice and memory-notices @crewkit are installed
+#   hooks              the rtk hook is in ~/.claude/settings.json
+#   push-gate          the gate's own `--doctor` (docs/push-gate.md#doctor-output on the gate's
+#                      branch: `<check-id> <ok|FAIL> <detail>`, exit 0, 1 or 2), folded into one line;
+#                      warn when this tree has no gate
+#   sendmessage-allow  SendMessage is in permissions.allow of ~/.claude/settings.json
+#   hub-inbound        on a hub only (below): no ssh key can reach this machine but the owner's
+#
+# A detail never holds a secret, a key, or a path outside $HOME (written ~/...). The hub check:
+# a node is the hub when a `nodes.<name>.this_host: true` node has `nodes.<name>.role: hub` (any
+# other value but `spoke` is FAIL bad-role). Every key line in ~/.ssh/authorized_keys and
+# authorized_keys2 must have its fingerprint in `nodes.<name>.owner_keys` (comma-separated
+# SHA256:... values, set by the owner by hand), and none may carry a crewkit marker or a command
+# naming crewkit. Keys with no allowlist are FAIL no-allowlist; a line that cannot be read as a key
+# fails closed; no file, or an empty one, is ok; a file or ~/.ssh doctor cannot read, and a
+# cert-authority line, are FAIL (only these two default files are checked: a custom AuthorizedKeysFile
+# or AuthorizedKeysCommand is not looked at). A running sshd is a warn; one not running is not
+# "off" (Remote Login starts it on demand), so an ok says its state is unknown. Both settings are user-only
+# (nodes.*). Doctor only reads: it writes no file and changes no setting.
+#
+# Exit (docs/exit-codes.md): 0 = no FAIL (warns allowed), 1 = at least one FAIL, 64 = usage (an
+# argument: --json and NODE come later).
+# shellcheck disable=SC2088  # the literal ~/ in a detail is what the reader sees, not a path to expand
+set -uo pipefail
+
+root=${CK_ROOT:?crewkit doctor is run by bin/crewkit}
+# shellcheck source=lib/settings.sh
+source "$root/lib/settings.sh"
+# shellcheck source=libexec/ck/common.sh
+source "$root/libexec/ck/common.sh"
+# shellcheck source=libexec/ck/claudesettings.sh
+source "$root/libexec/ck/claudesettings.sh"
+
+(($# == 0)) || ck_die 64 "doctor takes no arguments in this release (no NODE, no --json yet)"
+
+bad=0
+# say LEVEL CHECK DETAIL
+say() {
+  [[ $1 != FAIL ]] || bad=1
+  printf '%s %s: %s\n' "$1" "$2" "$3"
+}
+# clean TEXT: printable characters only, at most 120, for text that came from a tool.
+clean() { printf '%s' "${1//"$HOME"/'~'}" | LC_ALL=C tr -cd '[:print:]' | sed -E 's|(^\|[[:space:]])/[^[:space:]]*|\1<path>|g' | cut -c1-120; }
+# pin_tag TOOL VAR: the tag a pin file names.
+pin_tag() { grep -E "^$2_TAG=" "$root/pins/$1.env" 2>/dev/null | head -1 | cut -d= -f2 | tr -d "\"'"; }
+# pin_version TOOL VAR: the version line a pin says the binary prints: VAR_VERSION, read as install.sh
+# reads it (a KEY=value line, never sourced; the last one wins). Empty when the pin has none; "bad"
+# when it is not MAJOR.MINOR.PATCH[-PRE] in ASCII. (Read here, not shared: install.sh's load_pin
+# is a step of that script, not a library.) Only herdr's is used: its fork binary prints the base
+# version, not the tag.
+pin_version() {
+  local LC_ALL=C v
+  v=$(grep -E "^$2_VERSION=" "$root/pins/$1.env" 2>/dev/null | tail -1)
+  v=${v#*=}
+  [[ -z $v ]] && return 0
+  if [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then printf '%s' "$v"; else printf bad; fi
+}
+settings=$HOME/.claude/settings.json
+
+# --- bash
+bv=${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}
+if ((BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4))); then
+  say ok bash "$bv"
+else
+  say FAIL bash "$bv is older than 4.4 (macOS: brew install bash)"
+fi
+
+# --- tools
+missing=''
+for t in jq git ssh ssh-keygen; do command -v "$t" >/dev/null || missing+=" $t"; done
+have_claude=1
+command -v claude >/dev/null || have_claude=0
+if [[ -n $missing ]]; then
+  say FAIL tools "missing:$missing"
+elif ((!have_claude)); then
+  say warn tools "claude is not on PATH (plugins are not checked)"
+else
+  say ok tools "jq git ssh ssh-keygen claude"
+fi
+
+# --- cli
+link=$HOME/.local/bin/crewkit
+if [[ -L $link && $(readlink "$link") == "$root/bin/crewkit" ]]; then
+  say ok cli "~/.local/bin/crewkit links to this tree"
+elif [[ -L $link ]]; then
+  say FAIL cli "~/.local/bin/crewkit links to another tree (./install.sh --only cli)"
+elif [[ -e $link ]]; then
+  say FAIL cli "~/.local/bin/crewkit is not a link to this tree"
+else
+  say FAIL cli "~/.local/bin/crewkit is missing (./install.sh --only cli)"
+fi
+
+# --- pins
+# pin_check TOOL WANT FOUND: ok when FOUND is WANT.
+pin_check() {
+  if [[ $3 == "$2" ]]; then say ok "pin-$1" "$2"
+  else say FAIL "pin-$1" "the pin wants $2, found ${3:-nothing} (./install.sh --only $1)"; fi
+}
+PATH="$HOME/.local/bin:$PATH"
+for t in herdr rtk; do
+  tag=$(pin_tag "$t" "$(tr '[:lower:]' '[:upper:]' <<<"$t")")
+  want=${tag#v} pfound=''
+  if [[ $t == herdr ]]; then
+    pv=$(pin_version herdr HERDR)
+    if [[ $pv == bad ]]; then
+      say FAIL pin-herdr "HERDR_VERSION in pins/herdr.env is not MAJOR.MINOR.PATCH (./install.sh --only herdr after fixing the pin)"
+      continue
+    fi
+    want=${pv:-$want}
+  fi
+  if command -v "$t" >/dev/null; then
+    out=$("$t" --version 2>&1 | head -1)
+    pfound=${out#"$t "}
+    [[ $out == "$t "* ]] || pfound=$(clean "$out")
+  fi
+  pin_check "$t" "$want" "$(clean "$pfound")"
+done
+tag=$(pin_tag bitc BITC)
+pfound=''
+if command -v bitc >/dev/null; then
+  out=$(bitc version --json 2>/dev/null)
+  pfound=$(jq -r 'select(.release == true) | .version' <<<"$out" 2>/dev/null) || pfound=''
+fi
+pin_check bitc "${tag#v}" "$(clean "$pfound")"
+tag=$(pin_tag memsync MEMSYNC)
+pfound=''
+if command -v claude-memsync >/dev/null; then
+  out=$(claude-memsync version 2>&1 | head -1)
+  pfound=${out#claude-memsync }
+  [[ $out == "claude-memsync "* ]] || pfound=$(clean "$out")
+fi
+pin_check memsync "$tag" "$(clean "$pfound")"
+
+# --- plugins
+if ((!have_claude)); then
+  say warn plugins "claude is not on PATH, so the plugins were not checked"
+elif ! listed=$(claude plugin list --json 2>/dev/null); then
+  say FAIL plugins "claude plugin list failed"
+else
+  absent=''
+  for p in crew-nodes agent-practice memory-notices; do
+    grep -Eq "\"id\": *\"$p@crewkit\"" <<<"$listed" || absent+=" $p"
+  done
+  if [[ -z $absent ]]; then say ok plugins "crew-nodes agent-practice memory-notices"
+  else say FAIL plugins "not installed:$absent (./install.sh --only plugins)"; fi
+fi
+
+# --- hooks
+if [[ ! -f $settings ]]; then
+  say FAIL hooks "~/.claude/settings.json is missing (./install.sh --only rtk)"
+elif ! command -v jq >/dev/null; then
+  say FAIL hooks "jq is needed to read ~/.claude/settings.json"
+elif ! has=$(jq '[.hooks.PreToolUse[]?.hooks[]?.command // empty] | any(test("(^|/)rtk( |$)"))' "$settings" 2>/dev/null); then
+  say FAIL hooks "~/.claude/settings.json cannot be read (./install.sh --only rtk)"
+elif [[ $has == true ]]; then
+  say ok hooks "the rtk hook is in ~/.claude/settings.json"
+else
+  say FAIL hooks "the rtk hook is not in ~/.claude/settings.json (./install.sh --only rtk)"
+fi
+
+# --- push gate
+gate=$root/push-gate/push-gate.sh
+if [[ ! -f $gate ]]; then
+  say warn push-gate "this tree has no push gate"
+else
+  gout=$(bash "$gate" --doctor 2>/dev/null) grc=$?
+  fails=''
+  while read -r id res detail; do
+    [[ $res == FAIL ]] && fails+="${fails:+; }$(clean "$id $detail")"
+  done <<<"$gout"
+  if ((grc > 1)); then
+    say FAIL push-gate "the gate's own check failed (exit $grc)"
+  elif [[ -n $fails ]]; then
+    say FAIL push-gate "$fails"
+  elif ((grc == 1)); then
+    say FAIL push-gate "the gate reports a problem without naming it"
+  elif [[ -z $gout ]]; then
+    say FAIL push-gate "the gate printed no checks"
+  else
+    say ok push-gate "$(grep -c . <<<"$gout") checks ok"
+  fi
+fi
+
+# --- sendmessage-allow
+case $(ck_claude_allow_status SendMessage 2>/dev/null) in
+  ok) say ok sendmessage-allow "SendMessage is allowed in ~/.claude/settings.json" ;;
+  missing) say FAIL sendmessage-allow "SendMessage is not in permissions.allow of ~/.claude/settings.json" ;;
+  *) say FAIL sendmessage-allow "~/.claude/settings.json cannot be read, or denies SendMessage" ;;
+esac
+
+# --- hub-inbound
+hubs=() badrole=''
+while IFS= read -r k; do
+  n=${k#nodes.}
+  n=${n%.this_host}
+  [[ $(crew_setting "$k" false) == true ]] || continue   # settings-keys: nodes.<name>.this_host
+  case $(crew_setting "nodes.$n.role" '') in   # settings-keys: nodes.<name>.role
+    hub) hubs+=("$n") ;;
+    spoke | '') ;;
+    *) badrole+=" $n" ;;
+  esac
+done < <(crew_keys nodes. | grep -E '^nodes\..+\.this_host$' || true)
+
+if [[ -n $badrole ]]; then
+  say FAIL hub-inbound "bad-role: nodes.<name>.role must be hub or spoke (for:$badrole)"
+elif ((${#hubs[@]} == 0)); then
+  say ok hub-inbound "not a hub"
+else
+  allow=' '
+  for h in "${hubs[@]}"; do
+    ownk=$(crew_setting "nodes.$h.owner_keys" '')   # settings-keys: nodes.<name>.owner_keys
+    allow+="${ownk//,/ } "
+  done
+  nkeys=0 findings=''
+  if [[ -e $HOME/.ssh || -L $HOME/.ssh ]] && ! [[ -d $HOME/.ssh && -x $HOME/.ssh ]]; then
+    findings="~/.ssh cannot be searched, so its keys were not checked"
+  fi
+  for f in "$HOME/.ssh/authorized_keys" "$HOME/.ssh/authorized_keys2"; do
+    shown="~/.ssh/${f##*/}" lineno=0
+    [[ -e $f || -L $f ]] || continue
+    if [[ ! -f $f || ! -r $f ]]; then   # sshd reads as root: an unreadable file still admits its keys
+      findings+="${findings:+; }$shown cannot be read, so its keys were not checked"
+      continue
+    fi
+    while IFS= read -r line || [[ -n $line ]]; do
+      lineno=$((lineno + 1))
+      [[ -n ${line//[[:space:]]/} && ${line#"${line%%[![:space:]]*}"} != '#'* ]] || continue
+      nkeys=$((nkeys + 1))
+      lc=${line,,}   # sshd matches option names whatever their case
+      if [[ $lc == *cert-authority* ]]; then
+        findings+="${findings:+; }$shown:$lineno is a cert-authority line (admits any certificate its key signs)"
+        continue
+      fi
+      if [[ $lc == *crewkit-* || $lc == *command=*crewkit* ]]; then
+        findings+="${findings:+; }$shown:$lineno carries a crewkit marker or command"
+        continue
+      fi
+      if ! fpr=$(ssh-keygen -lf - <<<"$line" 2>/dev/null | awk '{print $2}') || [[ $fpr != SHA256:* ]]; then
+        findings+="${findings:+; }$shown:$lineno cannot be read as a key"
+        continue
+      fi
+      [[ $allow == *" $fpr "* ]] || findings+="${findings:+; }$shown:$lineno $fpr is not an owner key"
+    done < "$f"
+  done
+  if ((nkeys > 0)) && [[ $allow == '  ' ]]; then
+    say FAIL hub-inbound "no-allowlist: $nkeys key(s) can log in and no hub node has owner_keys set"
+  elif [[ -n $findings ]]; then
+    say FAIL hub-inbound "$findings"
+  elif command -v pgrep >/dev/null && pgrep -x sshd >/dev/null 2>&1; then
+    say warn hub-inbound "sshd is running; a hub needs no inbound ssh (turn Remote Login off if you do not use it)"
+  else
+    say ok hub-inbound "no key but the owner's can reach this hub (sshd state unknown: it may start on demand)"
+  fi
+fi
+
+exit "$bad"

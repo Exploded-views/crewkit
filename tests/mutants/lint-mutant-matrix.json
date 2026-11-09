@@ -1,0 +1,165 @@
+{
+  "target": "tools/lint-skills.py",
+  "suite": [
+    "bash",
+    "-c",
+    "git init -q . && python3 -m unittest tests.test_lint_mutants"
+  ],
+  "mutants": [
+    {
+      "name": "the local_gate_only tag is not read",
+      "old": "        if \"local_gate_only\" not in d:\n            continue\n",
+      "new": "        continue\n"
+    },
+    {
+      "name": "an empty reason counts",
+      "old": "        if isinstance(reason, str) and any(c.isprintable() and not c.isspace() for c in reason):",
+      "new": "        if isinstance(reason, str):"
+    },
+    {
+      "name": "a non-string reason counts",
+      "old": "        if isinstance(reason, str) and any(c.isprintable() and not c.isspace() for c in reason):",
+      "new": "        if reason:"
+    },
+    {
+      "name": "an unreadable spec is not reported",
+      "old": "            err(mutants / name, \"not a readable mutation spec (JSON object with target, suite, mutants)\")\n            continue\n        if \"local_gate_only\"",
+      "new": "            continue\n        if \"local_gate_only\""
+    },
+    {
+      "name": "hold-list syntax is not checked",
+      "old": "            if not m or (m.group(2) and int(m.group(2)) > int(m.group(3))):",
+      "new": "            if not m:"
+    },
+    {
+      "name": "a slice K above N is accepted",
+      "old": "int(m.group(2)) > int(m.group(3))):",
+      "new": "False):"
+    },
+    {
+      "name": "a hold naming no spec passes",
+      "old": "        if name not in specs:\n            err(gate, f\"{name} is held, but tests/mutants/{name} does not exist\")\n        elif name not in tagged:",
+      "new": "        if name not in specs:\n            pass\n        elif name not in tagged:"
+    },
+    {
+      "name": "a hold naming an untagged spec passes",
+      "old": "        elif name not in tagged:\n            err(gate, f\"{name} is held, but tests/mutants/{name} has no valid local_gate_only reason\")\n        elif hold[\"plain\"]",
+      "new": "        elif hold[\"plain\"]"
+    },
+    {
+      "name": "a plain token twice passes",
+      "old": "                if hold[\"plain\"] == 2:",
+      "new": "                if hold[\"plain\"] == 99:"
+    },
+    {
+      "name": "the same slice twice passes",
+      "old": "                if int(m.group(2)) in ks:",
+      "new": "                if False:"
+    },
+    {
+      "name": "a plain token mixed with slices passes",
+      "old": "        elif hold[\"plain\"] and hold[\"slices\"]:\n            err(gate, f\"{name} is listed both whole and as slices\")\n        elif len",
+      "new": "        elif len"
+    },
+    {
+      "name": "two different N pass",
+      "old": "        elif len(hold[\"slices\"]) > 1:\n            err(gate, f\"{name} is sliced into different N ({', '.join(map(str, sorted(hold['slices'])))})\")\n        elif hold[\"slices\"]:\n            (total, ks), = hold[\"slices\"].items()",
+      "new": "        elif hold[\"slices\"]:\n            total, ks = min(hold[\"slices\"].items())"
+    },
+    {
+      "name": "a partial set of slices passes",
+      "old": "            if missing:\n                more = f\" and {len(missing) - 10} more\" if len(missing) > 10 else \"\"\n                err(gate, f\"{name} is sliced into {total} but slices @{', @'.join(missing[:10])}{more} are missing\")\n            else:\n                covered.add(name)",
+      "new": "            covered.add(name)"
+    },
+    {
+      "name": "the last slice need not be listed",
+      "old": "for k in range(1, total + 1) if k not in ks]",
+      "new": "for k in range(1, total) if k not in ks]"
+    },
+    {
+      "name": "an untagged spec outside the matrix passes",
+      "old": "        if name not in tagged:\n            err(ci, f\"tests/mutants/{name} is not in the `mutants` job's spec matrix, so CI never runs it\")",
+      "new": "        if name not in tagged:\n            pass"
+    },
+    {
+      "name": "a tagged spec in the matrix passes",
+      "old": "    for name in sorted(tagged & listed):",
+      "new": "    for name in sorted(set()):"
+    },
+    {
+      "name": "a held spec with broken slices counts as covered",
+      "old": "        elif name not in covered:\n            err(ci,",
+      "new": "        elif False:\n            err(ci,"
+    },
+    {
+      "name": "comment lines in the hold list are tokens",
+      "old": "        if not line.strip() or line.lstrip().startswith(\"#\"):",
+      "new": "        if not line.strip():"
+    },
+    {
+      "name": "the hold list is ignored",
+      "old": "    for n, line in enumerate(gate_lines, 1):",
+      "new": "    for n, line in enumerate([], 1):"
+    },
+    {
+      "name": "the slice-count cap is gone",
+      "old": "            if m.group(3) and int(m.group(3)) > 100:",
+      "new": "            if m.group(3) and int(m.group(3)) > 10**9:"
+    },
+    {
+      "name": "the cap is off by one",
+      "old": "int(m.group(3)) > 100:",
+      "new": "int(m.group(3)) >= 100:"
+    },
+    {
+      "name": "missing slices are not truncated",
+      "old": "', @'.join(missing[:10])",
+      "new": "', @'.join(missing)"
+    },
+    {
+      "name": "the truncation drops one slice too many",
+      "old": "', @'.join(missing[:10])}{more}",
+      "new": "', @'.join(missing[:9])}{more}"
+    },
+    {
+      "name": "the more-count is wrong",
+      "old": "{len(missing) - 10} more\" if len(missing) > 10",
+      "new": "{len(missing) - 9} more\" if len(missing) > 10"
+    },
+    {
+      "name": "ten missing slices claim more",
+      "old": "if len(missing) > 10 else \"\"",
+      "new": "if len(missing) > 9 else \"\""
+    },
+    {
+      "name": "an unreadable hold list crashes",
+      "old": "    except (OSError, ValueError):\n        err(gate, \"not a readable hold list (UTF-8 text, one hold per line)\")\n",
+      "new": "    except ZeroDivisionError:\n        err(gate, \"not a readable hold list (UTF-8 text, one hold per line)\")\n"
+    },
+    {
+      "name": "an unreadable hold list is not reported",
+      "old": "        err(gate, \"not a readable hold list (UTF-8 text, one hold per line)\")\n",
+      "new": "        pass\n"
+    },
+    {
+      "name": "an invisible-only reason counts",
+      "old": "any(c.isprintable() and not c.isspace() for c in reason)",
+      "new": "reason.strip()"
+    },
+    {
+      "name": "a reason needs every character printable",
+      "old": "any(c.isprintable() and not c.isspace() for c in reason)",
+      "new": "all(c.isprintable() and not c.isspace() for c in reason) and reason"
+    },
+    {
+      "name": "the hold list is skipped with no specs",
+      "old": "    if not specs and not gate.exists():\n        return\n",
+      "new": "    if not specs:\n        return\n"
+    },
+    {
+      "name": "the not-in-the-hold-list message changes",
+      "old": "is tagged local_gate_only but is not in tests/mutants/local-gate.txt, \"\n                    \"so neither CI nor the local gate runs it\")",
+      "new": "is tagged local_gate_only but is missing from the hold list\")"
+    }
+  ]
+}

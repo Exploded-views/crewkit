@@ -1,0 +1,160 @@
+{
+  "target": "libexec/ck/pointer.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-pointer.bats"
+  ],
+  "mutants": [
+    {
+      "name": "pointer regex unanchored at the start",
+      "old": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}\\ owner:(yes|no)$ ]]",
+      "new": "  [[ ${1-} =~ [a-z]{2,8}-[0-9]{1,6}\\ owner:(yes|no)$ ]]"
+    },
+    {
+      "name": "pointer regex unanchored at the end",
+      "old": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}\\ owner:(yes|no)$ ]]",
+      "new": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}\\ owner:(yes|no) ]]"
+    },
+    {
+      "name": "pointer accepts free text",
+      "old": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}\\ owner:(yes|no)$ ]]",
+      "new": "  [[ ${1-} == *owner:* ]]"
+    },
+    {
+      "name": "pointer prefix may be one letter",
+      "old": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}\\ owner:(yes|no)$ ]]",
+      "new": "  [[ ${1-} =~ ^[a-z]{1,8}-[0-9]{1,6}\\ owner:(yes|no)$ ]]"
+    },
+    {
+      "name": "pointer number may be seven digits",
+      "old": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}\\ owner:(yes|no)$ ]]",
+      "new": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,7}\\ owner:(yes|no)$ ]]"
+    },
+    {
+      "name": "pointer owner flag is free",
+      "old": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}\\ owner:(yes|no)$ ]]",
+      "new": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}\\ owner:[a-z]+$ ]]"
+    },
+    {
+      "name": "id regex unanchored at the end",
+      "old": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6}$ ]]",
+      "new": "  [[ ${1-} =~ ^[a-z]{2,8}-[0-9]{1,6} ]]"
+    },
+    {
+      "name": "url scheme is free",
+      "old": "^https?://[A-Za-z0-9._:/%+~-]{1,255}$",
+      "new": "^[a-z]+://[A-Za-z0-9._:/%+~-]{1,255}$"
+    },
+    {
+      "name": "url may hold a quote",
+      "old": "^https?://[A-Za-z0-9._:/%+~-]{1,255}$",
+      "new": "^https?://[^[:space:]]{1,255}$"
+    },
+    {
+      "name": "token may hold a quote",
+      "old": "^[A-Za-z0-9_.-]{1,200}$",
+      "new": "^[^[:space:]]{1,200}$"
+    },
+    {
+      "name": "token is sent in argv",
+      "old": "curl -fsS -m 10 --proto =https,http -K - -d \"$3\" \"$1\" >/dev/null 2>&1 \\",
+      "new": "curl -fsS -m 10 --proto =https,http -K - -H \"Authorization: Bearer $2\" -d \"$3\" \"$1\" >/dev/null 2>&1 \\"
+    },
+    {
+      "name": "send has no timeout",
+      "old": "curl -fsS -m 10 --proto =https,http -K - -d",
+      "new": "curl -fsS --proto =https,http -K - -d"
+    },
+    {
+      "name": "send allows any protocol",
+      "old": "curl -fsS -m 10 --proto =https,http -K - -d",
+      "new": "curl -fsS -m 10 -K - -d"
+    },
+    {
+      "name": "dropped count not incremented",
+      "old": "echo \"$((n + 1))\" > \"$f\"",
+      "new": "echo 1 > \"$f\""
+    },
+    {
+      "name": "listener pulls on an invalid pointer",
+      "old": "if [[ -z $node ]] || ! ck_pointer_ok \"$message\"; then",
+      "new": "if [[ -z $node ]]; then"
+    },
+    {
+      "name": "listener pulls on an unknown topic",
+      "old": "if [[ -z $node ]] || ! ck_pointer_ok \"$message\"; then",
+      "new": "if ! ck_pointer_ok \"$message\"; then"
+    },
+    {
+      "name": "listener does not dedupe",
+      "old": "if [[ -n ${seen[$node/$id]-} ]]; then continue; fi",
+      "new": "if false; then continue; fi"
+    },
+    {
+      "name": "listener dedupes by id alone",
+      "old": "if [[ -n ${seen[$node/$id]-} ]]; then continue; fi\n      # The command must not read the stream (ssh does by default); only a pull that worked is\n      # remembered, so a failed one is tried again when the pointer is sent again.\n      if \"$@\" \"$node\" </dev/null; then\n        ((${#seen[@]} < 1000)) || seen=()\n        seen[$node/$id]=1",
+      "new": "if [[ -n ${seen[$id]-} ]]; then continue; fi\n      # The command must not read the stream (ssh does by default); only a pull that worked is\n      # remembered, so a failed one is tried again when the pointer is sent again.\n      if \"$@\" \"$node\" </dev/null; then\n        ((${#seen[@]} < 1000)) || seen=()\n        seen[$id]=1"
+    },
+    {
+      "name": "topic not scoped to the node",
+      "old": "node_of[\"crewkit-$id\"]=$name",
+      "new": "node_of[\"$id\"]=$name"
+    },
+    {
+      "name": "stream path lost",
+      "old": "url=${base%/}/$(IFS=,; echo \"${topics[*]}\")/json",
+      "new": "url=${base%/}/$(IFS=,; echo \"${topics[*]}\")"
+    },
+    {
+      "name": "backoff does not double",
+      "old": "((delay = delay * 2 > 60 ? 60 : delay * 2))",
+      "new": "((delay = 1))"
+    },
+    {
+      "name": "backoff is capped at 120",
+      "old": "((delay = delay * 2 > 60 ? 60 : delay * 2))",
+      "new": "((delay = delay * 2 > 120 ? 120 : delay * 2))"
+    },
+    {
+      "name": "backoff not reset after a delivery",
+      "old": "((!got)) || delay=1",
+      "new": "true"
+    },
+    {
+      "name": "one stream too many",
+      "old": "if [[ -n ${CK_POINTER_CONNECTS-} ]] && ((connects >= CK_POINTER_CONNECTS)); then return 0; fi",
+      "new": "if [[ -n ${CK_POINTER_CONNECTS-} ]] && ((connects > CK_POINTER_CONNECTS)); then return 0; fi"
+    },
+    {
+      "name": "read token not validated",
+      "old": "ck_pointer_token_ok \"$token\" || ck_die 78 \"the read token in $tokfile is not a plain token\"",
+      "new": "true"
+    },
+    {
+      "name": "ntfy address not validated",
+      "old": "ck_pointer_url_ok \"$base\" || ck_die 78 \"the ntfy address is not a plain http(s) URL\"",
+      "new": "true"
+    },
+    {
+      "name": "no node to follow is fine",
+      "old": "((${#node_of[@]})) || ck_die 78 \"no node has a node_id, so there is no topic to follow\"",
+      "new": "true"
+    },
+    {
+      "name": "unreadable token file is fine",
+      "old": "[[ -f $tokfile && -r $tokfile ]] || ck_die 78 \"cannot read the read-token file $tokfile\"",
+      "new": "true"
+    },
+    {
+      "name": "pull command reads the stream",
+      "old": "if \"$@\" \"$node\" </dev/null; then",
+      "new": "if \"$@\" \"$node\"; then"
+    },
+    {
+      "name": "a failed pull is remembered",
+      "old": "if \"$@\" \"$node\" </dev/null; then",
+      "new": "\"$@\" \"$node\" </dev/null || true\n      if true; then"
+    }
+  ]
+}

@@ -26,6 +26,20 @@ jobs:
       - name: Scrub tracked files (secret rules only; the private denylist never leaves its owner's machine)
         run: tools/scrub.sh --secrets-only
 
+  secrets:
+    name: secrets (gitleaks over every commit, the pinned build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The pinned gitleaks, checked against pins/gitleaks.env (install.sh)
+        run: ./install.sh --yes --only gitleaks
+      - name: gitleaks over every commit on every ref (fails closed; tools/secrets-scan.sh)
+        run: tools/secrets-scan.sh
+
   lint:
     name: skills and markdown lint
     runs-on: ubuntu-latest
@@ -55,7 +69,8 @@ jobs:
   mutants:
     name: mutation check ${{ matrix.spec }}
     # Off while the repo is private (Actions minutes); ci-ok accepts the skip only then.
-    # Run locally: python3 tools/mutate.py tests/mutants/<spec>.json (see docs/testing.md).
+    # Run locally: flock ~/.local/state/crew/heavy.lock python3 tools/mutate.py tests/mutants/<spec>.json
+    # (see docs/testing.md).
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -63,13 +78,47 @@ jobs:
       fail-fast: false
       matrix:
         # Every tests/mutants/*.json, listed here; tools/lint-skills.py fails on one missing.
+        # The one exception is a spec tagged "local_gate_only" (too slow for this job's time limit)
+        # and held in tests/mutants/local-gate.txt; the lint fails a tagged spec listed here.
         spec:
+          - check-watcher-settings.json
           - checks.json
+          - bats-shards.json
           - ci-ok.json
+          - coverage-py-sh.json
+          - crewkit-acceptance-cli.json
+          - crewkit-acceptance-doctor.json
+          - crewkit-acceptance-install.json
+          - crewkit-acceptance-nodereport.json
+          - crewkit-acceptance-report.json
+          - crewkit-claudesettings.json
+          - crewkit-spend.json
+          - coverage-sh.json
+          - crewkit-common.json
+          - crewkit-dispatch.json
+          - crewkit-doctor.json
+          - crewkit-herdr.json
+          - crewkit-holder.json
+          - crewkit-holder-ntfy.json
+          - crewkit-holder-tokens.json
+          - crewkit-outbox.json
+          - crewkit-owner-send.json
+          - crewkit-pointer.json
+          - crewkit-node-report.json
+          - crewkit-registry.json
+          - crewkit-usersettings.json
+          - crewkit-watchline.json
+          - crewkit-watchline-cli.json
+          - crewkit-watchline-settings.json
+          - crewkit-watchline-usersettings.json
           - export.json
           - gh-write.json
-          - land-batch.json
+          - heavy-lock.json
+          - install-bitc-record.json
+          - install-hooks.json
+          - kcov-dockerfile.json
           - land-batch-merge.json
+          - land-batch.json
           - landing-lib-ci.json
           - landing-lib-gates.json
           - landing-lib-inputs.json
@@ -89,10 +138,40 @@ jobs:
           - lane-verdict.json
           - lint-ci-ok.json
           - lint-conflicts.json
+          - lint-mutant-matrix.json
+          - memory-notices.json
+          - memory-notices-shared-index.json
+          - memory-notices-time-scale.json
+          - coverage-py-time-scale.json
+          - coverage-time-scale.json
+          - run-time-scale.json
+          - lint-markdown.json
+          - linux-gate.json
+          - linux-gate-holds.json
+          - linux-gate-holds-run.json
+          - mutate-check-workflows-lock.json
+          - mutate-sh-lock.json
+          - mutate.json
+          - no-bypass-hook.json
+          - pane-ask-settings.json
+          - pane-ask.json
+          - public-watch.json
+          - push-gate-2.json
+          - push-gate-3.json
+          - push-gate-dispatch.json
+          - push-gate-shim.json
+          - push-gate.json
+          - roles-lint.json
+          - run-shard.json
+          - scrub-allow.json
           - scrub-history.json
+          - scrub-private-infra.json
           - scrub-rules.json
+          - secrets-scan.json
           - settings.json
+          - stub-reaper.json
           - verdict.json
+          - watchline.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -123,8 +202,11 @@ jobs:
         run: |
           # Plugin scripts are mixed bash and Python: check the ones with a bash shebang.
           mapfile -t plugin_sh < <(grep -l '^#!/usr/bin/env bash' plugins/crew-*/bin/* 2>/dev/null || true)
-          shellcheck -x install.sh tools/*.sh tests/run.sh tests/stub-gh evals/*.sh "${plugin_sh[@]}"
-          shellcheck -s bash tests/*.bash lib/settings.sh
+          # The crewkit CLI: the dispatcher and the verbs' scripts (none yet is fine).
+          mapfile -t libexec_sh < <(compgen -G 'libexec/crewkit-*' || true)
+          shellcheck -x install.sh bin/crewkit tools/*.sh tests/run.sh tests/stub-gh evals/*.sh "${plugin_sh[@]}" "${libexec_sh[@]}" push-gate/push-gate.sh push-gate/hooks/_dispatch
+          shellcheck -s sh push-gate/shim.sh
+          shellcheck -s bash tests/*.bash lib/settings.sh libexec/ck/*.sh
       - name: install.sh dry run changes nothing and exits 0
         run: ./install.sh
       - name: install.sh rejects bad usage with exit 64
@@ -134,48 +216,136 @@ jobs:
           test $? -eq 64
 
   tests:
-    name: bats suites and performance budgets
+    # The bats files in 4 groups, split by measured file time (tests/bats-times.json,
+    # tools/bats-shards.py), so each group fits its limit. ci-ok needs this job: every shard.
+    name: bats suites and performance budgets (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: bats suite (pinned bats-core)
-        run: tests/run.sh
+      - name: the times table names exactly tests/*.bats
+        run: python3 tools/bats-shards.py check
+      - name: bats suite, this shard (pinned bats-core)
+        run: tests/run.sh --shard "${{ matrix.shard }}/4" --timing
       - name: coverage-floors unit tests
+        if: ${{ matrix.shard == 1 }}
         run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: performance budgets (perf-budgets.json; CI headroom applies)
+        if: ${{ matrix.shard == 1 }}
         run: python3 tools/perf.py
 
-  coverage:
-    name: coverage (kcov for bash, coverage.py for Python), and the ratchet
+  kcov-image:
+    # Builds the kcov image once for the shards (or finds it in the Actions cache): on a cache miss four shards
+    # building at once would be four times the load on the Debian snapshot mirror, which has stalled and timed out.
+    # Keyed by the recipe and the pinned base image; three tries of 7 minutes each.
+    name: kcov image (built once, kept in the cache)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0 # the ratchet compares floors with the merge base
-      - name: kcov image with git and jq (built on the runner, never pushed)
+      - name: the pinned base image, for the cache key
+        id: pin
+        run: echo "base=$(tools/coverage.sh --pinned-image)" >> "$GITHUB_OUTPUT"
+      - name: the kcov image, if an earlier run kept it
+        id: image-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/crewkit-kcov.tar
+          key: kcov-image-${{ hashFiles('docker/crewkit-kcov.Dockerfile') }}-${{ steps.pin.outputs.base }}
+      - name: kcov image with git, jq, procps and openssh-client (built on the runner, never pushed; kept in the cache)
+        if: steps.image-cache.outputs.cache-hit != 'true'
         run: |
-          # The pinned kcov image (Debian 12) has no git or jq, which the plugin suites need.
-          # Packages come from a dated snapshot of the Debian archive, so the build is the same
-          # every run; apt checks the archive signatures.
-          docker build -t crewkit-kcov --build-arg BASE="$(tools/coverage.sh --pinned-image)" - <<'EOF'
-          ARG BASE
-          FROM $BASE
-          RUN rm -f /etc/apt/sources.list.d/* \
-           && echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260401T000000Z bookworm main' > /etc/apt/sources.list \
-           && echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260401T000000Z bookworm-security main' >> /etc/apt/sources.list \
-           && apt-get update \
-           && apt-get install -y --no-install-recommends git jq \
-           && rm -rf /var/lib/apt/lists/*
-          EOF
-      - name: coverage under kcov (every suite but docs and settings; see tools/coverage.sh)
+          # docker/crewkit-kcov.Dockerfile: the pinned kcov image plus git, jq, procps and openssh-client (bats enforces
+          # BATS_TEST_TIMEOUT with ps), from a dated Debian snapshot (the Linux gate builds the same file).
+          built=
+          for attempt in 1 2 3; do
+            if timeout 420 docker build -t crewkit-kcov --build-arg BASE="${{ steps.pin.outputs.base }}" -f docker/crewkit-kcov.Dockerfile docker; then
+              built=yes
+              break
+            fi
+            echo "image build attempt $attempt failed; trying again"
+            sleep 20
+          done
+          test -n "$built"
+          docker save -o "$RUNNER_TEMP/crewkit-kcov.tar" crewkit-kcov
+
+  kcov:
+    # kcov over the bash scripts in 4 shards: `tools/coverage.sh --shard K/4` runs the bats files
+    # tools/bats-shards.py gives it, in the image kcov-image built or found in the cache.
+    name: coverage under kcov (bash), shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    needs: kcov-image
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: the pinned base image, for the cache key
+        id: pin
+        run: echo "base=$(tools/coverage.sh --pinned-image)" >> "$GITHUB_OUTPUT"
+      - name: the kcov image, if an earlier run kept it
+        id: image-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/crewkit-kcov.tar
+          key: kcov-image-${{ hashFiles('docker/crewkit-kcov.Dockerfile') }}-${{ steps.pin.outputs.base }}
+      - name: kcov image with git, jq, procps and openssh-client (only if the cache lost it since kcov-image)
+        if: steps.image-cache.outputs.cache-hit != 'true'
+        run: |
+          # docker/crewkit-kcov.Dockerfile: the pinned kcov image plus git, jq, procps and openssh-client (bats enforces
+          # BATS_TEST_TIMEOUT with ps), from a dated Debian snapshot (the Linux gate builds the same file).
+          built=
+          for attempt in 1 2 3; do
+            if timeout 420 docker build -t crewkit-kcov --build-arg BASE="${{ steps.pin.outputs.base }}" -f docker/crewkit-kcov.Dockerfile docker; then
+              built=yes
+              break
+            fi
+            echo "image build attempt $attempt failed; trying again"
+            sleep 20
+          done
+          test -n "$built"
+          docker save -o "$RUNNER_TEMP/crewkit-kcov.tar" crewkit-kcov
+      - name: load the cached kcov image
+        if: steps.image-cache.outputs.cache-hit == 'true'
+        run: docker load -i "$RUNNER_TEMP/crewkit-kcov.tar"
+      - name: coverage under kcov, this shard (see tools/coverage.sh)
         env:
           KCOV_IMAGE: crewkit-kcov
-        run: tools/coverage.sh
+        run: tools/coverage.sh --shard "${{ matrix.shard }}/4"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kcov-shard-${{ matrix.shard }}
+          path: .cache/coverage-shards/shard-${{ matrix.shard }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  coverage-py:
+    # coverage.py over the plugins' Python tools in 4 groups: `tools/coverage-py.sh --shard K/4`
+    # runs the bats files tools/bats-shards.py gives it (and the Python unit tests, in shard 1).
+    name: coverage.py shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
@@ -184,10 +354,64 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/coverage-venv"
           "$RUNNER_TEMP/coverage-venv/bin/pip" install --quiet --require-hashes --only-binary :all: \
             -r tools/requirements-coverage.txt
-      - name: coverage of the plugins' Python tools
+      - name: this shard
         env:
           COVERAGE_VENV: ${{ runner.temp }}/coverage-venv
-        run: tools/coverage-py.sh
+        run: tools/coverage-py.sh --shard "${{ matrix.shard }}/4"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-py-shard-${{ matrix.shard }}
+          path: .cache/coverage-py/shard-${{ matrix.shard }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  coverage:
+    # The ratchet: the kcov report and the combined coverage.py shards, against the floors.
+    name: coverage (kcov for bash, coverage.py for Python), and the ratchet
+    needs: [kcov, coverage-py]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the ratchet compares floors with the merge base
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: coverage.py (pinned by sha256, installed here only)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/coverage-venv"
+          "$RUNNER_TEMP/coverage-venv/bin/pip" install --quiet --require-hashes --only-binary :all: \
+            -r tools/requirements-coverage.txt
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: kcov-shard-*
+          path: .cache/coverage-shards
+      - name: merge the kcov shards (refuses a missing, unfinished or stale shard; the pinned base image only, no apt)
+        run: |
+          for d in .cache/coverage-shards/kcov-shard-*; do
+            mv "$d" ".cache/coverage-shards/shard-${d##*-}"
+          done
+          for attempt in 1 2 3; do
+            docker pull "$(tools/coverage.sh --pinned-image)" && break
+            echo "pull attempt $attempt failed; trying again"
+            sleep 15
+          done
+          tools/coverage.sh --merge 4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: coverage-py-shard-*
+          path: .cache/coverage-py
+      - name: combine the coverage.py shards (refuses a missing, unfinished or stale shard)
+        env:
+          COVERAGE_VENV: ${{ runner.temp }}/coverage-venv
+        run: |
+          for d in .cache/coverage-py/coverage-py-shard-*; do
+            mv "$d" ".cache/coverage-py/shard-${d##*-}"
+          done
+          tools/coverage-py.sh --combine 4
       - name: floors hold and never move down
         env:
           EVENT: ${{ github.event_name }}
@@ -215,6 +439,7 @@ jobs:
           python3 tools/coverage-floors.py --report .cache/coverage/bats.*/coverage.json \
             --report .cache/coverage-py/report.json "${args[@]}"
 
+
   bash32:
     # install.sh under bash 3.2 on Linux, on every PR, private or public: macOS's /bin/bash is
     # 3.2 and the macos job is off while the repo is private. docker run, not a container: job,
@@ -230,6 +455,11 @@ jobs:
           persist-credentials: false
       - name: dry run with bash 3.2
         run: docker run --rm -v "$PWD:/w:ro" -w /w "$BASH32" bash -c 'bash --version | head -1 && bash ./install.sh'
+      - name: crewkit under bash 3.2 refuses to run (exit 78)
+        run: |
+          set +e
+          docker run --rm -v "$PWD:/w:ro" -w /w "$BASH32" bash bin/crewkit --version
+          test $? -eq 78
       - name: dry run with bash 3.2, memsync pinned and no flags after --
         run: |
           tree="${RUNNER_TEMP:?}/bash32"
@@ -271,7 +501,7 @@ jobs:
     # tools/lint-skills.py fails if a job is missing from needs, so a new job can't skip it.
     name: ci-ok
     if: always()
-    needs: [scrub, lint, mutants, install-mutants, shell, tests, coverage, bash32, macos]
+    needs: [scrub, secrets, lint, mutants, install-mutants, shell, tests, kcov-image, kcov, coverage-py, coverage, bash32, macos]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

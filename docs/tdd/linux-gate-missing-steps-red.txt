@@ -1,0 +1,27 @@
+RED: tools/linux-gate.sh passed a run whose container stopped before most steps
+
+The gate of watcher-injection@bef6c3a was stopped (its container hung on test 513 and the owner
+stopped it). Its summary.txt held python, lint-skills, check-workflows, shellcheck, scrub and
+gitleaks only (no bats, perf or mutants lines), and the gate exited 0: it failed only on a
+line with rc other than 0, and ignored docker's exit status. The repo copy at f142f90 did
+the same. The two new tests in tests/linux-gate.bats before the change (macOS, docker stub):
+
+  not ok 6 a step that never ran fails the gate: a container that stopped early, a spec with no mutants line
+  #   `[ "$status" -eq 1 ]' failed
+  not ok 7 a container that exits non-zero fails the gate, even with every step line present
+  #   `[ "$status" -eq 1 ]' failed
+
+After: every step the gate started must have a line (the container's steps, one mutants line
+per spec, FULL=1's steps, the native checks), and a container exit other than 0 is a failure.
+tests/linux-gate.bats 14/14 ok.
+
+Then head: the summary's head line held a short SHA, and a chain wrapper re-read the branch
+after the run (it printed head=cbd9fa0 for the stopped bef6c3a run). The two tests before:
+
+  not ok 1 it gates the named branch from a fresh clone, with origin/main from the source
+  #   `grep -qx "head *topic $(git -C "$SRC" rev-parse topic)" "$OUT/summary.txt"' failed
+  not ok 2 head is the full SHA the gate cloned, even if the branch moves during the run
+  #   `grep -qx "head *topic $before" "$OUT/summary.txt"' failed
+
+After: head is the clone's full SHA, read once before anything runs, in the head line and the
+last line. tests/linux-gate.bats 15/15 ok.

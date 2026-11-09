@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# A read-only gh for the watcher tests: `gh api PATH [--jq EXPR] [--paginate]`, answered from
+# tests/fixtures/watcher (the same issues and comments for every repository). --jq runs with
+# jq -r, as gh's does. Anything else, or any write flag, is logged as WRITE-ATTEMPT and exits 99.
+# Every call is appended to $CALLS.
+fx=${WATCH_FIXTURES:?}
+printf '%s\n' "$*" >> "${CALLS:?}"
+[[ ${1:-} == api ]] || { echo "WRITE-ATTEMPT $*" >> "$CALLS"; exit 99; }
+shift
+path='' jq_expr='.'
+while (($#)); do
+  case $1 in
+    --jq) jq_expr=$2; shift ;;
+    --paginate) ;;
+    -X*|--method*|-f*|-F*|--field*|--raw-field*|--input*|-H*|--header*) echo "WRITE-ATTEMPT $1" >> "$CALLS"; exit 99 ;;
+    -*) echo "WRITE-ATTEMPT unknown flag $1" >> "$CALLS"; exit 99 ;;
+    *) path=$1 ;;
+  esac
+  shift
+done
+case $path in
+  repos/*/*/issues/comments\?*) src=$(cat "$fx/comments.json") ;;
+  repos/*/*/issues\?*) src=$(cat "$fx/issues.json") ;;
+  repos/*/*/issues/[0-9]*) n=${path##*/}; src=$(jq --argjson n "$n" '.[] | select(.number == $n)' "$fx/issues.json") ;;
+  *) echo "gh: Not Found ($path)" >&2; exit 1 ;;
+esac
+jq -r "$jq_expr" <<<"$src"

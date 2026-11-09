@@ -1,0 +1,20 @@
+{
+  "target": "libexec/ck/herdr.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-acceptance.bats"
+  ],
+  "mutants": [
+    {
+      "name": "an agent carries its cwd",
+      "old": "        project: tok(\"project\")\n      } +",
+      "new": "        project: tok(\"project\"), cwd: .cwd\n      } +"
+    },
+    {
+      "name": "an agent carries its title",
+      "old": "        project: tok(\"project\")\n      } +",
+      "new": "        project: tok(\"project\"), title: .title\n      } +"
+    }
+  ]
+}

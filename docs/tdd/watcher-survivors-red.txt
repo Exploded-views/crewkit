@@ -1,0 +1,25 @@
+Mutation survivors on watcher-injection@cbd9fa0, Linux gate (summary.txt, 2026-10-27):
+  mutants-public-watch            SURVIVED  a malformed comment id kept
+  mutants-check-watcher-settings  SURVIVED  a raw gh allow passes
+  mutants-watchline               SURVIVED  a title for every author
+  mutants-watchline               SURVIVED  control characters kept
+Each also survived on a native Mac. Why the suite missed them:
+- the malformed comment's id and its issue number were both bad, so the number check alone
+  skipped it; a new fixture comment has a good number and a bad id ("1004x");
+- every gh allow in the test also fails the generic allow rule, so only the message differed;
+  the test now requires "runs gh directly";
+- public-watch fetches a title only for trusted authors, hiding issue_line's own guard; the
+  test now calls issue_line directly;
+- the fixture's control characters were all whitespace, which split() drops anyway; the test
+  now uses BEL, a bidi override, a zero-width space, NBSP and DEL, and check() on a title
+  that still carries one.
+
+The new tests against each mutant (tools: the spec's old/new applied, bats -f on the new tests):
+watchline: a title for every author: bats rc=1: KILLED
+  not ok 2 issue_line itself drops a title for an untrusted author (public-watch never asks, but a caller might)
+watchline: control characters kept: bats rc=1: KILLED
+  not ok 3 control, format and separator characters that aren't whitespace become spaces in a title
+public-watch: a malformed comment id kept: bats rc=1: KILLED
+  not ok 1 a malformed number or comment id is skipped, and counted on stderr only
+check-watcher-settings: a raw gh allow passes: bats rc=1: KILLED
+  not ok 4 the settings check refuses each kind of write tool

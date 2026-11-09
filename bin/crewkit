@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# crewkit: the front door. One command for a crew spread over machines:
+#
+#   crewkit --version
+#   crewkit init | join | status | open | ask | doctor [args]
+#   crewkit registry move [args]
+#   crewkit watchline repo | log | check [args]
+#   crewkit node report | join | drill | authorize | take-registry [args]
+#   crewkit outbox add [args]
+#   crewkit owner send [args]
+#   crewkit holder tokens [args]
+#
+# This dispatcher only picks the script: `<tree>/libexec/crewkit-<verb>[-<sub>]`, and runs it from
+# $HOME (so no project's .claude/crewkit.md ever applies) with CK_ROOT set to the tree as it was
+# reached (a link to this file is followed, but the tree is not resolved with pwd -P). A verb word
+# must be lowercase words joined by hyphens (the first word without hyphens), and nothing else
+# from argv ever becomes part of a path. A verb is whatever script the tree has: registry, node,
+# holder and owner take a second word. Settings and the shared helpers are the verbs' business
+# (lib/settings.sh, libexec/ck/common.sh).
+#
+# Exit (docs/exit-codes.md): the verb's own code; 64 = usage or no such verb; 78 = bash older
+# than 4.4 (macOS: brew install bash).
+#
+# Everything below the version check is bash 3.2-safe too, but the check is first and the
+# libexec scripts need 4.4.
+ck_major=${BASH_VERSINFO[0]:-0}
+ck_minor=${BASH_VERSINFO[1]:-0}
+ck_v=$ck_major.$ck_minor
+# CK_BASH_VERSION counts only as MAJOR.MINOR and only when older than the running bash, so it can
+# make this check stricter but never looser.
+ck_re='^([0-9]{1,3})\.([0-9]{1,3})$'
+if [[ ${CK_BASH_VERSION-} =~ $ck_re ]]; then
+  if [ "$((10#${BASH_REMATCH[1]}))" -lt "$ck_major" ] ||
+    { [ "$((10#${BASH_REMATCH[1]}))" -eq "$ck_major" ] && [ "$((10#${BASH_REMATCH[2]}))" -lt "$ck_minor" ]; }; then
+    ck_major=$((10#${BASH_REMATCH[1]})) ck_minor=$((10#${BASH_REMATCH[2]}))
+    ck_v=$ck_major.$ck_minor
+  fi
+fi
+if [ "$ck_major" -lt 4 ] || { [ "$ck_major" -eq 4 ] && [ "$ck_minor" -lt 4 ]; }; then
+  echo "crewkit: needs bash 4.4 or newer (this is bash $ck_v). On macOS: brew install bash, and put it first on PATH." >&2
+  exit 78
+fi
+unset ck_v ck_major ck_minor ck_re
+
+ck_usage() {
+  cat >&2 <<'USAGE'
+usage: crewkit --version
+       crewkit init | join | status | open | ask | outbox | doctor [args]
+       crewkit owner send [args]
+       crewkit holder tokens [args]
+       crewkit registry move [args]
+       crewkit watchline repo | log | check [args]
+       crewkit node report | join | drill | authorize | take-registry [args]
+USAGE
+  exit 64
+}
+
+# The tree: the directory above bin/, found from this file (followed through links to it, such
+# as ~/.local/bin/crewkit), without resolving the directory links above it.
+ck_self=${BASH_SOURCE[0]}
+while [ -L "$ck_self" ]; do
+  ck_dir=$(cd "$(dirname "$ck_self")" && pwd) || exit 1
+  ck_self=$(readlink "$ck_self")
+  case $ck_self in /*) ;; *) ck_self=$ck_dir/$ck_self ;; esac
+done
+CK_ROOT=$(cd "$(dirname "$ck_self")/.." && pwd) || exit 1
+export CK_ROOT
+
+# A verb word: lowercase words joined by single hyphens. ASCII only whatever the locale.
+ck_word() {
+  local LC_ALL=C
+  [[ $1 =~ ^[a-z]+(-[a-z]+)*$ ]]
+}
+
+[ $# -ge 1 ] || ck_usage
+case $1 in
+  --version|-V)
+    [ $# -eq 1 ] || ck_usage
+    ck_version=$(cat "$CK_ROOT/libexec/VERSION") || { echo "crewkit: no libexec/VERSION in $CK_ROOT" >&2; exit 1; }
+    printf 'crewkit %s\n' "$ck_version"
+    exit 0 ;;
+esac
+
+ck_word "$1" || ck_usage
+case $1 in *-*) ck_usage ;; esac   # node-report is `node report`, never a one-word verb
+script=crewkit-$1
+case $1 in
+  registry|node|holder|owner)
+    { [ $# -ge 2 ] && ck_word "$2"; } || ck_usage
+    script=$script-$2
+    shift 2 ;;
+  *) shift ;;
+esac
+
+if [ ! -f "$CK_ROOT/libexec/$script" ] || [ ! -x "$CK_ROOT/libexec/$script" ]; then
+  echo "crewkit: unknown verb (no $script in this tree)" >&2
+  ck_usage
+fi
+case ${HOME:-} in /*) ;; *) echo "crewkit: HOME must be set to an absolute path" >&2; exit 64 ;; esac
+cd "$HOME" || { echo "crewkit: cannot cd to \$HOME" >&2; exit 1; }
+# A verb never inherits --yes from the environment, and runs under the bash that passed the check.
+unset CK_YES
+exec "$BASH" "$CK_ROOT/libexec/$script" "$@"

@@ -27,6 +27,9 @@
     "lines": 78.9,
     "todo": "settings.bats is left out of kcov (bash -u -c breaks its trace hook); the floor rose to 78.9 once the landers' suites covered more of it; raise it again once settings.bats runs under kcov"
   },
+  "plugins/crew-nodes/bin/pane-ask": {
+    "lines": 93.3
+  },
   "plugins/memory-notices/bin/shared-index": {
     "lines": 71.4,
     "todo": "untested branches: the routes.json lookup in personal_sync_dir (tests always set CLAUDE_MEMSYNC_DIR), bad JSON on stdin, a missing distilled dir, the DISTILLED.md skip, an unreadable note (OSError), the over-budget '... N more' line, and the outer exception guard; raise the floor as they get tests"

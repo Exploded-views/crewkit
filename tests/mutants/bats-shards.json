@@ -1,0 +1,26 @@
+{
+  "target": "tools/bats-shards.py",
+  "suite": ["bats", "--abort", "tests/bats-shards.bats"],
+  "mutants": [
+    {"name": "heaviest first becomes lightest first", "old": "key=lambda f: (-weight[f], f)", "new": "key=lambda f: (weight[f], f)"},
+    {"name": "a file goes to the heaviest shard", "old": "i = min(range(n), key=lambda j: (shards[j][1], j))", "new": "i = max(range(n), key=lambda j: (shards[j][1], -j))"},
+    {"name": "a file's weight is not added", "old": "shards[i][1] + weight[name])", "new": "shards[i][1])"},
+    {"name": "a shard's files are not sorted", "old": "return [(sorted(files), secs) for files, secs in shards]", "new": "return [(files, secs) for files, secs in shards]"},
+    {"name": "a file with no entry is dropped", "old": "return {f: table.get(f, median) for f in files}", "new": "return {f: table[f] for f in files if f in table}"},
+    {"name": "a file with no entry weighs nothing", "old": "return {f: table.get(f, median) for f in files}", "new": "return {f: table.get(f, 0) for f in files}"},
+    {"name": "the median is the minimum", "old": "median = statistics.median(known) if known else 1", "new": "median = min(known) if known else 1"},
+    {"name": "a stale entry is placed as a file", "old": "return {f: table.get(f, median) for f in files}", "new": "return {**table, **{f: table.get(f, median) for f in files}}"},
+    {"name": "shard K is counted from 0", "old": "print(\"\\n\".join(shards[k - 1][0]))", "new": "print(\"\\n\".join(shards[k % n][0]))"},
+    {"name": "K may exceed N", "old": "if k is None or n is None or k > n:", "new": "if k is None or n is None:"},
+    {"name": "N may be 17", "old": "MAX_SHARDS = 16", "new": "MAX_SHARDS = 17"},
+    {"name": "N of 0 is accepted", "old": "not 1 <= int(text) <= MAX_SHARDS", "new": "not 0 <= int(text) <= MAX_SHARDS"},
+    {"name": "a bad weight of zero is accepted", "old": "or not secs > 0:", "new": "or not secs >= 0:"},
+    {"name": "a true weight is accepted", "old": "if isinstance(secs, bool) or not isinstance(secs, (int, float))", "new": "if not isinstance(secs, (int, float))"},
+    {"name": "an empty table is accepted", "old": "if not isinstance(table, dict) or not table:", "new": "if not isinstance(table, dict):"},
+    {"name": "check ignores a missing entry", "old": "for f in sorted(files - set(table))]", "new": "for f in []]"},
+    {"name": "check ignores a stale entry", "old": "for f in sorted(set(table) - files)]", "new": "for f in []]"},
+    {"name": "check passes whatever it found", "old": "return 1 if problems else 0", "new": "return 0"},
+    {"name": "totals shows the smallest shard", "old": "max(s for _, s in shards)", "new": "min(s for _, s in shards)"},
+    {"name": "the default root is the working directory", "old": "root = Path(__file__).resolve().parent.parent", "new": "root = Path.cwd()"}
+  ]
+}

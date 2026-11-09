@@ -1,0 +1,150 @@
+{
+  "target": "tools/linux-gate.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/linux-gate-holds.bats"
+  ],
+  "mutants": [
+    {
+      "name": "hold list error ignored by the gate",
+      "old": "read_holds \"$work/repo\" \"$head\" \"$work\" || hold_refuse 1 \"$hold_err\"",
+      "new": "read_holds \"$work/repo\" \"$head\" \"$work\""
+    },
+    {
+      "name": "hold list error ignored by --holds",
+      "old": "read_holds \"$src\" \"$sha\" \"$tmp\" || { echo \"linux-gate: $hold_err\" >&2; exit 1; }",
+      "new": "read_holds \"$src\" \"$sha\" \"$tmp\""
+    },
+    {
+      "name": "--holds prints a wrong count",
+      "old": "echo \"${#hold_lines[@]}\"",
+      "new": "echo 0"
+    },
+    {
+      "name": "--holds takes no full SHA",
+      "old": "[[ $2 =~ ^[0-9a-f]{40}$ ]] &&",
+      "new": "false &&"
+    },
+    {
+      "name": "--holds takes no tag",
+      "old": " || git -C \"$src\" rev-parse -q --verify \"refs/tags/$2^{commit}\")",
+      "new": ")"
+    },
+    {
+      "name": "--holds takes an option as a branch",
+      "old": "  [[ $2 != -* ]] || usage\n  resolve_src",
+      "new": "  resolve_src"
+    },
+    {
+      "name": "replace refs honoured in the hold read",
+      "old": "--no-replace-objects --literal-pathspecs",
+      "new": "--literal-pathspecs"
+    },
+    {
+      "name": "a caller's object directory honoured",
+      "old": "\n  GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES",
+      "new": "\n  GIT_ALTERNATE_OBJECT_DIRECTORIES"
+    },
+    {
+      "name": "a caller's icase pathspec setting honoured",
+      "old": "GIT_NOGLOB_PATHSPECS GIT_ICASE_PATHSPECS GIT_LITERAL_PATHSPECS",
+      "new": "GIT_NOGLOB_PATHSPECS GIT_LITERAL_PATHSPECS"
+    },
+    {
+      "name": "LINUX_GATE_HOLD beyond the list accepted",
+      "old": "((hold <= ${#hold_lines[@]})) ||",
+      "new": "true ||"
+    },
+    {
+      "name": "LINUX_GATE_HOLD past the list: exit 1, not 64",
+      "old": "hold_refuse 64 \"LINUX_GATE_HOLD",
+      "new": "hold_refuse 1 \"LINUX_GATE_HOLD"
+    },
+    {
+      "name": "a refusal leaves no failure summary",
+      "old": "holds \"$1\" \"$2\"; } > \"$out/summary.txt\"",
+      "new": "holds \"$1\" \"$2\"; } > /dev/null"
+    },
+    {
+      "name": "a refusal prints no verdict line",
+      "old": "  echo \"linux-gate: failed: holds\"\n",
+      "new": ""
+    },
+    {
+      "name": "LINUX_GATE_HOLD runs the next hold",
+      "old": "${hold_lines[hold - 1]}",
+      "new": "${hold_lines[hold]}"
+    },
+    {
+      "name": "no hold field in the mode line",
+      "old": "${hold:+ hold=$hold/${#hold_lines[@]}}",
+      "new": ""
+    },
+    {
+      "name": "no holds line in a plain summary",
+      "old": "[[ -n $mutants_only ]] || printf '%-28s %s\\n' holds \"${#hold_lines[@]}\" >> \"$out/summary.txt\"",
+      "new": ":"
+    },
+    {
+      "name": "a wrong holds line in a plain summary",
+      "old": "holds \"${#hold_lines[@]}\" >> \"$out/summary.txt\"",
+      "new": "holds 0 >> \"$out/summary.txt\""
+    },
+    {
+      "name": "LINUX_GATE_HOLD without mutants-only accepted",
+      "old": "[[ ${LINUX_GATE_MUTANTS_ONLY:-} == 1 ]] || {",
+      "new": "true || {"
+    },
+    {
+      "name": "LINUX_GATE_HOLD with SPECs accepted",
+      "old": "(($# == 2)) || { echo \"linux-gate: LINUX_GATE_HOLD",
+      "new": "true || { echo \"linux-gate: LINUX_GATE_HOLD"
+    },
+    {
+      "name": "LINUX_GATE_HOLD not a number accepted",
+      "old": "[[ $LINUX_GATE_HOLD =~ ^[1-9][0-9]{0,5}$ ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "no note that SPECs skipped the hold list",
+      "old": "elif ((${#specs[@]} > 0 && ${#hold_lines[@]} > 0)) && [[ -z $mutants_only ]]; then",
+      "new": "elif false; then"
+    },
+    {
+      "name": "the skipped note without SPECs",
+      "old": "elif ((${#specs[@]} > 0 && ${#hold_lines[@]} > 0)) &&",
+      "new": "elif ((${#hold_lines[@]} > 0)) &&"
+    },
+    {
+      "name": "the skipped note in a mutants-only run",
+      "old": "&& [[ -z $mutants_only ]]; then\n  echo \"linux-gate: note",
+      "new": "; then\n  echo \"linux-gate: note"
+    },
+    {
+      "name": "step name keeps the .json of a sliced hold",
+      "old": "local n=${1/.json@/@}; echo \"mutants-${n%.json}\"",
+      "new": "echo \"mutants-${1%.json}\""
+    },
+    {
+      "name": "container step name keeps the .json of a sliced hold",
+      "old": "do n=${s/.json@/@}; step \"mutants-${n%.json}\" python3",
+      "new": "do step \"mutants-${s%.json}\" python3"
+    },
+    {
+      "name": "a base without a holds line accepted",
+      "old": "print (n == 1 && ok == 1)",
+      "new": "print 1"
+    },
+    {
+      "name": "a base with another M accepted",
+      "old": "if (NF == 2 && $2 == m) ok++",
+      "new": "if (NF == 2) ok++"
+    },
+    {
+      "name": "a base with two holds lines accepted",
+      "old": "print (n == 1 && ok == 1)",
+      "new": "print (ok >= 1)"
+    }
+  ]
+}

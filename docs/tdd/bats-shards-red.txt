@@ -1,0 +1,19 @@
+# RED: tests/bats-shards.bats before tools/bats-shards.py, tests/bats-times.json and tests/run.sh --shard exist (all 17 fail)
+1..17
+not ok 1 the tool exists and is executable
+not ok 2 files: every bats file is in exactly one shard, for each N from 1 to 8
+not ok 3 files: the heaviest files go to different shards
+not ok 4 files: with N=4 the largest shard is the heaviest file alone (300), the best possible
+not ok 5 files: the same input gives the same shards every time, and a shard's files are sorted
+not ok 6 files: a file missing from the table is still run, once, with the median weight
+not ok 7 files: a table entry for a file that is gone is ignored
+not ok 8 files: a bad K/N is a usage error (64): 0/3, 4/3, 1/0, 1/17, x, 1/2/3, no argument
+not ok 9 files: a table that is not JSON, is empty, or has a bad weight stops with exit 1 and says which
+not ok 10 check: passes when the table names exactly the bats files
+not ok 11 check: a bats file with no entry fails and is named
+not ok 12 check: an entry for a file that is gone fails and is named
+not ok 13 totals N: prints each shard's seconds and the largest, and the largest
+not ok 14 the repository's own table names exactly tests/*.bats
+not ok 15 the repository's own table: no file is longer than 600s, and 4 shards stay within the mean plus the heaviest file
+not ok 16 run.sh --shard K/N runs only that shard's files
+not ok 17 run.sh --shard with a bad value stops with exit 64 before running anything

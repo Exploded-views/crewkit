@@ -1,0 +1,11 @@
+tests/test_export.py on push-gate@5804a2f (the first symlinks in the repo: push-gate/hooks/* -> _dispatch).
+Linux gate python step and the Mac both:
+  FAIL: test_exporting_this_repo_changes_markdown_only
+  AssertionError: Lists differ: ['push-gate/hooks/applypatch-msg', ... (18 links)] != []
+Cause: git show HEAD:<link> prints the link's target; read_bytes() on the exported link reads
+through it. The export keeps the link (git archive, then extract), so the test, not export.py,
+was wrong. Mac run before the fix:
+  Ran 1 test in 3.108s
+  
+  FAILED (failures=1)
+After: tests.test_export OK. A dereferenced link would still fail (its bytes aren't the target).

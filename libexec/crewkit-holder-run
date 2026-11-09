@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+# crewkit holder run: the registry holder image's entrypoint (docs/holder.md).
+#
+#   crewkit-holder-run            (the image's ENTRYPOINT; also `crewkit holder run`)
+#
+# In order: check the secrets; start tailscaled (userspace networking, always: the image is
+# non-root) and join the tailnet; start ntfy on loopback, which is where the userspace stack
+# delivers tailnet connections to this node; clone the sync repo with the deploy key; then loop,
+# pulling every node's report every CK_POLL_SECONDS and one node's report when a pointer for it
+# arrives. It never runs an agent, a login shell, or anything on a node but `crewkit status
+# --pull`, whose only remote command is the node's forced `crewkit node report`. It exits non-zero
+# when tailscaled or ntfy dies; the host's restart policy brings it back.
+#
+# The contract with `crewkit status` (docs/holder.md): it is called as `status --pull [NODE]` with
+# CK_HOLDER=1 and CK_REPORT_KEYS=<dir of per-node keys>; GIT_SSH_COMMAND carries the deploy key and
+# must be kept; ssh to a node's host goes through ~/.ssh/config, which routes it via tailscaled
+# and checks the node's host key against the nodes_known_hosts secret.
+#
+# Environment: CK_REGISTRY_REMOTE, CK_REGISTRY_ID, CK_HOLDER_NAME (required), CK_POLL_SECONDS
+# (default 600), CK_NTFY_PORT (default 8080), CK_SECRETS_DIR (default /run/secrets),
+# CK_HOLDER_STATE (default /var/lib/crewkit-holder), CK_HOLDER_MAX_ROUNDS (a test seam: stop after
+# this many pulls).
+# Secrets, files under CK_SECRETS_DIR with mode 600 or 400: ts_authkey, deploy_key, ntfy_auth,
+# nodes (NAME NODE_ID [USER@]HOST per line), nodes_known_hosts, report_keys/<node_id>, and
+# known_hosts when the sync repo is reached over ssh. A missing, unreadable
+# or loose secret is exit 78, naming the file, never a value.
+# Pointers: a named pipe, <state>/pointers, one node name per line (Task 18b's listener writes it,
+# a whole line per write); a line that is not a node name is dropped.
+set -euo pipefail
+
+fail() { local code=$1; shift; echo "crewkit holder run: $*" >&2; exit "$code"; }
+
+: "${CK_REGISTRY_REMOTE:=}" "${CK_REGISTRY_ID:=}" "${CK_HOLDER_NAME:=}"
+for v in CK_REGISTRY_REMOTE CK_REGISTRY_ID CK_HOLDER_NAME; do
+  [[ -n ${!v} ]] || fail 78 "$v is not set"
+done
+poll=${CK_POLL_SECONDS:-600}
+[[ $poll =~ ^[1-9][0-9]{0,6}$ ]] || fail 78 "CK_POLL_SECONDS must be a whole number of seconds, 1 or more"
+max_rounds=${CK_HOLDER_MAX_ROUNDS:-0}
+[[ $max_rounds =~ ^[0-9]{1,6}$ ]] || fail 78 "CK_HOLDER_MAX_ROUNDS must be a number"
+port=${CK_NTFY_PORT:-8080}
+[[ $port =~ ^[1-9][0-9]{0,4}$ ]] || fail 78 "CK_NTFY_PORT must be a port number"
+secrets=${CK_SECRETS_DIR:-/run/secrets}
+state=${CK_HOLDER_STATE:-/var/lib/crewkit-holder}
+path_re='^/[A-Za-z0-9._/-]+$'
+[[ $secrets =~ $path_re ]] || fail 78 "CK_SECRETS_DIR must be an absolute path of letters, digits and . _ / -"
+[[ $state =~ $path_re ]] || fail 78 "CK_HOLDER_STATE must be an absolute path of letters, digits and . _ / -"
+remote_re='^[A-Za-z0-9@:/._~+%-]+$'
+[[ $CK_REGISTRY_REMOTE =~ $remote_re ]] || fail 78 "CK_REGISTRY_REMOTE has characters a git URL does not need"
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+root=${CK_ROOT:-$here}
+name_re='^[a-z][a-z0-9-]{0,31}$'
+[[ $CK_HOLDER_NAME =~ $name_re ]] || fail 78 "CK_HOLDER_NAME is not a codename"
+# Any remote that is not a local path, file:// or https is reached over ssh (ssh://, user@host:path,
+# host:path, git+ssh://), and gets a strict host-key check.
+local_remote_re='^(/|file://|https://)'
+uses_ssh=1
+[[ $CK_REGISTRY_REMOTE =~ $local_remote_re ]] && uses_ssh=0
+
+# 1. secrets
+mode_of() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+check_secret() { # path relative to the secrets dir
+  local f=$secrets/$1 m
+  [[ -f $f ]] || fail 78 "missing secret: $1"
+  [[ -r $f ]] || fail 78 "secret $1 is not readable by uid $(id -u) (own it, or run the container with --user)"
+  m=$(mode_of "$f")
+  [[ $m == 600 || $m == 400 ]] || fail 78 "secret $1 must be mode 600 or 400 (it is $m)"
+}
+check_secret ts_authkey
+check_secret deploy_key
+check_secret ntfy_auth
+((!uses_ssh)) || check_secret known_hosts
+check_secret nodes
+check_secret nodes_known_hosts
+[[ -d $secrets/report_keys ]] || fail 78 "missing secret: report_keys"
+for f in "$secrets"/report_keys/*; do
+  [[ -e $f ]] || continue
+  check_secret "report_keys/${f##*/}"
+done
+
+# The nodes the holder pulls from: lines of `NAME NODE_ID [USER@]HOST`, from the nodes secret (the
+# reach info is kept out of the sync repo; `crewkit registry move` and `crewkit join` write it).
+node_name_re=$name_re
+node_id_re='^[a-z0-9][a-z0-9-]{0,63}$'
+node_host_re='^([a-z_][a-z0-9_-]{0,31}@)?[A-Za-z0-9][A-Za-z0-9.-]{0,252}$'
+node_names=() node_ids=() node_hosts=()
+while read -r n i h extra || [[ -n ${n-} ]]; do
+  [[ -n ${n-} && ${n:0:1} != '#' ]] || continue
+  [[ -z ${extra-} && $n =~ $node_name_re && ${i-} =~ $node_id_re && ${h-} =~ $node_host_re ]] ||
+    fail 78 "the nodes secret has a bad line (want: NAME NODE_ID [USER@]HOST)"
+  for seen in "${node_names[@]}"; do [[ $seen != "$n" ]] || fail 78 "the nodes secret lists $n twice"; done
+  [[ -f $secrets/report_keys/$i ]] || fail 78 "missing secret: report_keys/$i (the key for node $n)"
+  node_names+=("$n") node_ids+=("$i") node_hosts+=("$h")
+done < "$secrets/nodes"
+
+umask 077
+mkdir -p "$state/ntfy"
+chmod 700 "$state"
+pids=()
+cleanup() {
+  local rc=$? p alive
+  trap - EXIT
+  for p in "${pids[@]}"; do kill -TERM "$p" 2>/dev/null || true; done
+  for _ in $(seq 50); do
+    alive=0
+    for p in "${pids[@]}"; do if kill -0 "$p" 2>/dev/null; then alive=1; fi; done
+    ((alive)) || break
+    sleep 0.1
+  done
+  for p in "${pids[@]}"; do kill -KILL "$p" 2>/dev/null || true; done
+  for p in "${pids[@]}"; do wait "$p" 2>/dev/null || true; done
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 143' TERM INT
+
+# 2. tailscale. Userspace networking, always: the image runs as a non-root user, which cannot
+# open a TUN device. The auth key goes by file, never argv or env.
+sock=$state/tailscaled.sock
+tailscaled --tun=userspace-networking --state="$state/tailscaled.state" --socket="$sock" &
+pids+=("$!")
+tailscale --socket="$sock" up --authkey "file:$secrets/ts_authkey" --hostname "$CK_HOLDER_NAME" \
+  --timeout=60s --accept-dns=false || fail 1 "tailscale up failed"
+# Userspace networking has no interface for the tailnet, and --accept-dns=false leaves the system
+# resolver alone: a process reaches a tailnet host, by name too, only through tailscaled. So each
+# node's host gets its own ssh Host block that goes through `tailscale nc` and checks the node's
+# key strictly against the nodes_known_hosts secret. No other host is routed that way.
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+: > "$HOME/.ssh/config"
+for h in "${node_hosts[@]}"; do
+  printf 'Host %s\n  ProxyCommand tailscale --socket=%s nc %%h %%p\n  UserKnownHostsFile %s\n  StrictHostKeyChecking yes\n' \
+    "${h##*@}" "$sock" "$secrets/nodes_known_hosts" >> "$HOME/.ssh/config"
+done
+
+# 3. ntfy, on loopback: tailnet connections to this node arrive there, and nothing else can.
+install -m 600 "$secrets/ntfy_auth" "$state/ntfy/auth.db"
+sed -e "s|@PORT@|$port|" -e "s|@STATE@|$state|" "$root/holder/ntfy-server.yml" > "$state/ntfy/server.yml"
+ntfy serve --config "$state/ntfy/server.yml" &
+pids+=("$!")
+
+# 4. the sync repo, with the deploy key. Over ssh the host key comes from the known_hosts secret,
+# never from trust on first use.
+ssh_opts=(-i "$secrets/deploy_key" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15)
+if ((uses_ssh)); then
+  ssh_opts+=(-o "UserKnownHostsFile=$secrets/known_hosts" -o StrictHostKeyChecking=yes)
+fi
+GIT_SSH_COMMAND="ssh ${ssh_opts[*]}"
+export GIT_SSH_COMMAND
+reg=$state/registry
+if [[ -d $reg ]] && ! git -C "$reg" rev-parse --git-dir >/dev/null 2>&1; then
+  rm -rf "$reg" # a clone that was killed half-way
+fi
+if [[ -d $reg ]]; then
+  # A restart keeps the working copy. Take the remote's state; local commits that cannot
+  # fast-forward (a push that failed before someone else pushed) are kept on a branch.
+  rm -f "$reg/.git/index.lock" # a commit killed half-way; this process is the only writer
+  git -C "$reg" remote set-url origin "$CK_REGISTRY_REMOTE" # the setting wins over the old clone
+  git -C "$reg" fetch -q --prune origin || fail 1 "sync repo unreachable (fetch failed)"
+  upstream=$(git -C "$reg" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) ||
+    fail 1 "the sync repo clone has no upstream branch; remove $reg and restart"
+  if ! git -C "$reg" merge -q --ff-only "$upstream" >/dev/null 2>&1; then
+    git -C "$reg" branch -f "holder-aside-$(date +%s)" HEAD
+    git -C "$reg" reset -q --hard "$upstream" || fail 1 "could not reset the sync repo clone to $upstream"
+  fi
+else
+  git clone -q -- "$CK_REGISTRY_REMOTE" "$reg" || fail 1 "sync repo unreachable (clone failed)"
+fi
+have_id=$(jq -r '.registry_id // empty' "$reg/registry.json" 2>/dev/null || true)
+[[ $have_id == "$CK_REGISTRY_ID" ]] || fail 78 "the sync repo's registry_id is not CK_REGISTRY_ID"
+mkdir -p "$HOME/.claude"
+{
+  printf -- '---\nregistry.dir: %s\nregistry.remote: %s\n' "$reg" "$CK_REGISTRY_REMOTE"
+  for i in "${!node_names[@]}"; do
+    printf 'nodes.%s.node_id: %s\nnodes.%s.host: %s\n' "${node_names[i]}" "${node_ids[i]}" "${node_names[i]}" "${node_hosts[i]}"
+  done
+  printf -- '---\n'
+} > "$HOME/.claude/crewkit.md"
+
+# 5. the job loop
+pull() { # [NODE]. stdout (the status table) is dropped: it would land in the host's log store.
+  CK_HOLDER=1 CK_REPORT_KEYS=$secrets/report_keys "$root/bin/crewkit" status --pull "$@" >/dev/null ||
+    echo "crewkit holder run: pull ${*:-all} failed; the next poll retries" >&2
+}
+pointers=$state/pointers
+[[ -p $pointers ]] || { rm -f "$pointers"; mkfifo "$pointers"; }
+exec 3<>"$pointers"
+echo "crewkit holder run: job loop started" >&2
+rounds=0 next=0
+while :; do
+  for p in "${pids[@]}"; do
+    kill -0 "$p" 2>/dev/null || { rc=0; wait "$p" || rc=$?; echo "crewkit holder run: a daemon exited (status $rc)" >&2; exit "$((rc == 0 ? 1 : rc))"; }
+  done
+  if ((SECONDS >= next)); then
+    pull
+    next=$((SECONDS + poll))
+    rounds=$((rounds + 1))
+  fi
+  line=
+  if read -r -t 1 -u 3 line && [[ $line =~ $name_re ]]; then
+    pull "$line"
+    rounds=$((rounds + 1))
+  fi
+  ((max_rounds == 0 || rounds < max_rounds)) || break
+done

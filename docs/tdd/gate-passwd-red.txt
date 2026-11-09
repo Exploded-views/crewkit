@@ -1,0 +1,20 @@
+# The Linux gate containers run as the host uid, which the images have no /etc/passwd entry for,
+# so ssh-keygen exits 255 ("No user exists for uid") and crewkit doctor's hub-inbound tests fail there.
+# Before the gate and kcov runs mounted a passwd file:
+#   tests/run.sh -f 'passwd entry' tests/linux-gate.bats tests/coverage-sh.bats
+1..2
+not ok 1 the container and the coverage.py run each mount a passwd entry for the caller's uid (ssh-keygen needs one)
+# (in test file tests/linux-gate.bats, line 227)
+#   `grep -qx 'root:x:0:0:root:/root:/bin/sh' "$CALLS.passwd.$v"' failed with status 2
+# grep: calls.passwd.ubuntu: No such file or directory
+not ok 2 the kcov container mounts a passwd entry for the caller's uid, home /tmp (ssh-keygen needs one)
+# (in test file tests/coverage-sh.bats, line 98)
+#   `grep -q -- ':/etc/passwd:ro$' "$DOCKER_ARGS"' failed
+
+# Fix round 1: the .cache/passwd symlink refusal had no test (dropping it from the loop in
+# tools/coverage.sh survived). With "$root/.cache/passwd" temporarily removed from that loop:
+#   tests/run.sh -f 'passwd that is a symlink' tests/coverage-sh.bats
+1..1
+not ok 1 a .cache/passwd that is a symlink is refused: the mount file is not written through it
+# (in test file tests/coverage-sh.bats, line 217)
+#   `[ "$status" -eq 1 ]' failed

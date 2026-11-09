@@ -1,0 +1,14 @@
+no-bypass hook, review of 8b9a01c: RED run, 2026-10-27:
+
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='git commit --no-veri -m x')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='git push --no-verif origin main')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='git --config-e=core.hooksPath=E push')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='git config core.hooksPath /dev/null')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='git config --local core.hooksPath .husky')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='git config --global core.hooksPath /tmp/none')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='git -c include.path=/tmp/evil.cfg commit -m x')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='git -c includeIf.gitdir:/.path=/tmp/x push')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command='GIT_CONFIG_PARAMETERS="\'include.path\'=\'/tmp/x\'" git push')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (tests.test_no_bypass_hook.NoBypassHook.test_each_bypass_form_is_refused_with_exit_2_and_a_reason) (command="ssh host 'git commit --no-verify -m x'")
+Ran 9 tests in 1.828s
+FAILED (failures=10)

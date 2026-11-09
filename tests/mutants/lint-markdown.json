@@ -1,0 +1,45 @@
+{
+  "target": "tools/lint-markdown.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/install-hooks.bats"
+  ],
+  "mutants": [
+    {
+      "name": "no npx lets the commit through",
+      "old": "  exit 1\nfi\ncd ",
+      "new": "  exit 0\nfi\ncd "
+    },
+    {
+      "name": "the pin dropped",
+      "old": "npx -y \"$pin\"",
+      "new": "npx -y markdownlint-cli2"
+    },
+    {
+      "name": "never lints",
+      "old": "((n > 0)) || exit 0",
+      "new": "exit 0"
+    },
+    {
+      "name": "findings ignored",
+      "old": "(cd \"$tmp\" && npx -y \"$pin\" \"${paths[@]}\")",
+      "new": "(cd \"$tmp\" && npx -y \"$pin\" \"${paths[@]}\") || true"
+    },
+    {
+      "name": "runs without staged Markdown",
+      "old": "((n > 0)) || exit 0",
+      "new": ":"
+    },
+    {
+      "name": "the working tree linted, not the staged copy",
+      "old": "  git cat-file blob \":$f\" > \"$tmp/$f\"",
+      "new": "  cp \"$f\" \"$tmp/$f\""
+    },
+    {
+      "name": "staged paths read as globs",
+      "old": "paths+=(\":$f\")",
+      "new": "paths+=(\"$f\")"
+    }
+  ]
+}

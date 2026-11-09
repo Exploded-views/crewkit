@@ -1,0 +1,11 @@
+# Runs crewkit-push-gate-doctor.service hourly, and after boot.
+[Unit]
+Description=Run the crewkit push gate doctor hourly
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

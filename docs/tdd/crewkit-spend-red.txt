@@ -1,0 +1,36 @@
+libexec/ck/spend.sh (the registry holder's spend cap) before it existed: RED run, 2026-10-31.
+
+Problem: the registry holder runs on a metered host. Nothing counted what it cost, so nothing could
+alert at 80% or stop it at 100% of the cap. This is the part of the cap that stands alone: integer-
+cent arithmetic, the monthly estimate (price times the fraction of the month run, ticked from a small
+state file), the level, the one-alert-a-month rule, the cap setting and the refusal of a machine
+price over the cap. The holder loop, `status` and `doctor` call it once their branches land.
+
+RED, tests/crewkit-spend.bats (23 tests, 23 failures; later rounds added tests): every test sources libexec/ck/spend.sh, which
+did not exist.
+  not ok  a price is read as whole cents
+  not ok  anything that is not a plain decimal price is refused
+  not ok  the cap is five dollars unless registry.spend_cap_usd says otherwise
+  not ok  a monthly price over the cap is refused at start (78)
+  not ok  the estimate is the monthly price times the fraction of the month run
+  not ok  a gap in the ticks (the holder was stopped) is not counted as running
+  not ok  80% sends one alert a month, not one per check
+  not ok  a failed Fly read is never read as zero spend
+  (and the other fifteen)
+
+Follow-up round (review notes of the last Opus pass), RED at d621b15, 2026-10-31, 5 of 47 failing:
+  not ok  a rollover charges the new month's share of the gap since the last tick
+  not ok  a rollover's share of the gap is held to the gap cap, and to the time since the last tick
+  not ok  a rollover after a long silence charges the gap cap, not the whole silence
+  not ok  the next month's alert still goes out after the clock jumped ahead and came back
+  not ok  a clock that comes back keeps its count and the month it is really in
+The rollover wiped the count to zero and dropped the new month's share of the last gap; a clock that
+jumped into the next month and came back left the state in that month, so the real next month's
+rollover never came and its alert stayed marked as sent.
+
+Review round on 7b587fd, RED at 7b587fd, 2026-10-31, 3 of 49 failing: a state that followed the clock
+back let a clock that stepped back across midnight for one tick and returned look like a real
+rollover, which wiped the month's count (an estimate that goes DOWN).
+  not ok  a clock that goes back never moves the month back or lowers the count
+  not ok  a clock that steps back across midnight for one tick and returns does not wipe the count
+  not ok  the alert flag is reset on a tick that crosses a month, in either direction

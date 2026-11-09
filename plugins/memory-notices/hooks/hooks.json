@@ -11,7 +11,7 @@
           },
           {
             "type": "command",
-            "command": "command -v claude-memsync >/dev/null 2>&1 || exit 0; claude-memsync changes --hook",
+            "command": "command -v claude-memsync >/dev/null 2>&1 || exit 0; exec \"${CLAUDE_PLUGIN_ROOT}/bin/changes-hook\"",
             "timeout": 10
           }
         ]
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v claude-memsync >/dev/null 2>&1 || exit 0; claude-memsync changes --hook",
+            "command": "command -v claude-memsync >/dev/null 2>&1 || exit 0; exec \"${CLAUDE_PLUGIN_ROOT}/bin/changes-hook\"",
             "timeout": 10
           }
         ]

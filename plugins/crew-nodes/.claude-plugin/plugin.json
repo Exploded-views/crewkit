@@ -1,0 +1,15 @@
+{
+  "name": "crew-nodes",
+  "version": "0.1.0",
+  "description": "Cross-node tooling layered over herdr for crews of Claude Code sessions on several machines: pane-ask sends one message from this node's bridge to a bridge on another node and waits for its reply. Skills, a lead-pane guard and templates are planned. In development.",
+  "author": {
+    "name": "crewkit maintainers"
+  },
+  "license": "MIT",
+  "keywords": [
+    "multi-agent",
+    "herdr",
+    "ssh",
+    "cross-host"
+  ]
+}

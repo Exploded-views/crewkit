@@ -4,6 +4,7 @@
     "python3",
     "-m",
     "unittest",
+    "-f",
     "tests.test_export"
   ],
   "mutants": [
@@ -34,8 +35,8 @@
     },
     {
       "name": "an unclosed marker passes",
-      "old": "    if dropping:\n        raise ValueError(f\"{rel}: an export:drop-start is never closed\")",
-      "new": "    if False:\n        raise ValueError(f\"{rel}: an export:drop-start is never closed\")"
+      "old": "    if dropping:\n        raise ValueError(f\"{rel}: a dropped region is never closed\")",
+      "new": "    if False:\n        raise ValueError(f\"{rel}: a dropped region is never closed\")"
     },
     {
       "name": "a non-empty out dir is used",
@@ -46,16 +47,6 @@
       "name": "blank lines around a dropped region doubled",
       "old": "            if not line.strip() and out and not out[-1].strip():",
       "new": "            if False:"
-    },
-    {
-      "name": "a dev-repo PR or issue link is let through",
-      "old": "    if DEV_LINK.search(text):\n        raise ValueError(",
-      "new": "    if False:\n        raise ValueError("
-    },
-    {
-      "name": "only PR links are caught, not issues",
-      "old": "(?:pull|issues)",
-      "new": "(?:pull)"
     },
     {
       "name": "a plain-text lesson citation is let through",
@@ -69,8 +60,873 @@
     },
     {
       "name": "the tool's own files are transformed",
-      "old": "        refuse_dev_links(rel, text)\n        return text\n",
-      "new": "        refuse_dev_links(rel, text)\n"
+      "old": "        return text\n    lines, out, dropping, squeeze",
+      "new": "    lines, out, dropping, squeeze"
+    },
+    {
+      "name": "a file with NULs is not tried as UTF-16",
+      "old": "    if b\"\\x00\" in raw or raw[:2] in (b\"\\xff\\xfe\", b\"\\xfe\\xff\"):",
+      "new": "    if raw[:2] in (b\"\\xff\\xfe\", b\"\\xfe\\xff\"):"
+    },
+    {
+      "name": "a bad byte sends the scan to latin-1",
+      "old": "    texts = [raw.decode(\"utf-8\", errors=\"replace\")]",
+      "new": "    texts = [raw.decode(\"latin-1\")]"
+    },
+    {
+      "name": "a refused export is left in --out",
+      "old": "        if rc == 0:",
+      "new": "        if True:"
+    },
+    {
+      "name": "a file with NULs goes through the text transforms",
+      "old": "        if b\"\\x00\" not in raw:",
+      "new": "        if True:"
+    },
+    {
+      "name": "a BOM without NULs is not read as UTF-16",
+      "old": "    if b\"\\x00\" in raw or raw[:2] in (b\"\\xff\\xfe\", b\"\\xfe\\xff\"):",
+      "new": "    if b\"\\x00\" in raw:"
+    },
+    {
+      "name": "a drop marker in a verbatim file passes",
+      "old": "        problem = marker_problem(text, verbatim=True)\n",
+      "new": "        problem = None\n"
+    },
+    {
+      "name": "the transform's marker check skipped",
+      "old": "    problem = marker_problem(text, verbatim=False)\n",
+      "new": "    problem = None\n"
+    },
+    {
+      "name": "lookalike characters are not folded",
+      "old": "    return text.translate(LOOKALIKES)",
+      "new": "    return text"
+    },
+    {
+      "name": "NUL bytes are kept",
+      "old": "IGNORABLE.sub(\"\", text.replace(\"\\x00\", \"\"))",
+      "new": "IGNORABLE.sub(\"\", text)"
+    },
+    {
+      "name": "default-ignorable characters are kept",
+      "old": "IGNORABLE.sub(\"\", text.replace(\"\\x00\", \"\"))",
+      "new": "text.replace(\"\\x00\", \"\")"
+    },
+    {
+      "name": "compatibility forms not decomposed",
+      "old": "unicodedata.normalize(\"NFKD\", ",
+      "new": "unicodedata.normalize(\"NFC\", "
+    },
+    {
+      "name": "format characters and marks are kept",
+      "old": "if unicodedata.category(c) not in (\"Cf\", \"Mn\", \"Me\")",
+      "new": "if True"
+    },
+    {
+      "name": "only format characters are stripped",
+      "old": "not in (\"Cf\", \"Mn\", \"Me\")",
+      "new": "not in (\"Cf\",)"
+    },
+    {
+      "name": "a marker-like line outside a comment passes",
+      "old": "    if not verbatim:\n        for n, line",
+      "new": "    if False:\n        for n, line"
+    },
+    {
+      "name": "marker-like lines must be spelled with a hyphen",
+      "old": "r\"drop[\\W_]*(?:start|end)\"",
+      "new": "r\"drop-(?:s\" \"tart|end)\""
+    },
+    {
+      "name": "a comment naming only the region (no export) passes",
+      "old": "                or MARKER_LIKE.search(body):",
+      "new": "                or False:"
+    },
+    {
+      "name": "non-ASCII in a comment passes",
+      "old": "        if not m.group(0).isascii():",
+      "new": "        if False:"
+    },
+    {
+      "name": "bogus comments are missed",
+      "old": "|<!(?!--).*?(?:>|\\Z)",
+      "new": ""
+    },
+    {
+      "name": "processing instructions are missed",
+      "old": "|<\\?.*?(?:\\?>|\\Z)",
+      "new": ""
+    },
+    {
+      "name": "link definitions in a blockquote or list are missed",
+      "old": "(?:[>*+-][ \\t]*)*\\[",
+      "new": "\\["
+    },
+    {
+      "name": "the comment body stops at >",
+      "old": "<!--.*?(?:-->|\\Z)",
+      "new": "<!--[^>]*(?:-->|\\Z)"
+    },
+    {
+      "name": "a non-UTF-8 file is copied without being marked binary",
+      "old": "            if rel not in binary:\n",
+      "new": "            if False:\n"
+    },
+    {
+      "name": "binary means any attribute",
+      "old": "if a.get(\"binary\") == \"set\" or a.get(\"text\") == \"unset\"}",
+      "new": "if a}"
+    },
+    {
+      "name": "a marker in a file name passes",
+      "old": "        if MARKER_LIKE.search(scannable(rel)) or HIDDEN.search(rel):\n",
+      "new": "        if False:\n"
+    },
+    {
+      "name": "--out as a file or symlink is not refused",
+      "old": "    if out.is_symlink() or (out.exists() and not out.is_dir()):\n",
+      "new": "    if False:\n"
+    },
+    {
+      "name": "--out keeps mkdtemp's 0700",
+      "old": "            os.chmod(work, 0o777 & ~umask)  # mkdtemp made it 0700; --out gets the usual mode\n",
+      "new": ""
+    },
+    {
+      "name": "a link out of the tree is a traceback",
+      "old": "        except tarfile.FilterError as e:",
+      "new": "        except ZeroDivisionError as e:"
+    },
+    {
+      "name": "the temp dir is left behind",
+      "old": "        shutil.rmtree(work, ignore_errors=True)",
+      "new": "        pass"
+    },
+    {
+      "name": "code spans not exempt",
+      "old": "    return CODE_SPAN.sub(\"\", text)",
+      "new": "    return text"
+    },
+    {
+      "name": "fenced blocks not exempt",
+      "old": "    text = FENCE.sub(lambda m: \"\\n\" * m.group(0).count(\"\\n\"), text)\n",
+      "new": ""
+    },
+    {
+      "name": "the byte path skips the lesson-citation check",
+      "old": "CLONE_PATH.search(seen) or PLAIN_CITATION.search(seen) or",
+      "new": "CLONE_PATH.search(seen) or False or"
+    },
+    {
+      "name": "a binary file is copied unscanned",
+      "old": "if marker_problem(seen, verbatim=False, ascii_comments=False) or PLACEHOLDER in seen \\\n                    or CLONE_PATH.search(seen) or PLAIN_CITATION.search(seen) or dev_problem(rel, seen):",
+      "new": "if False:"
+    },
+    {
+      "name": "the byte path skips the dev checks",
+      "old": "or PLAIN_CITATION.search(seen) or dev_problem(rel, seen):",
+      "new": "or PLAIN_CITATION.search(seen):"
+    },
+    {
+      "name": "the percent-decoded copy is not read",
+      "old": "scannable(urllib.parse.unquote(seen))",
+      "new": "seen"
+    },
+    {
+      "name": "the hyphen and the non-breaking hyphen (which NFKD maps to it) are not folded",
+      "old": "\"\\u2010\\u2011\\u2012\\u2013",
+      "new": "\"\\u2012\\u2013"
+    },
+    {
+      "name": "the minus sign is not folded",
+      "old": "\\u2015\\u2212\"}}",
+      "new": "\\u2015\"}}"
+    },
+    {
+      "name": "the Unicode dashes are not folded",
+      "old": "\"\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\"",
+      "new": "\"\\u2010\\u2011\""
+    },
+    {
+      "name": "the bare dev repo name is not refused",
+      "old": "        m = DEV_REF.search(view)\n        if m:",
+      "new": "        m = None\n        if m:"
+    },
+    {
+      "name": "the dev repo name needs a word boundary on neither side",
+      "old": "r\"\\bcrew\" r\"kit-dev\\b\"",
+      "new": "r\"crew\" r\"kit-dev#\""
+    },
+    {
+      "name": "bare numbers not checked in prose",
+      "old": "        if prose:\n            bare",
+      "new": "        if False:\n            bare"
+    },
+    {
+      "name": "bare numbers refused in every file, test data included",
+      "old": "    return low.endswith(PROSE) and not test_data(rel)",
+      "new": "    return True"
+    },
+    {
+      "name": "only Markdown and text files are prose",
+      "old": "PROSE = (\".md\", \".markdown\", \".txt\", \".rst\")",
+      "new": "PROSE = (\".md\", \".txt\")"
+    },
+    {
+      "name": "the prose extension is compared case-sensitively",
+      "old": "    low = rel.lower()",
+      "new": "    low = rel"
+    },
+    {
+      "name": "a link anchor with a bare number is a ref",
+      "old": "(?<\" r\"!\\]\\()#",
+      "new": "(?<\" r\"!x)#"
+    },
+    {
+      "name": "an anchor with a suffix is a ref",
+      "old": "#\\d+(?![\\w-])|\\b(?:PRs?",
+      "new": "#\\d+\\b|\\b(?:PRs?"
+    },
+    {
+      "name": "PR# and its kin are not bare numbers",
+      "old": "|\\b(?:PRs?|issues?|pulls?|gh)#\\d+(?![\\w-])\", re.IGNORECASE)",
+      "new": "\", re.IGNORECASE)"
+    },
+    {
+      "name": "a backtick fence's info string may hold a backtick",
+      "old": "(`{3,})[^`\\n]*|(~{3,})",
+      "new": "(`{3,})[^\\n]*|(~{3,})"
+    },
+    {
+      "name": "an apostrophe closes any code span",
+      "old": "CODE_SPAN = re.compile(r\"`[^`\\n]*`\")",
+      "new": "CODE_SPAN = re.compile(r\"`[^`\\n]*[`']\")"
+    },
+    {
+      "name": "bats failure quotes not exempt",
+      "old": "        text = BATS_QUOTE.sub(\"\", text)",
+      "new": "        pass"
+    },
+    {
+      "name": "bats failure quotes exempt in every file",
+      "old": "    if re.fullmatch(r\"docs/tdd/[^/]*\\.txt\", rel, re.IGNORECASE):",
+      "new": "    if True:"
+    },
+    {
+      "name": "the denylist is not read",
+      "old": "        for pattern in denylist():\n            m = pattern.search(view)",
+      "new": "        for pattern in []:\n            m = pattern.search(view)"
+    },
+    {
+      "name": "the denylist is case-sensitive",
+      "old": "re.IGNORECASE | re.MULTILINE))",
+      "new": "re.MULTILINE))"
+    },
+    {
+      "name": "a denylist match quotes the match",
+      "old": "return line_of(m, view), DENYLIST_HIT",
+      "new": "return line_of(m, view), DENYLIST_HIT + \" (\" + m.group(0) + \")\""
+    },
+    {
+      "name": "a path matching the denylist is named",
+      "old": "if denylist_hit(rel):",
+      "new": "if False:"
+    },
+    {
+      "name": "symlink targets not checked",
+      "old": "            found = found or dev_problem(rel, os.readlink(path), prose=False)",
+      "new": "            pass"
+    },
+    {
+      "name": "file names not checked",
+      "old": "        found = dev_problem(rel, rel, prose=False)\n",
+      "new": "        found = None\n"
+    },
+    {
+      "name": "an unreadable denylist line is skipped",
+      "old": "            raise DenylistError(f\"line {n} of the private denylist isn't a regular expression this tool can read\") from None",
+      "new": "            continue"
+    },
+    {
+      "name": "POSIX classes are not translated",
+      "old": "        for k, v in POSIX_CLASSES.items():",
+      "new": "        for k, v in ():"
+    },
+    {
+      "name": "an archive error quotes its link target",
+      "old": "print(\"export: the archive holds a link or path outside the tree; nothing to publish\")",
+      "new": "print(f\"export: {e}; nothing to publish\")"
+    },
+    {
+      "name": "missing denylist is silent",
+      "old": "        print(NOT_CHECKED, file=sys.stderr)\n",
+      "new": "        pass\n"
+    },
+    {
+      "name": "the summary line does not repeat the missing denylist",
+      "old": "(\" (private denylist not checked)\" if unchecked else \"\")",
+      "new": "\"\""
+    },
+    {
+      "name": "a missing denylist is an error",
+      "old": "    except FileNotFoundError:\n        return None",
+      "new": "    except FileNotFoundError:\n        raise DenylistError(\"missing\") from None"
+    },
+    {
+      "name": "an empty denylist is accepted",
+      "old": "    if not patterns:\n        raise DenylistError(\"the private denylist has no patterns, so it would check nothing\")\n",
+      "new": ""
+    },
+    {
+      "name": "--require-denylist is ignored",
+      "old": "if unchecked and (a.require_denylist or os.environ.get(\"SCRUB_DENYLIST\")):",
+      "new": "if unchecked and os.environ.get(\"SCRUB_DENYLIST\"):"
+    },
+    {
+      "name": "an explicit SCRUB_DENYLIST that is missing is fine",
+      "old": "if unchecked and (a.require_denylist or os.environ.get(\"SCRUB_DENYLIST\")):",
+      "new": "if unchecked and a.require_denylist:"
+    },
+    {
+      "name": "a link to a repo is refused only for pull and issues pages",
+      "old": "r\"([\\w.-]+)/+([\\w-]+)\", re.IGNORECASE)",
+      "new": "r\"([\\w.-]+)/+([\\w-]+)/(?:pull|issues)/\", re.IGNORECASE)"
+    },
+    {
+      "name": "DEV_LINK is case-sensitive",
+      "old": "r\"([\\w.-]+)/+([\\w-]+)\", re.IGNORECASE)",
+      "new": "r\"([\\w.-]+)/+([\\w-]+)\")"
+    },
+    {
+      "name": "a repo segment must end at a slash (not #, ?, .git or a quote)",
+      "old": "r\"([\\w.-]+)/+([\\w-]+)\", re.IGNORECASE)",
+      "new": "r\"([\\w.-]+)/+([\\w-]+)/\", re.IGNORECASE)"
+    },
+    {
+      "name": "owner and repo are joined by one slash only",
+      "old": "r\"([\\w.-]+)/+([\\w-]+)\", re.IGNORECASE)",
+      "new": "r\"([\\w.-]+)/([\\w-]+)\", re.IGNORECASE)"
+    },
+    {
+      "name": "a double slash after the host is not read",
+      "old": "github(?:usercontent)?\\.com/+(?:repos/)?+",
+      "new": "github(?:usercontent)?\\.com/(?:repos/)?+"
+    },
+    {
+      "name": "raw.githubusercontent.com links not read",
+      "old": "github(?:usercontent)?\\.com/+",
+      "new": "github\\.com/+"
+    },
+    {
+      "name": "the ssh form of a github.com link is not read",
+      "old": "|git\\x40github\\.com:/*)\"",
+      "new": ")\""
+    },
+    {
+      "name": "api.github.com links not read",
+      "old": "(?:api\\.|www\\.|raw\\.)?github",
+      "new": "github"
+    },
+    {
+      "name": "the optional repos/ prefix backtracks (a template reads as a repo)",
+      "old": "\\.com/+(?:repos/)?+|git",
+      "new": "\\.com/+(?:repos/)?|git"
+    },
+    {
+      "name": "the bare owner/repo slug is not checked",
+      "old": "        for m in SLUG.finditer(view):",
+      "new": "        for m in []:"
+    },
+    {
+      "name": "a public slug is refused",
+      "old": "(m.group(1).lower(), m.group(2).lower()) not in PUBLIC_REPOS:",
+      "new": "(m.group(1).lower(), m.group(2).lower()) not in ():"
+    },
+    {
+      "name": "only one known owner",
+      "old": "KNOWN_OWNERS = (\"exploded-views\", \"gitgat\")",
+      "new": "KNOWN_OWNERS = (\"exploded-views\",)"
+    },
+    {
+      "name": "the owner is not part of a public pair",
+      "old": "pair not in PUBLIC_REPOS + OTHER_REPOS + (TEST_FIXTURE_REPOS if tests_path(rel) else ()):",
+      "new": "pair[1] not in tuple(r for _, r in PUBLIC_REPOS + OTHER_REPOS + (TEST_FIXTURE_REPOS if tests_path(rel) else ())):"
+    },
+    {
+      "name": "the public list is empty",
+      "old": "PUBLIC_REPOS = ((\"exploded-views\", \"bitc\"),",
+      "new": "PUBLIC_REPOS = ((\"x\", \"bitc\"),"
+    },
+    {
+      "name": "another owner's claude-utils is public (MarimerLLC dropped)",
+      "old": "(\"marimerllc\", \"claude-utils\"), ",
+      "new": ""
+    },
+    {
+      "name": "crewkit is on the public list",
+      "old": "(\"owner\", \"bitc\"), (\"owner\", \"yo-human\"),",
+      "new": "(\"owner\", \"bitc\"), (\"exploded-views\", \"crew\" \"kit\"), (\"owner\", \"yo-human\"),"
+    },
+    {
+      "name": "third-party pairs are refused",
+      "old": "(\"rtk-ai\", \"rtk\"), ",
+      "new": ""
+    },
+    {
+      "name": "the placeholder pair is refused",
+      "old": "(\"o\", \"r\"), (\"owner\", \"repo\"))",
+      "new": "(\"o\", \"r\"))"
+    },
+    {
+      "name": "short refs to private repos not checked",
+      "old": "        for m in REPO_REF.finditer(view):",
+      "new": "        for m in []:"
+    },
+    {
+      "name": "PR# is a repo name in code files",
+      "old": "tuple(r for _, r in PUBLIC_REPOS) + NOT_REPOS",
+      "new": "tuple(r for _, r in PUBLIC_REPOS)"
+    },
+    {
+      "name": "the lesson placeholder reads as a repo",
+      "old": "or name.endswith(\"URL\"):",
+      "new": ":"
+    },
+    {
+      "name": "the crewkit label is exempt outside test data",
+      "old": "if test_data(rel) and name.lower() == \"crewkit\" and",
+      "new": "if name.lower() == \"crewkit\" and"
+    },
+    {
+      "name": "any label is exempt in test data",
+      "old": "name.lower() == \"crewkit\" and view[max(0, m.start(1) - 7):m.start(1)] == \"public:\":",
+      "new": "view[max(0, m.start(1) - 7):m.start(1)] == \"public:\":"
+    },
+    {
+      "name": "the crewkit number is exempt without the public: prefix",
+      "old": "and view[max(0, m.start(1) - 7):m.start(1)] == \"public:\":",
+      "new": ":"
+    },
+    {
+      "name": "test data dirs match at any depth",
+      "old": "return rel.lower().split(\"/\")[0] in TEST_DATA and \"/\" in rel",
+      "new": "return any(p in TEST_DATA for p in rel.lower().split(\"/\")[:-1])"
+    },
+    {
+      "name": "test data dirs are case-sensitive",
+      "old": "return rel.lower().split(\"/\")[0] in TEST_DATA",
+      "new": "return rel.split(\"/\")[0] in TEST_DATA"
+    },
+    {
+      "name": "a file at the top is test data",
+      "old": "TEST_DATA and \"/\" in rel",
+      "new": "TEST_DATA"
+    },
+    {
+      "name": "fixtures/ is test data",
+      "old": "TEST_DATA = (\"tests\", \"evals\")",
+      "new": "TEST_DATA = (\"tests\", \"evals\", \"fixtures\")"
+    },
+    {
+      "name": "the markup-free copy is not read",
+      "old": "for view in dict.fromkeys(name_views(text)[:4]):",
+      "new": "for view in dict.fromkeys(name_views(text)[:3]):"
+    },
+    {
+      "name": "HTML entities are not decoded",
+      "old": "MARKUP_CHARS.sub(\"\", NEWLINES_KEPT(html.unescape(seen)))",
+      "new": "MARKUP_CHARS.sub(\"\", NEWLINES_KEPT(seen))"
+    },
+    {
+      "name": "HTML tags and comments are kept",
+      "old": "MARKUP_CHARS.sub(\"\", NEWLINES_KEPT(html.unescape(seen)))",
+      "new": "MARKUP_CHARS.sub(\"\", html.unescape(seen))"
+    },
+    {
+      "name": "backslashes are kept",
+      "old": "MARKUP_CHARS = re.compile(r\"[\\\\*_]\")",
+      "new": "MARKUP_CHARS = re.compile(r\"[*_]\")"
+    },
+    {
+      "name": "asterisks are kept",
+      "old": "MARKUP_CHARS = re.compile(r\"[\\\\*_]\")",
+      "new": "MARKUP_CHARS = re.compile(r\"[\\\\_]\")"
+    },
+    {
+      "name": "underscores are kept",
+      "old": "MARKUP_CHARS = re.compile(r\"[\\\\*_]\")",
+      "new": "MARKUP_CHARS = re.compile(r\"[\\\\*]\")"
+    },
+    {
+      "name": "a hyphen shelters a bare number",
+      "old": "r\"![\\w&#$\\{])(?<\"",
+      "new": "r\"![\\w&#$\\{-])(?<\""
+    },
+    {
+      "name": "a paren shelters a bare number",
+      "old": "r\"![\\w&#$\\{])(?<\"",
+      "new": "r\"![\\w&#$\\{(])(?<\""
+    },
+    {
+      "name": "a slash shelters a bare number",
+      "old": "r\"![\\w&#$\\{])(?<\"",
+      "new": "r\"![\\w/&#$\\{])(?<\""
+    },
+    {
+      "name": "anchors, fragments and entities read as refs",
+      "old": "r\"(?<\" r\"![\\w&#$\\{])(?<\" r\"!\\]\\()#",
+      "new": "r\"#"
+    },
+    {
+      "name": "crewkit exception allows a path",
+      "old": "HOME_END = re.compile(r\"(?:\\.git(?![\\w-]))?(?![/#?\\w-])(?!\\.\\w)\", re.IGNORECASE)",
+      "new": "HOME_END = re.compile(r\"(?:\\.git(?![\\w-]))?(?![\\w-])(?!\\.\\w)\", re.IGNORECASE)"
+    },
+    {
+      "name": "crewkit exception allows a suffixed name",
+      "old": "HOME_END = re.compile(r\"(?:\\.git(?![\\w-]))?(?![/#?\\w-])(?!\\.\\w)\", re.IGNORECASE)",
+      "new": "HOME_END = re.compile(r\"(?:\\.git(?![\\w-]))?(?![/#?])\", re.IGNORECASE)"
+    },
+    {
+      "name": "crewkit exception is off",
+      "old": "if pair == HOME_REPO and HOME_END",
+      "new": "if False and HOME_END"
+    },
+    {
+      "name": "crewkit exception covers any owner",
+      "old": "if pair == HOME_REPO and",
+      "new": "if pair[1] == HOME_REPO[1] and"
+    },
+    {
+      "name": "crewkit's home URL still hits the slug check",
+      "old": "if any(a <= m.start() < b for a, b in homes):",
+      "new": "if False:"
+    },
+    {
+      "name": "the class tag is not stripped from a denylist line",
+      "old": "        pattern = strip_class_tag(line)\n",
+      "new": "        pattern = line\n"
+    },
+    {
+      "name": "a trailing CR on a denylist line is accepted",
+      "old": "        if line.endswith(\"\\r\"):",
+      "new": "        if False:"
+    },
+    {
+      "name": "any Unicode or VT space before # makes a comment",
+      "old": "COMMENT = re.compile(r\"[ \\t]*(#|\\Z)\")",
+      "new": "COMMENT = re.compile(r\"\\s*(#|\\Z)\")"
+    },
+    {
+      "name": "keep-design adds every export-ignored path",
+      "old": "len(f) == 2 and f[0] in KEEP_DESIGN and f[1]",
+      "new": "len(f) == 2 and f[1]"
+    },
+    {
+      "name": "keep-design ignores a more specific export-ignore",
+      "old": "f[0] in KEEP_DESIGN and",
+      "new": "f[0].startswith(KEEP_DESIGN) and"
+    },
+    {
+      "name": "keep-design skips the checks on design files",
+      "old": "        rel = path.relative_to(out).as_posix()\n",
+      "new": "        rel = path.relative_to(out).as_posix()\n        if rel.startswith(KEEP_DESIGN):\n            continue\n"
+    },
+    {
+      "name": "design dirs added without the flag",
+      "old": "        if a.keep_design:\n            treeish",
+      "new": "        if True:\n            treeish"
+    },
+    {
+      "name": "design files read from HEAD instead of --ref",
+      "old": "indexed(\"read-tree\", sha)",
+      "new": "indexed(\"read-tree\", \"HEAD\")"
+    },
+    {
+      "name": "edited .gitattributes exported",
+      "old": "        ga.write_bytes(attributes)",
+      "new": "        pass"
+    },
+    {
+      "name": "missing design rule exported silently",
+      "old": "    if missing:\n        raise ValueError",
+      "new": "    if False:\n        raise ValueError"
+    },
+    {
+      "name": "tag prefilter needs the literal #class=",
+      "old": "if \"#\" not in line or not CLASS_TRIGGER.search(line):",
+      "new": "if \"#class=\" not in line or not CLASS_TRIGGER.search(line):"
+    },
+    {
+      "name": "tag keyword matched in lowercase only",
+      "old": "CLASS_TRIGGER = re.compile(r\"#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*=\")",
+      "new": "CLASS_TRIGGER = re.compile(r\"#([ \\t]|[^ -~])*class([ \\t]|[^ -~])*=\")"
+    },
+    {
+      "name": "no spaces allowed between # and class",
+      "old": "CLASS_TRIGGER = re.compile(r\"#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*=\")",
+      "new": "CLASS_TRIGGER = re.compile(r\"#[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*=\")"
+    },
+    {
+      "name": "no spaces allowed between class and =",
+      "old": "CLASS_TRIGGER = re.compile(r\"#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*=\")",
+      "new": "CLASS_TRIGGER = re.compile(r\"#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]=\")"
+    },
+    {
+      "name": "non-ASCII characters inside the keyword are not skipped",
+      "old": "CLASS_TRIGGER = re.compile(r\"#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*=\")",
+      "new": "CLASS_TRIGGER = re.compile(r\"#[ \\t]*[cC][lL][aA][sS][sS][ \\t]*=\")"
+    },
+    {
+      "name": "a keyword with nothing before it is no tag",
+      "old": "CLASS_TRIGGER = re.compile(r\"#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*=\")",
+      "new": "CLASS_TRIGGER = re.compile(r\"(^|[ \\t]|[^ -~])#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*=\")"
+    },
+    {
+      "name": "name#number is data in every path",
+      "old": "if tests_path(rel) and name.lower() in TEST_FIXTURE_REFS:",
+      "new": "if name.lower() in TEST_FIXTURE_REFS:"
+    },
+    {
+      "name": "name#number is data under tests for every name",
+      "old": "if tests_path(rel) and name.lower() in TEST_FIXTURE_REFS:",
+      "new": "if tests_path(rel):"
+    },
+    {
+      "name": "the fixture repos are linkable everywhere",
+      "old": "(TEST_FIXTURE_REPOS if tests_path(rel) else ())",
+      "new": "TEST_FIXTURE_REPOS"
+    },
+    {
+      "name": "tests/ is any path that starts with tests",
+      "old": "return rel.lower().split(\"/\")[0] == \"tests\" and \"/\" in rel",
+      "new": "return rel.lower().startswith(\"tests\") and \"/\" in rel"
+    },
+    {
+      "name": "tests/ is any path with a tests directory",
+      "old": "return rel.lower().split(\"/\")[0] == \"tests\" and \"/\" in rel",
+      "new": "return \"tests\" in rel.lower().split(\"/\")[:-1]"
+    },
+    {
+      "name": "the fixture links are not checked in tests",
+      "old": "elif pair not in PUBLIC_REPOS + OTHER_REPOS + (TEST_FIXTURE_REPOS if tests_path(rel) else ()):",
+      "new": "elif not tests_path(rel) and pair not in PUBLIC_REPOS + OTHER_REPOS:"
+    },
+    {
+      "name": "tests/ needs no directory after it",
+      "old": "return rel.lower().split(\"/\")[0] == \"tests\" and \"/\" in rel",
+      "new": "return rel.lower().split(\"/\")[0] == \"tests\""
+    },
+    {
+      "name": "tests/ is case-sensitive",
+      "old": "return rel.lower().split(\"/\")[0] == \"tests\" and \"/\" in rel",
+      "new": "return rel.split(\"/\")[0] == \"tests\" and \"/\" in rel"
+    },
+    {
+      "name": "private repos: a name matches inside a longer word (leading boundary gone)",
+      "old": "(?<\" r\"![A-Za-z0-9_-])(?:",
+      "new": "(?:"
+    },
+    {
+      "name": "private repos: a name matches inside a longer word (trailing boundary gone)",
+      "old": "r\")(?![A-Za-z0-9_-])\"",
+      "new": "r\")\""
+    },
+    {
+      "name": "private repos: a hyphen no longer joins a word",
+      "old": "(?<\" r\"![A-Za-z0-9_-])(?:",
+      "new": "(?<\" r\"![A-Za-z0-9_])(?:"
+    },
+    {
+      "name": "private repos: a dot becomes a word character (name.md passes)",
+      "old": "r\")(?![A-Za-z0-9_-])\"",
+      "new": "r\")(?![A-Za-z0-9_.-])\""
+    },
+    {
+      "name": "private repos: the match is case-sensitive",
+      "old": ".join(re.escape(n) for n in live) + r\")(?![A-Za-z0-9_-])\", re.IGNORECASE)",
+      "new": ".join(re.escape(n) for n in live) + r\")(?![A-Za-z0-9_-])\")"
+    },
+    {
+      "name": "private repos: names are not lower-cased",
+      "old": "names.add(line.rsplit(\"/\", 1)[-1].lower())",
+      "new": "names.add(line.rsplit(\"/\", 1)[-1])"
+    },
+    {
+      "name": "private repos: checked before the drop regions are removed",
+      "old": "refuse_dev_links(rel, text)  # after the drop regions are gone",
+      "new": "refuse_dev_links(rel, \"\\n\".join(lines))  # after the drop regions are gone"
+    },
+    {
+      "name": "private repos: a missing list with the flag is not refused",
+      "old": "    if no_list and (a.require_private_repos or os.environ.get(\"EXPORT_PRIVATE_REPOS\")):\n        print(\"export: no private-repos list at the path given (--require-private-repos or EXPORT_PRIVATE_REPOS); \"\n              \"nothing to publish\", file=sys.stderr)\n        return 1",
+      "new": "    if no_list and (a.require_private_repos or os.environ.get(\"EXPORT_PRIVATE_REPOS\")):\n        print(\"export: no private-repos list at the path given (--require-private-repos or EXPORT_PRIVATE_REPOS); \"\n              \"nothing to publish\", file=sys.stderr)\n        return 0"
+    },
+    {
+      "name": "private repos: the flag is ignored",
+      "old": "(a.require_private_repos or os.environ.get(\"EXPORT_PRIVATE_REPOS\"))",
+      "new": "os.environ.get(\"EXPORT_PRIVATE_REPOS\")"
+    },
+    {
+      "name": "private repos: a missing list is silent",
+      "old": "        print(PRIVATE_NOT_CHECKED, file=sys.stderr)",
+      "new": "        pass"
+    },
+    {
+      "name": "private repos: a public repo is not exempt",
+      "old": "if n not in exempt)",
+      "new": "if True)"
+    },
+    {
+      "name": "private repos: the home repo is not exempt",
+      "old": "exempt = {r for _, r in PUBLIC_REPOS} | {HOME_REPO[1]}",
+      "new": "exempt = {r for _, r in PUBLIC_REPOS}"
+    },
+    {
+      "name": "private repos: comment lines are names",
+      "old": "if not line or line.startswith(\"#\"):",
+      "new": "if not line:"
+    },
+    {
+      "name": "private repos: blank lines are names",
+      "old": "if not line or line.startswith(\"#\"):",
+      "new": "if line.startswith(\"#\"):"
+    },
+    {
+      "name": "private repos: an indented comment is a name",
+      "old": "        line = line.strip()\n        if not line",
+      "new": "        line = line.rstrip()\n        if not line"
+    },
+    {
+      "name": "private repos: the name is printed for a path",
+      "old": "if private_hit(rel):",
+      "new": "if False:"
+    },
+    {
+      "name": "private repos: a list open to group or other is accepted",
+      "old": "if st.st_mode & 0o077:",
+      "new": "if False:"
+    },
+    {
+      "name": "private repos: only the group bits are checked",
+      "old": "if st.st_mode & 0o077:",
+      "new": "if st.st_mode & 0o070:"
+    },
+    {
+      "name": "private repos: only the other bits are checked",
+      "old": "if st.st_mode & 0o077:",
+      "new": "if st.st_mode & 0o007:"
+    },
+    {
+      "name": "private repos: a list owned by someone else is accepted",
+      "old": "if st.st_uid != os.getuid():",
+      "new": "if False:"
+    },
+    {
+      "name": "private repos: a list that is not a regular file is accepted",
+      "old": "if not stat.S_ISREG(st.st_mode):",
+      "new": "if False:"
+    },
+    {
+      "name": "private repos: a symlinked list is followed",
+      "old": "os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK",
+      "new": "os.O_RDONLY | os.O_NONBLOCK"
+    },
+    {
+      "name": "private repos: an untrusted list only warns",
+      "old": "    except PrivateReposError as e:\n        print(f\"export: {e}; nothing to publish\", file=sys.stderr)\n        return 1",
+      "new": "    except PrivateReposError as e:\n        print(f\"export: {e}; nothing to publish\", file=sys.stderr)\n        return 0"
+    },
+    {
+      "name": "private repos: the list is not read for a path",
+      "old": "        found = dev_problem(rel, rel, prose=False)",
+      "new": "        found = dev_problem(rel, \"x\", prose=False)"
+    },
+    {
+      "name": "private repos: a bad list line is skipped, not refused",
+      "old": "raise PrivateReposError(f\"line {n} of the private-repos list isn't a repo name\") from None",
+      "new": "continue"
+    },
+    {
+      "name": "private repos: a list line only has to start like a name",
+      "old": "PRIVATE_LINE.fullmatch(line)",
+      "new": "PRIVATE_LINE.match(line)"
+    },
+    {
+      "name": "private repos: a byte order mark is kept in the first name",
+      "old": ".removeprefix(\"\\ufeff\")",
+      "new": ""
+    },
+    {
+      "name": "private repos: an owner/name line adds the slug, not the bare name",
+      "old": "names.add(line.rsplit(\"/\", 1)[-1].lower())  # owner/name protects the bare name",
+      "new": "names.add(line.lower())"
+    },
+    {
+      "name": "private repos: a list with no name to check passes",
+      "old": "if not no_list and private_repos() is None:",
+      "new": "if False:"
+    },
+    {
+      "name": "private repos: a set variable pointing at a missing file only warns",
+      "old": "(a.require_private_repos or os.environ.get(\"EXPORT_PRIVATE_REPOS\"))",
+      "new": "a.require_private_repos"
+    },
+    {
+      "name": "private repos: the name is checked in the raw text only",
+      "old": "for view in dict.fromkeys(name_views(text)) if pattern else ():",
+      "new": "for view in (text,) if pattern else ():"
+    },
+    {
+      "name": "private repos: the name check is not run first in dev_problem",
+      "old": "found = private_hit(text)  # every",
+      "new": "found = None  # every"
+    },
+    {
+      "name": "private repos: the percent-decoded view is not read for a name",
+      "old": "return (text, seen, decoded, unmarked, kept)",
+      "new": "return (text, seen, seen, unmarked, kept)"
+    },
+    {
+      "name": "private repos: the markup-stripped view is not read for a name",
+      "old": "return (text, seen, decoded, unmarked, kept)",
+      "new": "return (text, seen, decoded, seen, kept)"
+    },
+    {
+      "name": "private repos: the underscore-keeping view is not read",
+      "old": "return (text, seen, decoded, unmarked, kept)",
+      "new": "return (text, seen, decoded, unmarked, seen)"
+    },
+    {
+      "name": "private repos: the underscore-keeping view drops no backslash",
+      "old": ".replace(\"\\\\\", \"\"))\n    return",
+      "new": ".replace(\"\\\\\", \"x\"))\n    return"
+    },
+    {
+      "name": "private repos: the list is judged on the path, not the descriptor",
+      "old": "st = os.fstat(fd)",
+      "new": "st = os.stat(path)"
+    },
+    {
+      "name": "the fixture names match case-sensitively",
+      "old": "if tests_path(rel) and name.lower() in TEST_FIXTURE_REFS:",
+      "new": "if tests_path(rel) and name in TEST_FIXTURE_REFS:"
+    },
+    {
+      "name": "the fixture names match as prefixes",
+      "old": "if tests_path(rel) and name.lower() in TEST_FIXTURE_REFS:",
+      "new": "if tests_path(rel) and name.lower().startswith(TEST_FIXTURE_REFS):"
+    },
+    {
+      "name": "a fixture name is dropped from the list",
+      "old": "TEST_FIXTURE_REFS = (\"widget\", \"my-lib\")",
+      "new": "TEST_FIXTURE_REFS = (\"widget\",)"
+    },
+    {
+      "name": "the herdr fork is not on the public list",
+      "old": "                (\"exploded-views\", \"herdr\"))",
+      "new": "                )"
     }
   ]
 }

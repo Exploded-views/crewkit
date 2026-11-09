@@ -1,0 +1,27 @@
+RED: tools/linux-gate.sh set no time limit on the container's bats tests
+
+A hung test (watcher-injection@bef6c3a, test 513) held the heavy lock for about two hours.
+The new test in tests/linux-gate.bats, before the change (macOS, the docker stub):
+
+  1..1
+  not ok 1 every bats test in the container has a time limit (300s; LINUX_GATE_TEST_TIMEOUT), so a hang can't hold the lock
+  # (in test file tests/linux-gate.bats, line 125)
+  #   `[[ $(first_run) == *" -e BATS_TEST_TIMEOUT=300 "* ]]' failed
+
+After: tools/linux-gate.sh passes -e BATS_TEST_TIMEOUT (LINUX_GATE_TEST_TIMEOUT, default 300,
+a whole number from 1; otherwise 64 and nothing runs); tests/linux-gate.bats 11/11 ok.
+
+Then FULL=1's kcov run (tools/coverage.sh starts its own container): the two new tests before
+the change:
+
+  1..1
+  not ok 1 BATS_TEST_TIMEOUT, when set, reaches the suites under kcov; unset, nothing is passed
+  # (in test file tests/coverage-sh.bats, line 64)
+  #   `grep -qx 'BATS_TEST_TIMEOUT=77' "$DOCKER_ARGS"' failed
+  1..1
+  not ok 1 FULL=1: kcov's suites get the same time limit (BATS_TEST_TIMEOUT to tools/coverage.sh)
+  # (in test file tests/linux-gate.bats, line 83)
+  #   `grep -qx 'coverage.sh BATS_TEST_TIMEOUT=45' "$CALLS"' failed
+
+After: coverage.sh passes a set BATS_TEST_TIMEOUT into the kcov container, and linux-gate.sh
+sets it for coverage.sh; tests/coverage-sh.bats and tests/linux-gate.bats 18/18 ok.

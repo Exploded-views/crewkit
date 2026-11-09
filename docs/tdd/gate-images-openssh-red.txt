@@ -1,0 +1,34 @@
+# The Linux gate images had no openssh-client, so crewkit doctor's tools check (jq git ssh
+# ssh-keygen) was FAIL in every container run and 23 doctor tests failed there; on macOS
+# ssh-keygen is always present. Before docker/*.Dockerfile installed openssh-client:
+#   tests/run.sh -f openssh-client tests/linux-gate.bats
+1..1
+not ok 1 every image recipe installs openssh-client (crewkit doctor FAILs without ssh and ssh-keygen)
+# (in test file tests/linux-gate.bats, line 335)
+#   `grep -qE 'apt-get install .* openssh-client( |$)' "$f" || { echo "no openssh-client in $f"; false; }' failed
+# no openssh-client in docker/crewkit-ubuntu.Dockerfile
+# The doctor tests in the Linux gate at that tree (bats step, container crewkit-ubuntu):
+# not ok 121 a fully installed node is all ok (exit 0), in the fixed order
+# not ok 122 each fault is FAIL on its own check and sets exit 1
+# not ok 124 a missing claude is a warn on tools and on plugins, not a FAIL
+# not ok 128 doctor writes nothing: settings.json is byte for byte as it was
+# not ok 133 no push gate in the tree is a warn, not a FAIL
+# not ok 135 hub-inbound is ok (not a hub) with no this_host node, a spoke, or no role
+# not ok 137 a hub with no authorized_keys file, or an empty one, is ok
+# not ok 138 a hub whose only keys are the owner's pinned ones is ok
+# not ok 139 keys present with no allowlist is FAIL hub-inbound no-allowlist
+# not ok 140 a plain key that is not in the allowlist is FAIL, naming file, line and fingerprint, never the key
+# not ok 141 the allowlist may hold several fingerprints, comma separated
+# not ok 142 a crewkit marker or a command naming crewkit fails whatever the fingerprint
+# not ok 143 option names are matched whatever their case, as sshd does
+# not ok 145 a line that cannot be read as a key fails closed
+# not ok 146 comments and blank lines are skipped, even a comment holding a key
+# not ok 147 authorized_keys2 is read too
+# not ok 148 a cert-authority line is FAIL: it admits any certificate its key signs
+# not ok 149 an authorized_keys doctor cannot read is FAIL, not a clean hub
+# not ok 150 a ~/.ssh doctor cannot search is FAIL, not a clean hub
+# not ok 151 with two hub nodes the allowlist is the union of both
+# not ok 152 a hub that is ok says sshd's state is unknown, never that it is off
+# not ok 153 a running sshd on a hub is a warn, not a FAIL
+# not ok 154 owner_keys and role are read from the user file only
+# with each test showing: FAIL tools: missing: ssh-keygen

@@ -1,0 +1,8 @@
+no-bypass hook, review of d5d427e: RED run (the new cases against d5d427e's hook), 2026-10-27:
+
+  'git commit -m "$(git push --no-verify)"')
+  'git commit -m "`git push --no-verify`"')
+  'git --config-env core.hooksPath=EMPTY push')
+  'git commit -m x#y --no-verify')
+Ran 9 tests in 1.931s
+FAILED (failures=4)

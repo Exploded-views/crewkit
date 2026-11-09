@@ -1,0 +1,15 @@
+install.sh --only gitleaks: RED run, 2026-10-27 (Mac, GNU sed first on PATH for the tests' sed -i). bats -f gitleaks tests/install.bats before the step existed:
+
+1..5
+not ok 1 gitleaks: a matching sha installs it for the push gate, with its own sha256 beside it
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 gitleaks: on macOS arm64 the darwin_arm64 build is installed
+#   `[ "$status" -eq 0 ]' failed
+not ok 3 gitleaks: a sha mismatch, or a checksums file that disagrees, installs nothing
+#   `[ "$status" -eq 1 ]' failed
+not ok 4 gitleaks: a binary that reports another version is refused, and nothing is recorded
+#   `[ "$status" -eq 1 ]' failed
+not ok 5 gitleaks: unpinned is skipped, and the dry run names it
+#   `[[ $output == *"gitleaks:"*"skipped"* ]]' failed
+
+--only gitleaks was a usage error (64), and the dry run had no gitleaks line.

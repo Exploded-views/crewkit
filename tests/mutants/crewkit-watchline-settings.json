@@ -1,0 +1,20 @@
+{
+  "target": "tools/check-watcher-settings.py",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-watchline.bats"
+  ],
+  "mutants": [
+    {
+      "name": "watchline allow not accepted",
+      "old": "or WATCHLINE_RE.match(a)",
+      "new": "or False"
+    },
+    {
+      "name": "watchline check allowed",
+      "old": "(repo|log) ",
+      "new": "(repo|log|check) "
+    }
+  ]
+}

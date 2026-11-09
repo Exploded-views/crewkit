@@ -1,0 +1,25 @@
+{
+  "target": "bin/crewkit",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-acceptance.bats"
+  ],
+  "mutants": [
+    {
+      "name": "a one-word hyphen verb is run",
+      "old": "case $1 in *-*) ck_usage ;; esac",
+      "new": "case $1 in *-*) : ;; esac"
+    },
+    {
+      "name": "--version prints the bare number",
+      "old": "printf 'crewkit %s\\n' \"$ck_version\"",
+      "new": "printf '%s\\n' \"$ck_version\""
+    },
+    {
+      "name": "an unknown verb exits 0",
+      "old": "  ck_usage\nfi\ncase ${HOME:-}",
+      "new": "  exit 0\nfi\ncase ${HOME:-}"
+    }
+  ]
+}

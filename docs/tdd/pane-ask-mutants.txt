@@ -1,0 +1,98 @@
+# pane-ask's mutation checks after the pane-ask PR's review fixes (python3 tools/mutate.py
+# tests/mutants/pane-ask.json tests/mutants/pane-ask-settings.json tests/mutants/settings.json),
+# in a debian:bookworm-slim container. New mutants: the lead check on the resolved pane and agent
+# name, case folding on each side, lists split on whitespace (lead_pane, idle_statuses), the
+# error code read past stderr noise, the backslash refusal, and nodes.* user-only (CREW_USER_ONLY,
+# crew_setting, crew_keys, the user-file check, the prefix walk).
+# The first run left two survivors in lib/settings.sh, both fixed before this run: "a changed
+# list isn't re-read" (the re-read check had been duplicated into _crew_user_only, so breaking
+# one copy changed nothing; now one helper, _crew_lists_current) and "a user-only key read from
+# the last file even when it isn't the user file" (settings.bats now covers a missing user file).
+# After the delta review (pane-ask compared herdr's .agent, the agent's kind, instead of .name),
+# rerun with one more mutant: "the agent's kind (.agent) compared instead of its name (.name)".
+# 78 of 78 killed.
+
+plugins/crew-nodes/bin/pane-ask:
+  killed       message on ssh's command line instead of stdin
+  killed       herdr path and arguments not quoted for the remote shell
+  killed       trailing newlines of the message dropped
+  killed       remote ~ not expanded
+  killed       a host starting with a dash accepted
+  killed       target not checked
+  killed       no batch mode (a password prompt would hang)
+  killed       --node, --host and --machine not exclusive
+  killed       machine profile ignored (always ssh)
+  killed       no lead-pane check on the target as typed
+  killed       ad hoc targets skip other nodes' lead panes
+  killed       bridge not the default target
+  killed       sent while busy (no idle check)
+  killed       blocked agent waited for instead of refused
+  killed       wait_idle false ignored
+  killed       settled state not checked after agent wait
+  killed       idle set setting ignored
+  killed       any status counts as idle
+  killed       no --wait on the prompt
+  killed       timeout not in milliseconds
+  killed       timeout not 40
+  killed       agent_blocked not 75
+  killed       old herdr not named
+  killed       send failure reported as success
+  killed       blocked turn not 41
+  killed       output not cut at the sent message
+  killed       output from the first copy of the message, not the last
+  killed       no prefix
+  killed       prefix setting ignored
+  killed       no node is not 78
+  killed       read lines setting ignored
+  killed       no lead-pane check on the pane herdr resolves
+  killed       resolved agent name not checked, only the pane id
+  killed       lead list compared with case
+  killed       typed target compared with case
+  killed       resolved pane and agent compared with case
+  killed       space-separated lead list collapses into one entry
+  killed       space-separated idle statuses collapse into one entry
+  killed       stderr noise before herdr's JSON hides the error code
+  killed       a backslash in nodes.<name>.herdr accepted
+  killed       the agent's kind (.agent) compared instead of its name (.name)
+  all 41 mutants killed
+plugins/crew-nodes/lib/settings.sh:
+  killed       nodes.* takes CREWKIT_* (a session could point pane-ask at another host)
+  killed       nodes.* not user-only (a project could blank the lead list or redirect the host)
+  all 2 mutants killed
+lib/settings.sh:
+  killed       environment ignored
+  killed       crew_keys reads past the frontmatter
+  killed       trailing comment kept
+  killed       quotes kept
+  killed       default ignored
+  killed       require accepts unset
+  killed       keys listed twice
+  killed       lookup reads past the frontmatter
+  killed       no walk up from subdirectories
+  killed       local file not preferred over shared
+  killed       user file skipped
+  killed       search passes the repo root
+  killed       world-writable files read
+  killed       files not owned by you read
+  killed       cache ignores the directory
+  killed       not primed at source time
+  killed       file_only reads the environment
+  killed       main checkout not entered
+  killed       a bare repository's worktree accepted
+  killed       outside a repository is an error
+  killed       every key takes the environment
+  killed       no key takes the environment
+  killed       an exact file-only entry loses to an env-OK prefix
+  killed       exact env-OK entries ignored
+  killed       env-OK prefixes ignored
+  killed       a nested file-only prefix loses to an env-OK prefix
+  killed       env-OK list split with glob expansion
+  killed       a changed list isn't re-read
+  killed       an unlisted key takes the environment
+  killed       a malformed key can take the environment
+  killed       nodes.* not user-only (a project could change the lead list or host)
+  killed       crew_setting reads a user-only key from every file
+  killed       a user-only key read from the last file even when it isn't the user file
+  killed       crew_keys lists user-only keys from project files
+  killed       a user-only prefix doesn't cover the keys under it
+  all 35 mutants killed

@@ -1,0 +1,153 @@
+# RED: the herdr fork-pin tests (tests/install.bats herdr tests, tests/test_lint_pins.py VERSION
+# tests) before install.sh and tools/lint-skills.py changed. tests/helpers.bash herdr_release builds
+# the fork's release shape (triple tarball holding `herdr`, plus its .sha256 file).
+# Run: .cache/bats-v1.14.0/bin/bats -f 'herdr|dry run names' tests/install.bats
+#      python3 -I tests/test_lint_pins.py
+# (Run on macOS with GNU sed/grep/cut/mktemp/install first on PATH.)
+--- bats
+1..32
+ok 1 gitleaks: unpinned is skipped, and the dry run names it
+not ok 2 herdr: a matching sha installs the fork tarball's binary and runs the integration of the one agent on PATH
+# (in test file tests/install.bats, line 550)
+#   `[ "$status" -eq 0 ]' failed
+not ok 3 herdr: every agent CLI on PATH gets its integration
+# (in test file tests/install.bats, line 562)
+#   `[ "$status" -eq 0 ]' failed
+not ok 4 herdr: cursor's agent CLI is cursor-agent, and its integration is cursor
+# (in test file tests/install.bats, line 572)
+#   `[ "$status" -eq 0 ]' failed
+not ok 5 herdr: with no agent CLI on PATH herdr is installed, no integration runs, and that is success
+# (in test file tests/install.bats, line 580)
+#   `[ "$status" -eq 0 ]' failed
+not ok 6 herdr: an integration refused because the agent was never run is a note, not a failed step
+# (in test file tests/install.bats, line 589)
+#   `[ "$status" -eq 0 ]' failed
+not ok 7 herdr: any other integration failure fails the step, naming the agent and herdr's exit code
+# (in test file tests/install.bats, line 598)
+#   `[[ $output == *"herdr integration install claude failed (exit 7)"* ]]' failed
+not ok 8 herdr: an integration that drops a hook from settings.json is undone and fails the step
+# (in test file tests/install.bats, line 608)
+#   `[[ $output == *"keep-me"* ]]' failed
+not ok 9 guard: a backup left by an earlier run is never overwritten or deleted (herdr)
+# (in test file tests/install.bats, line 646)
+#   `[[ $output == *"$HOME/.claude/settings.json.crewkit-before"* ]]' failed
+ok 10 herdr: a 'directory not found' without the 'at <path>' is not the benign case
+not ok 11 herdr: a failed version check names herdr, not the asset file
+# (in test file tests/install.bats, line 678)
+#   `[[ $output == *"downloaded herdr reports 'herdr 0.9.4' to herdr --version"* ]]' failed
+not ok 12 herdr: an integration that keeps the hooks leaves no backup behind
+# (in test file tests/install.bats, line 686)
+#   `[ "$status" -eq 0 ]' failed
+ok 13 herdr: without jq on PATH and claude present, the step fails naming jq before anything is installed
+not ok 14 herdr: a sha mismatch installs nothing and runs nothing
+# (in test file tests/install.bats, line 708)
+#   `[[ $output == *"sha256 mismatch"* ]]' failed
+not ok 15 herdr: a binary that reports another version is refused before it replaces anything
+# (in test file tests/install.bats, line 718)
+#   `[[ $output == *"herdr 0.9.5"* ]]' failed
+ok 16 herdr: a version that only starts like the pin (0.9.50) is refused
+not ok 17 herdr: only the first line of --version counts
+# (in test file tests/install.bats, line 734)
+#   `[ "$status" -eq 0 ]' failed
+not ok 18 herdr: on linux arm64 the aarch64-unknown-linux-musl tarball is fetched
+# (in test file tests/install.bats, line 741)
+#   `[ "$status" -eq 0 ]' failed
+not ok 19 herdr: on macOS the apple-darwin tarballs are fetched
+# (in test file tests/install.bats, line 749)
+#   `[ "$status" -eq 0 ]' failed
+not ok 20 herdr: a .sha256 file that lists another hash is refused before anything is unpacked or run
+# (in test file tests/install.bats, line 768)
+#   `[[ $output == *"$a.sha256"* ]]' failed
+not ok 21 herdr: a .sha256 file that does not name the asset is refused
+# (in test file tests/install.bats, line 779)
+#   `[[ $output == *"$a.sha256"* ]]' failed
+ok 22 herdr: a missing .sha256 file is refused
+not ok 23 herdr: a tarball without a herdr file is refused
+# (in test file tests/install.bats, line 799)
+#   `[[ $output == *"no herdr"* ]]' failed
+not ok 24 herdr: a tarball whose herdr is not a plain file, or that holds a .. member, is refused
+# (in test file tests/install.bats, line 811)
+#   `[[ $output == *"unsafe entry"* ]]' failed
+not ok 25 herdr: with HERDR_VERSION=0.9.5 and tag v0.9.5-ev.2, 'herdr 0.9.5' installs
+# (in test file tests/install.bats, line 826)
+#   `[ "$status" -eq 0 ]' failed
+ok 26 herdr: with HERDR_VERSION=0.9.5, 'herdr 0.9.5-ev.2' and 'herdr 0.9.50' are refused
+not ok 27 herdr: without HERDR_VERSION, tag v0.9.5-ev.2 needs exactly 'herdr 0.9.5-ev.2'
+# (in test file tests/install.bats, line 847)
+#   `[ "$status" -eq 0 ]' failed
+not ok 28 herdr: a malformed HERDR_VERSION is refused, naming pins/herdr.env
+# (in test file tests/install.bats, line 857)
+#   `[[ $output == *"pins/herdr.env"* ]]' failed
+ok 29 --only herdr, rtk and cli are accepted; --only nope is a usage error
+ok 30 the default steps run in order: bitc memsync herdr rtk plugins cli
+not ok 31 dry run names the herdr and rtk assets and downloads nothing
+# (in test file tests/install.bats, line 1046)
+#   `[[ $output == *herdr-v0.9.5-x86_64-unknown-linux-musl.tar.gz* && $output == *herdr-v0.9.5-x86_64-unknown-linux-musl.tar.gz.sha256* && $output == *rtk-x86_64-unknown-linux-musl.tar.gz* ]]' failed
+ok 32 herdr and rtk: an unpinned tool is skipped
+--- python
+.....FF.F.FF..........
+======================================================================
+FAIL: test_a_blank_version_key_in_an_unpinned_file_passes (__main__.CheckPins.test_a_blank_version_key_in_an_unpinned_file_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tests/test_lint_pins.py", line 101, in test_a_blank_version_key_in_an_unpinned_file_passes
+    self.assertEqual(self.check("herdr.env", "HERDR_URL=\nHERDR_TAG=TODO\nHERDR_VERSION=\n"), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["pins/herdr.env: unexpected line: 'HERDR_[48 chars]h>)"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"pins/herdr.env: unexpected line: 'HERDR_VERSION=' (only *_URL, *_TAG, *_SHA256_<os>_<arch>)"
+
++ []
+- ["pins/herdr.env: unexpected line: 'HERDR_VERSION=' (only *_URL, *_TAG, "
+-  '*_SHA256_<os>_<arch>)']
+
+======================================================================
+FAIL: test_a_duplicate_version_key_fails (__main__.CheckPins.test_a_duplicate_version_key_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tests/test_lint_pins.py", line 94, in test_a_duplicate_version_key_fails
+    self.assertTrue(any("duplicate" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : ["pins/herdr.env: unexpected line: 'HERDR_VERSION=0.9.5' (only *_URL, *_TAG, *_SHA256_<os>_<arch>)", "pins/herdr.env: unexpected line: 'HERDR_VERSION=0.9.6' (only *_URL, *_TAG, *_SHA256_<os>_<arch>)"]
+
+======================================================================
+FAIL: test_a_malformed_version_key_fails (__main__.CheckPins.test_a_malformed_version_key_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tests/test_lint_pins.py", line 90, in test_a_malformed_version_key_fails
+    self.assertTrue(any("VERSION" in e and "unexpected line" not in e for e in errs), (bad, errs))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : ('', ["pins/herdr.env: unexpected line: 'HERDR_VERSION=' (only *_URL, *_TAG, *_SHA256_<os>_<arch>)"])
+
+======================================================================
+FAIL: test_a_version_key_in_an_unpinned_file_fails (__main__.CheckPins.test_a_version_key_in_an_unpinned_file_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tests/test_lint_pins.py", line 98, in test_a_version_key_in_an_unpinned_file_fails
+    self.assertTrue(any("VERSION" in e and "unexpected line" not in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : ["pins/herdr.env: unexpected line: 'HERDR_VERSION=0.9.5' (only *_URL, *_TAG, *_SHA256_<os>_<arch>)"]
+
+======================================================================
+FAIL: test_a_well_formed_version_key_passes (__main__.CheckPins.test_a_well_formed_version_key_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tests/test_lint_pins.py", line 85, in test_a_well_formed_version_key_passes
+    self.assertEqual(self.check("herdr.env", self.herdr(VERSION=good)), [], good)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["pins/herdr.env: unexpected line: 'HERDR_[53 chars]h>)"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"pins/herdr.env: unexpected line: 'HERDR_VERSION=0.9.5' (only *_URL, *_TAG, *_SHA256_<os>_<arch>)"
+
++ []
+- ["pins/herdr.env: unexpected line: 'HERDR_VERSION=0.9.5' (only *_URL, *_TAG, "
+-  '*_SHA256_<os>_<arch>)'] : 0.9.5
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.286s
+
+FAILED (failures=5)

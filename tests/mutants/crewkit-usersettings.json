@@ -1,0 +1,115 @@
+{
+  "target": "libexec/ck/usersettings.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-usersettings.bats"
+  ],
+  "mutants": [
+    {
+      "name": "exact-key match loosened to prefix",
+      "old": "fm && index($0, k \":\") == 1",
+      "new": "fm && index($0, k) == 1"
+    },
+    {
+      "name": "quote check removed",
+      "old": "    *[\\\"\\']*) ck_die 65 \"the value for $key has a quote\" ;;",
+      "new": "    *[\\\"\\']*) : ;;"
+    },
+    {
+      "name": "write not atomic (direct >)",
+      "old": "  mv \"$tmp\" \"$file\" ||",
+      "new": "  cat \"$tmp\" > \"$file\" ||"
+    },
+    {
+      "name": "mode not 600",
+      "old": "tmp=$(umask 077; mktemp \"$dir/.crewkit.md.XXXXXX\" 2>/dev/null) ||",
+      "new": "tmp=\"$dir/.crewkit.md.$$\"; : > \"$tmp\" ||"
+    },
+    {
+      "name": "ownership not checked",
+      "old": "_ck_user_find \"$p\" ! -user \"$me\"",
+      "new": "_ck_user_find \"$p\" -user \"$me\""
+    },
+    {
+      "name": "world-writable not checked",
+      "old": "_ck_user_find \"$p\" -perm -002",
+      "new": "_ck_user_find \"$p\" -perm -020"
+    },
+    {
+      "name": "--secret value echoed in the dry run",
+      "old": "shown='<secret>'",
+      "new": "shown=\"\\\"$value\\\"\""
+    },
+    {
+      "name": "symlink followed",
+      "old": "  if [[ -L $file ]]; then _CK_UERR=\"$file is a symlink: crewkit never writes through one\"; return 78; fi\n",
+      "new": "  :\n"
+    },
+    {
+      "name": "symlinked ~/.claude followed",
+      "old": "  if [[ -L $dir ]]; then _CK_UERR=\"$dir is a symlink: crewkit never writes through one\"; return 78; fi\n",
+      "new": "  :\n"
+    },
+    {
+      "name": "lock not held",
+      "old": "  ck_lock user-settings\n",
+      "new": "  :\n"
+    },
+    {
+      "name": "lock not released",
+      "old": "  ck_unlock user-settings\n",
+      "new": "  :\n"
+    },
+    {
+      "name": "a failed find passes the checks",
+      "old": "-print 2>/dev/null) || return 1",
+      "new": "-print 2>/dev/null) || true"
+    },
+    {
+      "name": "~/.claude itself not checked",
+      "old": "for p in \"$dir\" \"$file\"; do",
+      "new": "for p in \"$file\"; do"
+    },
+    {
+      "name": "crewkit.md owner not checked",
+      "old": "_ck_user_find \"$p\" ! -user \"$me\" ||",
+      "new": "[[ $p == \"$file\" ]] && _CK_FOUND= || _ck_user_find \"$p\" ! -user \"$me\" ||"
+    },
+    {
+      "name": "id failure ignored",
+      "old": "me=$(id -u) || { _CK_UERR=\"cannot tell who you are (id -u failed)\"; return 78; }",
+      "new": "me=$(id -u) || me=0"
+    },
+    {
+      "name": "directory accepted as crewkit.md",
+      "old": "    if [[ $p == \"$file\" && ! -f $p ]]; then _CK_UERR=\"$p is not a regular file\"; return 78; fi\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "pre-mv check ignores truncation",
+      "old": "  ((_S_N == sn + delta)) || return 1\n  ((_S_CLOSED == sclosed)) || return 1\n  if ((sbody)); then [[ $_S_LAST == \"$sl\" ]] || return 1; fi\n",
+      "new": "  ((_S_CLOSED == sclosed)) || return 1\n"
+    },
+    {
+      "name": "pre-mv check matches outside the frontmatter",
+      "old": "    elif ((closed)); then\n      _S_BODY=1\n",
+      "new": "    elif ((closed)); then\n      _S_BODY=1\n      [[ $got == \"$3\" ]] && _S_WANT=$((_S_WANT + 1))\n"
+    },
+    {
+      "name": "duplicate-key delta 0",
+      "old": "else delta=$((1 - skeys)); fi",
+      "new": "else delta=0; fi"
+    },
+    {
+      "name": "closing fence not checked",
+      "old": "  ((_S_CLOSED == sclosed)) || return 1\n",
+      "new": "  :\n"
+    },
+    {
+      "name": "scan variables not local",
+      "old": "  local _S_N _S_LAST _S_FM _S_CLOSED _S_BODY _S_KEYS _S_WANT\n",
+      "new": "  :\n"
+    }
+  ]
+}

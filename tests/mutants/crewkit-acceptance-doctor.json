@@ -1,0 +1,20 @@
+{
+  "target": "libexec/crewkit-doctor",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-acceptance.bats"
+  ],
+  "mutants": [
+    {
+      "name": "doctor exits 0 with a FAIL",
+      "old": "exit \"$bad\"",
+      "new": "exit 0"
+    },
+    {
+      "name": "doctor exits 1 with no FAIL",
+      "old": "exit \"$bad\"",
+      "new": "exit 1"
+    }
+  ]
+}

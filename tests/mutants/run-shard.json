@@ -1,0 +1,11 @@
+{
+  "target": "tests/run.sh",
+  "suite": ["bats", "--abort", "tests/bats-shards.bats"],
+  "mutants": [
+    {"name": "an empty shard runs the whole suite", "old": "((${#shard_files[@]})) || { echo \"run.sh: shard $shard has no bats files\" >&2; exit 64; }", "new": ": "},
+    {"name": "the shard argument is passed on to bats", "old": "    shard=$2\n    shift 2", "new": "    shard=$2\n    args+=(\"$1\" \"$2\")\n    shift 2"},
+    {"name": "the planner is asked for shard 1", "old": "files \"$shard\")", "new": "files \"1/${shard#*/}\")"},
+    {"name": "a planner failure is ignored", "old": "files \"$shard\") || exit $?", "new": "files \"$shard\") || true"},
+    {"name": "the shard's files are not run alone", "old": "if ((${#shard_files[@]})); then\n  exec", "new": "if false; then\n  exec"}
+  ]
+}

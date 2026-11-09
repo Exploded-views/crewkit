@@ -1,0 +1,63 @@
+push-gate port: RED run, 2026-10-27. tests/push-gate.bats against the ORIGINAL gate from the port
+sources (bin/push-gate.sh, run through a thin adapter that sets its PUSH_GATE_* variables from the
+test's settings), filtered to the hook's fail-closed tests. The fault stubs make one git subcommand
+exit 128, or every counting grep exit 2, as each does on a real error.
+
+1..10
+ok 1 a term in an author name blocks
+not ok 2 an unreadable exempt file, or an invalid exempt pattern, refuses the push
+#   `[ "$status" -eq 1 ]; [[ $output == *"gate error"* ]]' failed
+not ok 3 no gitleaks, no recorded sha256, or a gitleaks that changed since install blocks
+#   `[ "$status" -eq 1 ]; [[ $output == *sha256* ]]' failed
+not ok 4 fail-open (a): git rev-list failing refuses the push, it doesn't scan nothing
+#   `[ "$status" -eq 1 ]; [[ $output == *"gate error: refusing push"* ]]' failed
+not ok 5 fail-open (b): grep exiting 2 on a commit refuses the push, it isn't an empty count
+#   `[ "$status" -eq 1 ]; [[ $output == *"gate error: refusing push"* ]]' failed
+not ok 6 git show failing on a commit refuses the push
+#   `[ "$status" -eq 1 ]; [[ $output == *"gate error: refusing push"* ]]' failed
+not ok 7 git grep failing on the pushed tree refuses the push
+#   `[ "$status" -eq 1 ]; [[ $output == *"gate error: refusing push"* ]]' failed
+not ok 8 git ls-tree failing on the pushed tree refuses the push
+#   `[ "$status" -eq 1 ]; [[ $output == *"gate error: refusing push"* ]]' failed
+not ok 9 grep exiting 2 on the path list refuses the push (a range with no new commits)
+#   `[ "$status" -eq 1 ]; [[ $output == *"gate error: refusing push"* ]]' failed
+not ok 10 a pushed sha that isn't in the repository, or a line git didn't write, refuses the push
+#   `[ "$status" -eq 1 ]; [[ $output == *"gate error"* ]]' failed
+
+Exit status of the original under each fault (the same run, with the status echoed):
+#   exit 0
+not ok 1 an unreadable exempt file, or an invalid exempt pattern, refuses the push
+#   exit 1
+#   exit 0
+not ok 2 no gitleaks, no recorded sha256, or a gitleaks that changed since install blocks
+#   exit 0
+not ok 3 fail-open (a): git rev-list failing refuses the push, it doesn't scan nothing
+#   exit 0
+not ok 4 fail-open (b): grep exiting 2 on a commit refuses the push, it isn't an empty count
+#   exit 0
+not ok 5 git show failing on a commit refuses the push
+#   exit 0
+not ok 6 git grep failing on the pushed tree refuses the push
+#   exit 0
+not ok 7 git ls-tree failing on the pushed tree refuses the push
+#   exit 0
+not ok 8 grep exiting 2 on the path list refuses the push (a range with no new commits)
+#   exit 0
+not ok 9 a pushed sha that isn't in the repository, or a line git didn't write, refuses the push
+
+Reading: every injected git or grep failure let the push through (exit 0): fail-open (a), rev-list
+failing in `for c in $(git rev-list ...)`, scanned nothing; fail-open (b), `n=$(git show | grep -Eic)`
+came back empty on grep's exit 2 and `(( n > 0 ))` read it as no hits. git show, git grep and
+git ls-tree failing, and a pushed sha missing from the repository, failed open the same way.
+Two tests are tightenings, not fail-opens: the original had no recorded-sha256 check for gitleaks
+(any binary at the path passed), and treated an unreadable exempt file as absent (it gates every
+remote, so a clean push passed); both now refuse.
+
+The tests for install, status, --doctor, gate-check, shim and the dispatcher had no code in the
+port to fail against (the original has `<remote> <url>` only; the adapter answers 64 to anything
+else), so they failed by absence. A first run of the author-name test failed on the original for a
+test bug: GIT_AUTHOR_NAME in the environment overrides `-c user.name`; the helper now sets the env.
+Order, stated plainly: the hook's fail-closed fixes were written against these failing tests; the
+new subcommands (install, status, --doctor, gate-check, shim) were drafted in the same sitting as
+their tests, so their RED is by absence only. Their mutants (tests/mutants/push-gate*.json) are
+the evidence that each of those tests bites.

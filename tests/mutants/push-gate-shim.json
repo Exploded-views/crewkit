@@ -1,0 +1,25 @@
+{
+  "target": "push-gate/shim.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/push-gate.bats"
+  ],
+  "mutants": [
+    {
+      "name": "shim: gate refusal ignored",
+      "old": "hook \"$1\" \"$2\" < \"$_pg_in\" || { rm -f \"$_pg_in\"; exit 1; }",
+      "new": "hook \"$1\" \"$2\" < \"$_pg_in\""
+    },
+    {
+      "name": "shim: stdin not handed on",
+      "old": "exec < \"$_pg_in\"\n",
+      "new": ""
+    },
+    {
+      "name": "missing gate script not refused",
+      "old": "if [ ! -x \"$_pg_gate\" ]; then",
+      "new": "if false; then"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Only what holder/Dockerfile copies goes into the build context; nothing else (no .git, no
+# tests, no local state) can end up in a layer.
+*
+!bin
+!libexec
+!lib
+!templates
+!holder/ntfy-server.yml

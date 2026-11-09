@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# crewkit node report [--session S]: the read-only report a node prints, one JSON line on stdout.
+# It is the forced ssh command the hub runs on each node, so it takes nothing from the caller:
+#
+#   - argv is parsed first. Only `--session S` is accepted (S a herdr session name); anything else
+#     is 64 with no herdr call and no read of node state. SSH_ORIGINAL_COMMAND is never read.
+#   - the node state (<state_dir>/node/S.json, written by `crewkit node join`) is validated before
+#     any of it is used; one that fails a check is 65.
+#   - it writes nothing: no state, cache, lock or file outside one `mktemp -d` that is removed on
+#     exit. The output is built by jq only and printed last, so on any non-zero exit stdout is empty.
+#   - what herdr reports about the node's agents is untrusted; only the sanitized fields of
+#     ck_herdr_agents get through (no cwd, title or hostname).
+#
+# Without --session the report is of herdr's default session.
+#
+# Output keys (registry.sh's CK_REPORT_KEYS): schema node_id name session at crewkit herdr
+#   {version,protocol,server_running} platform {os,arch} boot_start (enabled|disabled|absent)
+#   push_gate (installed|absent|no-denylist) bridge {name,status} agents (each with role and access)
+#   other_sessions [{name,running}] join_token_sha256.
+# bridge.status is: the bridge agent's herdr status (idle working blocked done unknown); null when
+# the node has no bridge, or its agent's status is not one herdr names; "unknown" when the bridge
+# is an agent name that several agents share (so it matches none); "absent" when no agent matches.
+# Anything but the first kind is a value outside herdr's own statuses or a null.
+# An agent's role is its role token, else lead or bridge from the node state; its access is the
+# access token if exactly reader or writer, else writer for the lead, reader for the bridge,
+# unknown otherwise (never guessed as reader).
+#
+# Exit (docs/exit-codes.md): 0 reported (also when herdr is not running); 1 herdr failed on a
+# running server, or no scratch directory; 64 usage; 65 node state invalid; 78 not a crewkit node
+# or no default session.
+set -euo pipefail
+
+nr_usage() {
+  echo "usage: crewkit node report [--session S]" >&2
+  exit 64
+}
+
+# argv first: nothing else has been read or run.
+nr_session='' nr_given=0
+case $# in
+  0) ;;
+  2)
+    [[ $1 == --session ]] || nr_usage
+    nr_session=$2 nr_given=1
+    # The session name is the herdr rule (ck_herdr_session_ok), checked here before anything is sourced.
+    [[ $(LC_ALL=C; [[ $nr_session =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$ ]] && echo ok) == ok ]] || {
+      echo "crewkit: bad herdr session name (want letters, digits, _ and -, at most 64)" >&2
+      exit 64
+    }
+    ;;
+  *) nr_usage ;;
+esac
+# Nothing below reads the caller's stdin (ssh's channel): herdr and steps.sh get /dev/null.
+exec < /dev/null
+
+: "${CK_ROOT:?crewkit node report is run through bin/crewkit}"
+# shellcheck source=/dev/null
+source "$CK_ROOT/lib/settings.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/common.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/registry.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/herdr.sh"
+# ck_boot_status comes from steps.sh, never from the environment (an exported function is dropped).
+unset -f ck_boot_status
+# shellcheck source=/dev/null
+if [[ -f $CK_ROOT/libexec/ck/steps.sh ]]; then
+  # A steps.sh that fails to load is not the report's failure: boot_start is then "absent".
+  source "$CK_ROOT/libexec/ck/steps.sh" > /dev/null 2>&1 || {
+    unset -f ck_boot_status
+    echo "crewkit: steps.sh failed to load" >&2
+  }
+fi
+
+# The one place anything is made: a private scratch directory (bash and herdr.sh need temp files),
+# removed on exit. TMPDIR points into it, so a read-only TMPDIR or HOME does not matter.
+nr_work=$(mktemp -d "${TMPDIR:-/tmp}/cknr.XXXXXX" 2> /dev/null || mktemp -d /tmp/cknr.XXXXXX) || ck_die 1 "cannot make a scratch directory"
+trap 'rm -rf "$nr_work"' EXIT
+export TMPDIR=$nr_work
+
+if ((!nr_given)); then
+  nr_session=$(ck_herdr_default_session) || ck_die 78 "not a crewkit node (herdr has no default session)"
+  ck_herdr_session_ok "$nr_session" || ck_die 78 "not a crewkit node (bad default session name)"
+fi
+
+# The state directory is looked up, never created (ck_state_dir would create it).
+nr_dir=$(crew_setting state_dir "$HOME/.local/state/crewkit") || exit $?
+nr_dir=$(_ck_expand_home "$nr_dir" state_dir)
+nr_file=$nr_dir/node/$nr_session.json
+[[ -L $nr_file ]] && ck_die 65 "node state is invalid"
+[[ -f $nr_file ]] || ck_die 78 "not a crewkit node (no node state for session $nr_session)"
+# Read once, into the scratch directory; everything below is checked and taken from this copy.
+nr_copy=$nr_work/state.json
+head -c 65537 "$nr_file" > "$nr_copy" || ck_die 1 "cannot read the node state"
+[[ $(wc -c < "$nr_copy") -le 65536 ]] || ck_die 65 "node state is invalid"
+[[ $(LC_ALL=C tr -cd '\0' < "$nr_copy" | wc -c) -eq 0 ]] || ck_die 65 "node state is invalid"
+
+# shellcheck disable=SC2016  # jq program
+NR_STATE_CHECK='
+  def pane: type == "string" and test("\\A[A-Za-z0-9][A-Za-z0-9:_-]{0,63}\\z");
+  type == "object" and .schema == 1
+  and (.node_id | type == "string" and test("\\An-[a-z2-7]{10}\\z"))
+  and (.registry_id | type == "string" and test("\\Ar-[a-z2-7]{10}\\z"))
+  and (.name | type == "string" and test("\\A[a-z][a-z0-9-]{0,31}\\z"))
+  and .session == $s
+  and (.join_token_sha256 | type == "string" and test("\\A[0-9a-f]{64}\\z"))
+  and (.lead == null or (.lead | pane))
+  and (.bridge == null or (.bridge | pane))'
+# Exactly one JSON document, and every field comes from it.
+jq -s -e --arg s "$nr_session" "length == 1 and (.[0] | $NR_STATE_CHECK)" "$nr_copy" > /dev/null 2>&1 || ck_die 65 "node state is invalid"
+IFS=$'\t' read -r nr_id nr_name nr_token nr_lead nr_bridge < <(
+  jq -s -r '.[0] | [.node_id, .name, .join_token_sha256, (.lead // "-"), (.bridge // "-")] | @tsv' "$nr_copy"
+)
+_ck_reg_nid "$nr_id"
+ck_name_ok "$nr_name" || ck_die 65 "node state is invalid"
+
+nr_version=$(head -c 64 "$CK_ROOT/libexec/VERSION" 2> /dev/null | LC_ALL=C tr -cd 'A-Za-z0-9._-') || nr_version=''
+nr_at=$(ck_iso "$(ck_now)")
+
+read -r nr_cv nr_cp nr_sr _ < <(ck_herdr_versions "$nr_session")
+
+nr_agents='[]'
+nr_sessions=''
+if ck_herdr_bin > /dev/null; then
+  nr_agents=$(ck_herdr_agents "$nr_session" --access) || ck_die 1 "herdr: cannot list the agents"
+  nr_sessions=$(ck_herdr_sessions 2> /dev/null) || nr_sessions=''
+fi
+
+nr_os=$(LC_ALL=C uname -s | LC_ALL=C tr '[:upper:]' '[:lower:]')
+case $nr_os in linux | darwin) ;; *) nr_os=other ;; esac
+nr_arch=$(LC_ALL=C uname -m)
+case $nr_arch in
+  x86_64 | amd64) nr_arch=amd64 ;;
+  aarch64 | arm64) nr_arch=arm64 ;;
+  *) nr_arch=other ;;
+esac
+
+nr_boot=absent
+if declare -F ck_boot_status > /dev/null; then
+  nr_boot=$(ck_boot_status "$nr_session" 2> /dev/null) || nr_boot=absent
+  case $nr_boot in enabled | disabled) ;; *) nr_boot=absent ;; esac
+fi
+
+nr_gate=absent
+if [[ -x $CK_ROOT/$CK_PUSH_GATE_REL ]]; then
+  nr_gate=$("$CK_ROOT/$CK_PUSH_GATE_REL" status --json 2> /dev/null < /dev/null | head -c 4096 |
+    jq -r 'if type == "object" and .installed == true then (if .denylist == true then "installed" else "no-denylist" end) else "absent" end' 2> /dev/null) || nr_gate=absent
+  case $nr_gate in installed | no-denylist) ;; *) nr_gate=absent ;; esac
+fi
+
+# shellcheck disable=SC2016  # jq program
+nr_out=$(jq -cn \
+  --arg id "$nr_id" --arg name "$nr_name" --arg session "$nr_session" --arg at "$nr_at" \
+  --arg crewkit "$nr_version" --arg cv "$nr_cv" --arg cp "$nr_cp" --arg sr "$nr_sr" \
+  --arg os "$nr_os" --arg arch "$nr_arch" --arg boot "$nr_boot" --arg gate "$nr_gate" \
+  --arg token "$nr_token" --arg lead "$nr_lead" --arg bridge "$nr_bridge" \
+  --argjson agents "$nr_agents" --arg sessions "$nr_sessions" '
+  def orn: if . == "-" or . == "" then null else . end;
+  def match($v): if $v == null then [] else
+      [ $agents | to_entries[] | select(.value.pane_id == $v) | .key ] as $p
+      | if ($p | length) == 1 then $p elif ($p | length) > 1 then []
+        else [ $agents | to_entries[] | select(.value.name == $v) | .key ] as $n | if ($n | length) == 1 then $n else [] end end
+    end;
+  ($lead | orn) as $l | ($bridge | orn) as $b | match($l) as $lm | match($b) as $bm |
+  [ $agents | to_entries[] | .key as $i | .value
+      | .role = (.role // (if $lm | index($i) then "lead" elif $bm | index($i) then "bridge" else null end))
+      | .access = (.access // (if .role == "lead" then "writer" elif .role == "bridge" then "reader" else "unknown" end))
+  ] as $ag
+  | {
+      schema: 1, node_id: $id, name: $name, session: $session, at: $at,
+      crewkit: $crewkit,
+      herdr: { version: ($cv | orn), protocol: ($cp | if test("\\A[0-9]{1,6}\\z") then tonumber else null end), server_running: ($sr == "true") },
+      platform: { os: $os, arch: $arch },
+      boot_start: $boot, push_gate: $gate,
+      bridge: { name: $b, status: (if $b == null then null
+        elif ($bm | length) == 1 then $ag[$bm[0]].status
+        elif ([ $ag[] | select(.name == $b or .pane_id == $b) ] | length) > 0 then "unknown"
+        else "absent" end) },
+      agents: $ag,
+      other_sessions: [ $sessions | split("\n")[] | select(length > 0) | split("\t") | select(.[0] != $session) | { name: .[0], running: (.[2] == "true") } ],
+      join_token_sha256: $token
+    }')
+# The keys are exactly the contract's (CK_REPORT_KEYS); then, and only then, anything is printed.
+jq -e --arg k "$CK_REPORT_KEYS" 'keys == ($k | split(" "))' <<< "$nr_out" > /dev/null || ck_die 1 "report: unexpected keys"
+printf '%s\n' "$nr_out"

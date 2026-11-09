@@ -1,0 +1,46 @@
+lane-land: the merge pause fails open when mergePauseExempt reads empty under jq 1.6, reads as an object, or can't be read, and when the mergePaused read fails. RED run, before the change.
+Run: tools/get-bats.sh, then: bats tests/lane-land.bats -f 'paused, |mergePaused read'
+(the committed tests, run against the unchanged plugins/crew-lanes/bin/lane-land; captured at the tests' final numbering)
+Real fail-opens, which failed on status (held_when_exempt_reads line 284: the PR was not held with 35, so it landed through the pause): test 1 (empty, under the jq 1.6 shim), test 5 (an object: map() runs over an object's values, so {"a": 12} matched PR 12 under every jq), test 7 (the mergePauseExempt read fails) and test 8 (a failed read that still printed a list holding the PR). Test 12: a failed mergePaused read was not refused (status, not 39).
+Note only, which failed on the new stderr note alone (line 285; the old script already held them with 35): tests 2 (empty, host jq 1.7+), 3 (null), 4 (a string) and 6 (unparseable text).
+Passed, pinning existing behaviour: 9 and 10 (a real list holding the PR exempts it, host jq and shim) and 11 (a list without it holds).
+
+1..12
+not ok 1 paused, mergePauseExempt reads empty (jq 1.6 shim): MERGE-PAUSED (35) and a note
+# (from function `held_when_exempt_reads' in file tests/lane-land.bats, line 284,
+#  in test file tests/lane-land.bats, line 291)
+#   `held_when_exempt_reads 0 ''' failed
+not ok 2 paused, mergePauseExempt reads empty (the host's jq): MERGE-PAUSED (35) and a note
+# (from function `held_when_exempt_reads' in file tests/lane-land.bats, line 285,
+#  in test file tests/lane-land.bats, line 295)
+#   `held_when_exempt_reads 0 ''' failed
+not ok 3 paused, mergePauseExempt reads null: MERGE-PAUSED (35)
+# (from function `held_when_exempt_reads' in file tests/lane-land.bats, line 285,
+#  in test file tests/lane-land.bats, line 300)
+#   `held_when_exempt_reads 0 null' failed
+not ok 4 paused, mergePauseExempt reads a string: MERGE-PAUSED (35)
+# (from function `held_when_exempt_reads' in file tests/lane-land.bats, line 285,
+#  in test file tests/lane-land.bats, line 305)
+#   `held_when_exempt_reads 0 '"12"'' failed
+not ok 5 paused, mergePauseExempt reads an object: MERGE-PAUSED (35)
+# (from function `held_when_exempt_reads' in file tests/lane-land.bats, line 284,
+#  in test file tests/lane-land.bats, line 310)
+#   `held_when_exempt_reads 0 '{"a": 12}'' failed
+not ok 6 paused, mergePauseExempt reads unparseable text: MERGE-PAUSED (35)
+# (from function `held_when_exempt_reads' in file tests/lane-land.bats, line 285,
+#  in test file tests/lane-land.bats, line 315)
+#   `held_when_exempt_reads 0 'not json ['' failed
+not ok 7 paused, the mergePauseExempt read fails: MERGE-PAUSED (35)
+# (from function `held_when_exempt_reads' in file tests/lane-land.bats, line 284,
+#  in test file tests/lane-land.bats, line 320)
+#   `held_when_exempt_reads 1 ''' failed
+not ok 8 paused, a failed mergePauseExempt read that still printed a list holding the PR: MERGE-PAUSED (35)
+# (from function `held_when_exempt_reads' in file tests/lane-land.bats, line 284,
+#  in test file tests/lane-land.bats, line 324)
+#   `held_when_exempt_reads 1 '[12]'' failed
+ok 9 paused, a real list holding the PR still exempts it (host jq)
+ok 10 paused, a real list holding the PR still exempts it (jq 1.6 shim)
+ok 11 paused, a real list without the PR holds it (jq 1.6 shim)
+not ok 12 the mergePaused read fails: STATE-UNREADABLE (39), nothing merged
+# (in test file tests/lane-land.bats, line 359)
+#   `[ "$status" -eq 39 ]' failed

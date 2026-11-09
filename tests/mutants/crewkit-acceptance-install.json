@@ -1,0 +1,25 @@
+{
+  "target": "install.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-acceptance.bats"
+  ],
+  "mutants": [
+    {
+      "name": "the dry run applies its steps",
+      "old": "  if ((yes)); then \"$@\"; fi",
+      "new": "  \"$@\""
+    },
+    {
+      "name": "the cli step relinks an existing link",
+      "old": "    echo \"  $dest already links to $src\"\n    return 0",
+      "new": "    echo \"  $dest already links to $src\""
+    },
+    {
+      "name": "the cli step makes no link",
+      "old": "  run ln -s \"$src\" \"$dest\"",
+      "new": "  run true"
+    }
+  ]
+}

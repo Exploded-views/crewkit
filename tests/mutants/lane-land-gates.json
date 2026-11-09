@@ -8,7 +8,7 @@
   "mutants": [
     {
       "name": "merge pause ignored",
-      "old": "if [[ $(get mergePaused) == true ]]; then",
+      "old": "if [[ $paused == true ]]; then",
       "new": "if false; then"
     },
     {
@@ -40,6 +40,26 @@
       "name": "gated lanes ignored",
       "old": "  jq -e --arg l \"$lane\" 'index($l) != null' <<<\"$(get ownerGatedLanes)\" >/dev/null && why=",
       "new": "  false && why="
+    },
+    {
+      "name": "empty exemption read counts as exempt",
+      "old": "if [[ -z ${exempt//[[:space:]]/} ]] || ! child jq -e 'type == \"array\"'",
+      "new": "if ! child jq -e 'type == \"array\"'"
+    },
+    {
+      "name": "non-list exemption accepted",
+      "old": " || ! child jq -e 'type == \"array\"' <<<\"$exempt\" >/dev/null 2>&1; then",
+      "new": "; then"
+    },
+    {
+      "name": "failed mergePaused read counts as not paused",
+      "old": "  || say \"STATE-UNREADABLE (can't read mergePaused",
+      "new": "  || true; : \"(can't read mergePaused"
+    },
+    {
+      "name": "a failed exemption read keeps what it printed",
+      "old": "mergePauseExempt 2>/dev/null) || exempt=\"\"",
+      "new": "mergePauseExempt 2>/dev/null) || true"
     }
   ]
 }

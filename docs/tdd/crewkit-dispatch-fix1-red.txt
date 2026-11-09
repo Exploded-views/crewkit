@@ -1,0 +1,63 @@
+# Fix round 1 for tests/crewkit.bats, run against the first common.sh and bin/crewkit (7982618): the ck_lock race test (two holders at once after taking over a dead holder's lock), CK_YES from the environment, CK_BASH_VERSION that can only tighten, state_dir failures, ck_age input, HOME checks, the verb's bash. Only the failures are kept.
+
+1..39
+not ok 11 bash below 4.4 exits 78 naming bash 4.4 before anything else runs
+# (in test file tests/crewkit.bats, line 160)
+#   `[ "$status" -eq 0 ] || { echo "'$v' gave $status"; return 1; }' failed
+# 'junk' gave 78
+not ok 12 CK_BASH_VERSION can't loosen the check under the real bash 3.2
+# (in test file tests/crewkit.bats, line 167)
+#   `[ "$status" -eq 78 ]' failed
+not ok 13 CK_YES from the environment never turns a dry run into a real one
+# (in test file tests/crewkit.bats, line 176)
+#   `[ ! -e x ]' failed
+not ok 14 a verb runs under the bash that passed the check, not whichever bash is first on PATH
+# (in test file tests/crewkit.bats, line 192)
+#   `[ "$output" = "$BASH_VERSION" ]' failed
+not ok 15 an empty or relative HOME is usage (64); nothing runs
+# (in test file tests/crewkit.bats, line 200)
+#   `[ "$status" -eq 64 ]' failed
+not ok 16 ck_age refuses anything but an integer and never evaluates it (64)
+# (in test file tests/crewkit.bats, line 211)
+#   `[ "$status" -eq 64 ] || { echo "'$bad' gave $status"; return 1; }' failed
+# 'a[$(touch pwned)]' gave 0
+not ok 17 ck_state_dir leaves an existing directory's mode alone, and expands only ~ and ~/
+# (in test file tests/crewkit.bats, line 222)
+#   `[ "$(stat -c %a "$BATS_TEST_TMPDIR/pub")" = 755 ]' failed
+not ok 18 ck_new_id gives up (1) instead of looping when random bytes can't be read
+# (in test file tests/crewkit.bats, line 237)
+#   `[ "$status" -eq 1 ]' failed
+not ok 30 ck_lock takes a free lock as a link to our pid, ck_unlock releases only our own
+# (in test file tests/crewkit.bats, line 365)
+#   `[ "$(readlink "$s/locks/reg.lock")" = "$$" ]' failed
+not ok 31 ck_lock waits then exits 75; a dead holder's lock is taken over
+# (in test file tests/crewkit.bats, line 392)
+#   `[ "$status" -eq 0 ]' failed
+not ok 32 ck_lock: a junk link target counts as dead; a stale reap mutex is cleared; a fresh one waits
+# (in test file tests/crewkit.bats, line 403)
+#   `[ "$status" -eq 0 ]' failed
+not ok 33 ck_lock under a race: never two holders at once, with dead holders to take over
+# (in test file tests/crewkit.bats, line 443)
+#   `|| { echo "round $round ($mode): two holders at once"; cat "$log"; return 1; }' failed
+# mv: cannot stat '<tmp>': No such file or directory
+# mv: cannot stat '<tmp>': No such file or directory
+# round 1 (crash): two holders at once
+# in 77275
+# out 77275
+# in 77287
+# in 77290
+# out 77287
+# out 77290
+# in 77286
+# in 77289
+# out 77286
+# out 77289
+# in 77276
+# out 77276
+# in 77285
+# out 77285
+# in 77279
+# out 77279
+not ok 34 ck_lock with an unusable state_dir stops, and creates nothing at /locks or in the cwd
+# (in test file tests/crewkit.bats, line 452)
+#   `[ "$status" -eq 78 ]' failed

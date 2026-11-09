@@ -116,8 +116,9 @@ def check_plugin(pdir):
     hooks = pdir / "hooks" / "hooks.json"
     if hooks.exists():
         check_hooks(hooks)
-    if not skills and not hooks.exists():
-        err(pdir, "no skills/<name>/SKILL.md or hooks/hooks.json found")
+    tools = [f for f in (pdir / "bin").glob("*") if f.is_file() and f.stat().st_mode & 0o111]
+    if not skills and not hooks.exists() and not tools:
+        err(pdir, "no skills/<name>/SKILL.md, hooks/hooks.json or executable in bin/ found")
     for s in skills:
         check_skill(s)
     return name
@@ -170,7 +171,10 @@ def check_evals():
 
 
 ALL_TARGETS = [f"{o}_{a}" for o in ("linux", "darwin") for a in ("amd64", "arm64")]
-PIN_TARGETS = {}  # tools not listed ship all four targets (bitc does since v0.1.0)
+# Tools not listed ship all four targets (bitc does since v0.1.0). ntfy and tailscale are pinned
+# for the holder image only, which is Linux.
+LINUX_TARGETS = ["linux_amd64", "linux_arm64"]
+PIN_TARGETS = {"ntfy": LINUX_TARGETS, "tailscale": LINUX_TARGETS}
 
 
 def check_pins():
@@ -178,7 +182,9 @@ def check_pins():
 
     Unpinned is TAG=TODO with a blank URL and no hashes set. Pinned is an https URL with a
     host, vX.Y.Z, and a 64-hex sha256 for every target that tool ships. No duplicate keys, no
-    CR line endings, no keys outside the tool's prefix.
+    CR line endings, no keys outside the tool's prefix. An optional <PREFIX>_VERSION=
+    (X.Y.Z[-pre], the version line the binary prints when that differs from the tag) is allowed
+    once in a pinned file, and must be absent or blank in an unpinned one.
     """
     for path in sorted((ROOT / "pins").glob("*.env")):
         text = path.read_bytes().decode("utf-8")
@@ -189,9 +195,9 @@ def check_pins():
         for raw in text.split("\n"):
             if not raw.strip() or raw.lstrip().startswith("#"):
                 continue
-            m = re.match(r"^([A-Z][A-Z0-9_]*_(URL|TAG|SHA256_(linux|darwin)_(amd64|arm64)))=(.*)$", raw)
+            m = re.match(r"^([A-Z][A-Z0-9_]*_(URL|TAG|VERSION|SHA256_(linux|darwin)_(amd64|arm64)))=(.*)$", raw)
             if not m:
-                err(path, f"unexpected line: {raw[:40]!r} (only *_URL, *_TAG, *_SHA256_<os>_<arch>)")
+                err(path, f"unexpected line: {raw[:40]!r} (only *_URL, *_TAG, *_VERSION, *_SHA256_<os>_<arch>)")
                 continue
             if m.group(1) in values:
                 err(path, f"duplicate key {m.group(1)} (install.sh would use the last one)")
@@ -203,17 +209,25 @@ def check_pins():
         prefix, tag = tags[0][:-4], values[tags[0]]
         if any(not k.startswith(f"{prefix}_") for k in values):
             err(path, f"every key must start with {prefix}_")
+        known = re.compile(rf"^{prefix}_(URL|TAG|VERSION|SHA256_(linux|darwin)_(amd64|arm64))$")
+        for k in values:
+            if not known.match(k):
+                err(path, f"unexpected key {k} (only {prefix}_URL, _TAG, _VERSION, _SHA256_<os>_<arch>)")
         url = values.get(f"{prefix}_URL")
+        version = values.get(f"{prefix}_VERSION")
         shas = {k: v for k, v in values.items() if k.startswith(f"{prefix}_SHA256_")}
         if url is None:
             err(path, f"missing {prefix}_URL")
         if tag == "TODO":
-            for k, v in [(f"{prefix}_URL", url or "")] + list(shas.items()):
+            for k, v in [(f"{prefix}_URL", url or ""), (f"{prefix}_VERSION", version or "")] + list(shas.items()):
                 if v:
                     err(path, f"{k} is set but the tag is TODO")
             continue
         if not re.match(r"^v\d+\.\d+\.\d+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$", tag, re.ASCII):
             err(path, f"{tags[0]} must be vMAJOR.MINOR.PATCH or TODO")
+        if version is not None and not re.match(
+                r"^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$", version, re.ASCII):
+            err(path, f"{prefix}_VERSION must be MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-PRERELEASE")
         if url is not None and not re.match(r"^https://[A-Za-z0-9.-]+/[A-Za-z0-9./_-]+$", url, re.ASCII):
             err(path, f"{prefix}_URL must be an https URL with a host")
         for target in PIN_TARGETS.get(path.stem, ALL_TARGETS):
@@ -222,6 +236,25 @@ def check_pins():
         for k, v in shas.items():
             if not re.match(r"^[0-9a-f]{64}$", v, re.ASCII):
                 err(path, f"{k} must be a 64-character sha256")
+
+
+FROM_RE = re.compile(r"^\s*FROM\s+(?:--\S+\s+)*(\S+)(?:\s+AS\s+(\S+))?\s*$", re.I)
+DIGEST_RE = re.compile(r"@sha256:[0-9a-f]{64}\Z", re.ASCII)
+
+
+def check_dockerfiles():
+    """holder/Dockerfile: every FROM names `scratch`, an earlier stage, or an image by digest."""
+    for path in sorted((ROOT / "holder").glob("Dockerfile*")):
+        stages = set()
+        for n, raw in enumerate(path.read_text().splitlines(), 1):
+            m = FROM_RE.match(raw)
+            if not m:
+                continue
+            image = m.group(1)
+            if image != "scratch" and image not in stages and not DIGEST_RE.search(image):
+                err(path, f"line {n}: base image {image} must be pinned by sha256 digest (name@sha256:<64 hex>)")
+            if m.group(2):
+                stages.add(m.group(2))
 
 
 SETUP_PAGES = ["README.md", "docs/install.md", "docs/getting-started.md"]
@@ -331,12 +364,15 @@ RETIRED_KEYS = {  # key: what replaces it
 
 
 def settings_lists():
-    """lib/settings.sh's CREW_FILE_ONLY and CREW_ENV_OK as lists of entries (None if undeclared)."""
+    """lib/settings.sh's CREW_FILE_ONLY and CREW_ENV_OK as lists of entries (None if undeclared), and
+    CREW_USER_ONLY's when it is declared."""
     text = (ROOT / "lib" / "settings.sh").read_text(encoding="utf-8")
     lists = {}
-    for name in ("CREW_FILE_ONLY", "CREW_ENV_OK"):
-        m = re.search(name + r"='([^']*)'", text, re.S)
+    for name in ("CREW_FILE_ONLY", "CREW_ENV_OK", "CREW_USER_ONLY"):
+        m = re.search(r"^" + name + r"='([^']*)'", text, re.S | re.M)
         if not m:
+            if name == "CREW_USER_ONLY":
+                continue
             return None
         lists[name] = m.group(1).split()
     return lists
@@ -384,6 +420,11 @@ def check_settings_classified(rows):
             elif "Never gates a merge" not in rows[key]:
                 err(ROOT / "docs" / "settings.md", f"CREW_ENV_OK prefix `{entry}` covers `{key}`, whose row doesn't say "
                                                     "\"Never gates a merge\"; list its keys exactly instead")
+    for entry in lists.get("CREW_USER_ONLY", []):
+        sample = entry[:-1] + "x" if entry.endswith(".*") else entry
+        if best(lists["CREW_ENV_OK"], sample) >= best(lists["CREW_FILE_ONLY"], sample):
+            err(ROOT / "lib" / "settings.sh", f"CREW_USER_ONLY entry `{entry}` must be file-only too "
+                                               "(in CREW_FILE_ONLY, not CREW_ENV_OK)")
     samples = [re.sub(r"<[a-z_]+>", "x", k) for k in keys]
     for name, entries in lists.items():
         for entry in entries:
@@ -403,7 +444,9 @@ def check_settings():
     rows = dict(re.findall(r"^\| `([^`]+)` \|(.*)$", doc, re.M))
     check_settings_classified(rows)
     lists = settings_lists()
-    for path in sorted(ROOT.glob("plugins/*/**/*")):
+    # The plugins' files, plus the crewkit CLI itself (bin/crewkit and libexec/**).
+    scanned = sorted(ROOT.glob("plugins/*/**/*")) + sorted([ROOT / "bin" / "crewkit", *ROOT.glob("libexec/**/*")])
+    for path in scanned:
         if not path.is_file():
             continue
         if path.parent.name == "lib" and path.parent.parent.parent.name == "plugins":
@@ -466,13 +509,26 @@ def check_links():
 
 def check_mutant_matrix():
     """CI runs every mutation spec: each tests/mutants/*.json is listed in the `spec` matrix of
-    ci.yml's `mutants` job, and every listed spec exists."""
-    specs = {p.name for p in (ROOT / "tests" / "mutants").glob("*.json")}
+    ci.yml's `mutants` job, and every listed spec exists.
+
+    One exception, per spec and never blanket: a spec too slow for the job's time limit carries
+    `"local_gate_only": "<reason>"` (a non-empty string) and leaves the matrix, but only if the
+    local gate's hold list, tests/mutants/local-gate.txt, covers it. A tagged spec in the matrix
+    fails, since the tag says CI can't run it in time. The hold list has one line per hold (blank
+    lines and `#` lines are ignored), each space-separated tokens `NAME.json` or `NAME.json@KofN`
+    (an interleaved slice, 1 <= K <= N). A spec is covered by its plain token, or by all of
+    `@1ofN .. @NofN` for one N; a partial set of slices, a plain token mixed with slices, two
+    different N, a token that names no spec or an untagged one, and a repeated token all fail.
+    A missing hold list is fine while no spec is tagged; one that exists is checked either way, and
+    an unreadable one is an error that leaves every tagged spec uncovered."""
+    mutants = ROOT / "tests" / "mutants"
+    specs = {p.name for p in mutants.glob("*.json")}
     ci = ROOT / ".github" / "workflows" / "ci.yml"
-    if not specs:
+    gate, holds = mutants / "local-gate.txt", {}
+    if not specs and not gate.exists():
         return
     listed, job, in_spec = set(), None, False
-    for line in (ci.read_text(encoding="utf-8").splitlines() if ci.exists() else []):
+    for line in (ci.read_text(encoding="utf-8").splitlines() if ci.exists() and specs else []):
         m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
         if m:
             job, in_spec = m.group(1), False
@@ -487,8 +543,81 @@ def check_mutant_matrix():
             listed.add(item.group(1))
         elif in_spec and line.strip():
             in_spec = False
+    tagged = set()
+    for name in sorted(specs):
+        try:
+            d = json.loads((mutants / name).read_text(encoding="utf-8"))
+            if not isinstance(d, dict):
+                raise ValueError
+        except (OSError, ValueError):
+            err(mutants / name, "not a readable mutation spec (JSON object with target, suite, mutants)")
+            continue
+        if "local_gate_only" not in d:
+            continue
+        reason = d["local_gate_only"]
+        if isinstance(reason, str) and any(c.isprintable() and not c.isspace() for c in reason):
+            tagged.add(name)
+        else:
+            err(mutants / name, "local_gate_only must be a non-empty string giving the reason")
+    # The hold list: name -> {"plain": count, "slices": {N: [K, ...]}}
+    gate_lines = []
+    try:
+        gate_lines = gate.read_text(encoding="utf-8").splitlines() if gate.exists() else []
+    except (OSError, ValueError):
+        err(gate, "not a readable hold list (UTF-8 text, one hold per line)")
+    for n, line in enumerate(gate_lines, 1):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        for tok in line.split():
+            m = re.match(r"^([A-Za-z0-9_.-]+\.json)(?:@([1-9][0-9]*)of([1-9][0-9]*))?$", tok)
+            if not m or (m.group(2) and int(m.group(2)) > int(m.group(3))):
+                err(gate, f"line {n}: {tok!r} is not NAME.json or NAME.json@KofN (1 <= K <= N)")
+                continue
+            if m.group(3) and int(m.group(3)) > 100:
+                err(gate, f"line {n}: {tok!r} has more than 100 slices, more than any gate runs")
+                continue
+            hold = holds.setdefault(m.group(1), {"plain": 0, "slices": {}})
+            if not m.group(2):
+                hold["plain"] += 1
+                if hold["plain"] == 2:
+                    err(gate, f"{tok} is listed twice")
+            else:
+                ks = hold["slices"].setdefault(int(m.group(3)), set())
+                if int(m.group(2)) in ks:
+                    err(gate, f"{tok} is listed twice")
+                ks.add(int(m.group(2)))
+    covered = set()
+    for name, hold in sorted(holds.items()):
+        if name not in specs:
+            err(gate, f"{name} is held, but tests/mutants/{name} does not exist")
+        elif name not in tagged:
+            err(gate, f"{name} is held, but tests/mutants/{name} has no valid local_gate_only reason")
+        elif hold["plain"] and hold["slices"]:
+            err(gate, f"{name} is listed both whole and as slices")
+        elif len(hold["slices"]) > 1:
+            err(gate, f"{name} is sliced into different N ({', '.join(map(str, sorted(hold['slices'])))})")
+        elif hold["slices"]:
+            (total, ks), = hold["slices"].items()
+            missing = [f"{k}of{total}" for k in range(1, total + 1) if k not in ks]
+            if missing:
+                more = f" and {len(missing) - 10} more" if len(missing) > 10 else ""
+                err(gate, f"{name} is sliced into {total} but slices @{', @'.join(missing[:10])}{more} are missing")
+            else:
+                covered.add(name)
+        else:
+            covered.add(name)
     for name in sorted(specs - listed):
-        err(ci, f"tests/mutants/{name} is not in the `mutants` job's spec matrix, so CI never runs it")
+        if name not in tagged:
+            err(ci, f"tests/mutants/{name} is not in the `mutants` job's spec matrix, so CI never runs it")
+        elif name not in holds:
+            err(ci, f"tests/mutants/{name} is tagged local_gate_only but is not in tests/mutants/local-gate.txt, "
+                    "so neither CI nor the local gate runs it")
+        elif name not in covered:
+            err(ci, f"tests/mutants/{name} is tagged local_gate_only but tests/mutants/local-gate.txt "
+                    "doesn't cover it (see the errors there)")
+    for name in sorted(tagged & listed):
+        err(ci, f"tests/mutants/{name} is tagged local_gate_only but is in the `mutants` job's spec matrix; "
+                "the tag says CI can't run it in time, so drop one")
     for name in sorted(listed - specs):
         err(ci, f"the `mutants` job lists {name}, but tests/mutants/{name} does not exist")
 
@@ -635,6 +764,7 @@ def main():
     check_marketplace(plugin_names)
     check_evals()
     check_pins()
+    check_dockerfiles()
     check_inputs()
     check_settings()
     check_mutant_matrix()

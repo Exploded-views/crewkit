@@ -1,0 +1,180 @@
+{
+  "target": "push-gate/push-gate.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/push-gate.bats"
+  ],
+  "mutants": [
+    {
+      "name": "scans: core.quotePath escapes non-ASCII paths",
+      "old": "-c core.quotePath=false ",
+      "new": ""
+    },
+    {
+      "name": "log: the URL's credential logged",
+      "old": "shown=$(sed -E 's#^([A-Za-z][A-Za-z0-9+.-]*://)[^/]*@#\\1#' <<<\"$url\")",
+      "new": "shown=$url"
+    },
+    {
+      "name": "new branch: excluded down to local tracking refs",
+      "old": "((listed)) || { have=$(remote_has); listed=1; }",
+      "new": "((listed)) || { have=$(git for-each-ref --format='^%(objectname)' \"refs/remotes/$1/\"); listed=1; }"
+    },
+    {
+      "name": "new branch: the remote's history scanned again",
+      "old": "revs=$lsha$'\\n'$have",
+      "new": "revs=$lsha"
+    },
+    {
+      "name": "new branch: tip commit only",
+      "old": "revs=$lsha$'\\n'$have",
+      "new": "revs=$lsha$'\\n'\"^$lsha~1\""
+    },
+    {
+      "name": "update: tip commit only",
+      "old": "revs=$lsha$'\\n'\"^$rsha\"",
+      "new": "revs=$lsha$'\\n'\"^$lsha~1\""
+    },
+    {
+      "name": "tags: an annotated tag not read",
+      "old": "      [[ $ty == tag ]] || break",
+      "new": "      break"
+    },
+    {
+      "name": "tags: a nested tag not followed",
+      "old": "      t=$(sed -n '1s/^object //p' <<<\"$body\")",
+      "new": "      break"
+    },
+    {
+      "name": "tags: a term in a tag not reported",
+      "old": "((n > 0)) && { say \"denylist: the annotated tag $ref (message or tagger): $n line(s)\"; findings=1; }",
+      "new": ":"
+    },
+    {
+      "name": "tags: not given to gitleaks",
+      "old": "{ printf '%s' \"$tags\"\n",
+      "new": "{ :\n"
+    },
+    {
+      "name": "install: the old copy not put back after a failed switch",
+      "old": "    [[ ! -e $GATE_DIR.old ]] || mv \"$GATE_DIR.old\" \"$GATE_DIR\"\n",
+      "new": ""
+    },
+    {
+      "name": "install: a leftover .old (no gate dir) not put back",
+      "old": "  if [[ ! -e $GATE_DIR && -e $GATE_DIR.old ]]; then mv \"$GATE_DIR.old\" \"$GATE_DIR\" || exit 1; fi\n",
+      "new": ""
+    },
+    {
+      "name": "doctor-watch: a crashed doctor read as ok",
+      "old": "  else state=\"error $rc\"; pointer=\"doctor error (exit $rc)\"; rc=2",
+      "new": "  else state=\"ok\"; pointer=\"ok\""
+    },
+    {
+      "name": "doctor-watch: exit 1 with no FAIL line read as a FAIL",
+      "old": "elif ((rc == 1 && ${#ids[@]})); then",
+      "new": "elif ((rc == 1 || ${#ids[@]})); then"
+    },
+    {
+      "name": "doctor: the exempt file not reported",
+      "old": "  check_exempt || bad=1\n",
+      "new": ""
+    },
+    {
+      "name": "doctor: an invalid exempt pattern ok",
+      "old": "(($? == 2)) && { report exempt FAIL",
+      "new": "false && { report exempt FAIL"
+    },
+    {
+      "name": "doctor-watch: an exempt file change not notified",
+      "old": "  [[ -n $prev_ex && $ex != \"$prev_ex\" ]] && parts+=",
+      "new": "  false && parts+="
+    },
+    {
+      "name": "local paths: mounts and synced folders skipped too",
+      "old": "  case $lc in",
+      "new": "  case nothing in"
+    },
+    {
+      "name": "local paths: an unresolvable path skipped",
+      "old": "d=$(cd \"${url#file://}\" 2>/dev/null && pwd -P) || return 1",
+      "new": "d=$(cd \"${url#file://}\" 2>/dev/null && pwd -P) || return 0"
+    },
+    {
+      "name": "local paths: symlinks not resolved",
+      "old": "d=$(cd \"${url#file://}\" 2>/dev/null && pwd -P)",
+      "new": "d=$(cd \"${url#file://}\" 2>/dev/null && pwd)"
+    },
+    {
+      "name": "gitleaks: the gate's own record not compared",
+      "old": "  [[ -z ${1:-} || $(head -c 64 \"$1\" 2>/dev/null) == \"$got\" ]] ||",
+      "new": "  true ||"
+    },
+    {
+      "name": "gitleaks: the hook trusts the sidecar alone",
+      "old": "p=$(gitleaks_problem \"$root/gitleaks.sha256\")",
+      "new": "p=$(gitleaks_problem)"
+    },
+    {
+      "name": "gitleaks: the doctor trusts the sidecar alone",
+      "old": "  [[ -f $GATE_DIR/push-gate/push-gate.sh ]] && p=$(gitleaks_problem \"$GATE_DIR/gitleaks.sha256\")\n",
+      "new": ""
+    },
+    {
+      "name": "install: gitleaks's sha256 not recorded in the gate",
+      "old": "head -c 64 \"$gitleaks.sha256\" > \"$new/gitleaks.sha256\" && ",
+      "new": ""
+    },
+    {
+      "name": "sha256 repo: a branch delete (64 zeros) refused",
+      "old": "[[ -z ${lsha:-} || $lsha =~ ^0+$ ]] && continue",
+      "new": "[[ -z ${lsha:-} || $lsha =~ ^0{40}$ ]] && continue"
+    },
+    {
+      "name": "the remote sha's shape unchecked",
+      "old": " && ${rsha:-} =~ ^[0-9a-f]{40,64}$ ]]",
+      "new": " ]]"
+    },
+    {
+      "name": "doctor: the installed copy compared with itself",
+      "old": "  if [[ $root -ef $GATE_DIR ]]; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "shim check: the shim anywhere in the hook",
+      "old": "[[ $(sed -n 2p \"$1\") == \"$SHIM_LINE\" ]]",
+      "new": "grep -qxF \"$SHIM_LINE\" \"$1\""
+    },
+    {
+      "name": "schedule: PATH filled in unescaped",
+      "old": "t=${t//@PATH@/\"$(\"$2\" \"$sp\")\"}",
+      "new": "t=${t//@PATH@/\"$sp\"}"
+    },
+    {
+      "name": "schedule: & not escaped in a plist",
+      "old": "v=${v//&/\"$a\"}; ",
+      "new": ""
+    },
+    {
+      "name": "schedule: % not doubled for systemd",
+      "old": "v=${v//%/\"$pc\"}; ",
+      "new": ""
+    },
+    {
+      "name": "schedule: relative PATH entries kept",
+      "old": "[[ $f == /* ]] && sp+=${sp:+:}$f",
+      "new": "sp+=${sp:+:}$f"
+    },
+    {
+      "name": "local paths: another device than $HOME skipped",
+      "old": "dev=$(device \"$d\") && [[ -n $dev && $dev == \"$(device \"$HOME\")\" ]] || return 1",
+      "new": ":"
+    },
+    {
+      "name": "local paths: synced folders matched case-sensitively",
+      "old": "lc=$(tr '[:upper:]' '[:lower:]' <<<\"$d/\")",
+      "new": "lc=$d/"
+    }
+  ]
+}

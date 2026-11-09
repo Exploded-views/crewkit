@@ -1,0 +1,6 @@
+no-bypass hook: RED run, 2026-10-27, before push-gate/no-bypass-hook.py existed:
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.613s
+
+FAILED (failures=32)

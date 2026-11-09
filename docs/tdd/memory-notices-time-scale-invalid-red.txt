@@ -1,0 +1,28 @@
+The batch gate's mutants-memory-notices-time-scale step (both mutants INVALID, so the step failed):
+
+tests/memory-notices.bats:
+  INVALID      scale ignored in group_empty (the mutant doesn't parse; fix it)
+  INVALID      scale ignored in the speed bound (the mutant doesn't parse; fix it)
+  a mutant survived, did not apply or was invalid
+
+The spec targeted the .bats file itself. tools/mutate.py checks a shebang file with bash -n, and a
+.bats file is not bash: even the unmutated file fails it.
+
+$ bash -n tests/memory-notices.bats
+tests/memory-notices.bats: line 249: syntax error near unexpected token `}'
+tests/memory-notices.bats: line 249: `}'
+
+The time-scale helpers (scale_of, scale_warn, setup_file, polls, ms_bound, now_ms, alive, gone,
+group_empty) moved, unchanged, to tests/memory-notices-helpers.bash, which the .bats loads, and the
+spec targets it. Both mutants now parse and are killed by the time-scale tests; the full suite passes.
+
+Then the batch gate's shellcheck step failed. It runs `shellcheck -s bash tests/*.bash`, and the
+new helpers file is the first time these loops were shellchecked (a .bats file is not):
+
+$ shellcheck -s bash tests/*.bash lib/settings.sh
+In tests/memory-notices-helpers.bash line 45:
+  for i in $(seq 1 "$(polls)"); do
+  ^-^ SC2034 (warning): i appears unused. Verify use (or export if used externally).
+
+(and the same in alive, line 31, once that one was fixed). Both loops now count with `_`; the spec's
+group_empty mutant follows the renamed text. shellcheck is clean; both mutants still parse and are killed.

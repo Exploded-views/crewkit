@@ -1,0 +1,15 @@
+tools/lint-markdown.sh, review of d9834b4 (part 2, item 11): RED run (the new cases against
+65b5f2a's script), 2026-10-27:
+
+1..11
+ok 1 from the main checkout: installed, and a commit runs the scrub and the lint
+ok 2 from a linked worktree: installed, and a commit there runs the scrub
+ok 3 installed from a worktree, the hook also runs in the main checkout
+ok 4 a local core.hooksPath: refuses, rather than writing a hook git won't run
+ok 5 a global core.hooksPath (the push-gate dispatcher) doesn't stop it: the dispatcher chains to the hook
+not ok 6 a staged Markdown file runs the pinned markdownlint-cli2 on it
+not ok 7 the staged copy is linted, not the working tree
+not ok 8 a staged path that looks like a glob or a negation is passed literally
+ok 9 a markdownlint finding refuses the commit
+ok 10 staged Markdown and no npx: the commit is refused, saying what to install
+ok 11 no staged Markdown: markdownlint doesn't run, and npx isn't needed

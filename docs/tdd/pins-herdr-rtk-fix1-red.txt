@@ -1,0 +1,17 @@
+# RED: fix round 1 tests (before install.sh changed). Run: bats tests/install.bats --filter on the new tests.
+# Tests 6-8 (rtk failing init, first line, prefix) were already green: the code handled them but no test pinned them.
+1..8
+ok 1 herdr: an integration refused because the agent was never run is a note, not a failed step
+not ok 2 herdr: any other integration failure fails the step, naming the agent and herdr's exit code
+# (in test file tests/install.bats, line 539)
+#   `[ "$status" -eq 1 ]' failed
+not ok 3 herdr: an integration that drops a hook from settings.json is undone and fails the step
+# (in test file tests/install.bats, line 549)
+#   `[ "$status" -eq 1 ]' failed
+ok 4 herdr: an integration that keeps the hooks leaves no backup behind
+not ok 5 herdr: without jq on PATH and claude present, the step fails naming jq before anything is installed
+# (in test file tests/install.bats, line 572)
+#   `[ "$status" -eq 1 ]' failed
+ok 6 rtk: an init that fails after editing settings.json is undone and fails the step
+ok 7 rtk: only the first line of --version counts
+ok 8 rtk: a version that only starts like the pin (1.1.00) is refused

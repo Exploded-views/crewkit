@@ -1,0 +1,23 @@
+# install.sh without bootstrap flags, against the installer before the pause (the install-pause issue).
+# Passing already (existing behaviour or wrongly satisfied): 1, 3, 5, 7.
+
+1..8
+ok 1 bootstrap flags are not echoed in the plan
+not ok 2 no bootstrap flags: --yes installs the other steps, never runs bootstrap, and exits 3 with the note
+# (in test file tests/install.bats, line 909)
+#   `[ "$status" -eq 3 ]' failed
+ok 3 no bootstrap flags: the memsync release is still checked before the pause
+not ok 4 no bootstrap flags: the dry run shows the pause in the memsync plan and exits 0
+# (in test file tests/install.bats, line 933)
+#   `[[ $output == *"paused: claude-memsync's bootstrap needs flags"* ]]' failed
+ok 5 bootstrap flags given: the dry run shows no pause and --yes passes them to bootstrap
+not ok 6 no bootstrap flags: --only memsync downloads, verifies, pauses and exits 3
+# (in test file tests/install.bats, line 953)
+#   `[ "$status" -eq 3 ]' failed
+ok 7 no bootstrap flags: a real failure in a later step still exits 1, not 3
+not ok 8 no bootstrap flags: a paused run, then the finishing command, completes without redoing the other steps
+# (in test file tests/install.bats, line 970)
+#   `[ "$status" -eq 3 ]' failed
+
+Re-review of a92d907: run as 'bash install.sh', the finishing command printed a bare install.sh, which a shell wouldn't find. RED, bats -f 'runnable as printed' tests/install.bats:
+  not ok 1 no bootstrap flags: run as 'bash install.sh', the finishing command is runnable as printed

@@ -1,0 +1,16 @@
+markdownlint in the pre-commit hook: RED run, 2026-10-27:
+
+1..9
+ok 1 from the main checkout: installed, and a commit runs the scrub and the lint
+ok 2 from a linked worktree: installed, and a commit there runs the scrub
+ok 3 installed from a worktree, the hook also runs in the main checkout
+ok 4 a local core.hooksPath: refuses, rather than writing a hook git won't run
+ok 5 a global core.hooksPath (the push-gate dispatcher) doesn't stop it: the dispatcher chains to the hook
+not ok 6 a staged Markdown file runs the pinned markdownlint-cli2 on it
+#   `grep -qx 'npx -y markdownlint-cli2@0.18.1 a doc.md' "$BATS_TEST_TMPDIR/npx-calls"' failed with status 2
+# grep: $TMPDIR/bats-run-F4C2MP/test/6/npx-calls: No such file or directory
+not ok 7 a markdownlint finding refuses the commit
+#   `[ "$status" -ne 0 ]' failed
+not ok 8 staged Markdown and no npx: the commit is refused, saying what to install
+#   `[ "$status" -ne 0 ]' failed
+ok 9 no staged Markdown: markdownlint doesn't run, and npx isn't needed

@@ -1,0 +1,8 @@
+# The local gate's hold list: mutation specs that leave CI's matrix because they take too long
+# for the `mutants` job's time limit. It lists only specs tagged "local_gate_only" (a non-empty
+# reason string in the spec); tools/lint-skills.py checks the two against each other.
+#
+# One hold per line; blank lines and lines starting with # are ignored. A line is space-separated
+# tokens, each NAME.json or NAME.json@KofN, an interleaved slice: every Nth mutant from the Kth
+# (1 <= K <= N). A spec is held by its plain token, or by all of @1ofN .. @NofN for one N.
+# A # starts a comment only at the start of a line; an inline # is a bad token and fails the lint.

@@ -7,7 +7,7 @@ description: >-
   mutation probes for security-relevant lines. Use this whenever you are asked to review a PR
   for merge, give a verdict, unblock a PR stuck on self-approval, do a security or
   adversarial review, set up review steps in a workflow, or choose which model reviews and
-  which implements, even if the user only says "take a look at #123 before it lands".
+  which implements, even if the user only says "`take a look at #123 before it lands`".
 ---
 
 # Independent review

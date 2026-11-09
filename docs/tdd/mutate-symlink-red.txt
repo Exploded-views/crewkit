@@ -1,0 +1,10 @@
+tools/mutate.py with a symlinked target: RED run, 2026-10-27:
+
+  SURVIVED     bound removed
+  a mutant survived, did not apply or was invalid
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.157s
+
+FAILED (failures=1)

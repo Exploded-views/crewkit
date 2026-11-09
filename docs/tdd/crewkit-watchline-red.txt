@@ -1,0 +1,50 @@
+# RED: tests/crewkit-watchline.bats before libexec/crewkit-watchline, libexec/ck/watchline.sh and templates/watcher exist (2 of 29 pass for the wrong reason: an unknown verb is already 64).
+1..29
+not ok 1 a repo line carries only the fixed fields
+not ok 2 every type and every author association is accepted, with the url path of the matching kind
+not ok 3 a url for another number, another host or a query string is 65 and prints nothing
+not ok 4 a source, number, type or association that is not a fixed value is 65 and prints nothing
+ok 5 the wrong number of arguments, or an unknown verb, is 64
+not ok 6 text from a NONE author is refused, with nothing printed
+not ok 7 text from an OWNER, MEMBER or COLLABORATOR is shell-quoted
+not ok 8 text of exactly 200 characters is accepted and 201 is 65
+not ok 9 text with a newline or a control character, or empty text, is 65
+not ok 10 a login in watch.trusted_authors may add text, and the line names the login
+not ok 11 watch.trusted_authors is user-only: the environment and a project file cannot set it
+not ok 12 a log line carries the fields and a signature computed from them
+not ok 13 the log signature is computed, never taken from input, and changes with every field
+not ok 14 a log field that is not a fixed value is 65 and prints nothing
+not ok 15 check passes good lines unchanged and counts nothing
+not ok 16 check drops an injection payload unseen and counts it on stderr
+not ok 17 check drops a line that matches only in part, or with anything added
+not ok 18 check passes text from an OWNER and drops text from a NONE author
+not ok 19 check drops text that is too long, unquoted, or holds a control character, even from an OWNER
+not ok 20 check passes text from a login in watch.trusted_authors, and only with that login on the line
+not ok 21 check handles a very long line and a last line with no newline
+ok 22 check takes no arguments
+not ok 23 an injection payload in the source, type, author, number or url is refused and prints nothing
+not ok 24 a payload split over lines is refused as an argument and dropped by check
+not ok 25 ANSI and other control characters in any field are refused
+not ok 26 the watcher template's settings are reader-only, by the settings checker
+not ok 27 the watcher template can run watchline repo and log, and not check, and writes nothing
+not ok 28 the settings checker refuses a watcher that may run watchline check or any other crewkit verb
+not ok 29 the watcher instructions say to read the untrusted-input rule first, never act, and emit only watchline lines
+
+# RED (gate round 2): two failures that passed on macOS
+# tests.test_export test_exporting_this_repo_changes_markdown_only: FAILED (failures=1): the watchline fixtures link to a repo that is not public (the export reads every github.com/<owner>/<repo> and <name>#<number> in a test file)
+# LC_ALL=C tests/run.sh -f 'printable ASCII' tests/crewkit-watchline.bats: not ok 1 (the $'\uHHHH' escapes are the text "\uHHHH" in the C locale of the Linux container, which the check rightly accepts)
+
+# RED (gate round 2, export rule): tests.test_export, three new tests against the export before the change
+# FAIL test_name_number_is_data_under_tests_only: "export: tests/sub/y.bats:1: cites a repo that isn't public by number"
+# FAIL test_the_fictional_example_repos_of_the_tests_are_fine: "export: tests/x.bats:2: links to a repo that isn't public"
+# (test_a_link_to_a_non_public_repo_is_refused_in_tests_too passed at once: the link check stays on in tests/)
+
+# RED (watchline hardening): tests/crewkit-watchline.bats against the code that trusted an OWNER, MEMBER or COLLABORATOR association
+not ok 9 an association alone never lets text through: OWNER, MEMBER and COLLABORATOR need a trusted login too
+not ok 10 a text needs its author on the line, even when the list is not empty
+not ok 24 check drops a text line whose association is OWNER, MEMBER or COLLABORATOR but whose author is missing or not trusted
+not ok 34 a payload split over lines is refused as an argument and dropped by check
+# (the tests of trusted-author text, quoting, length and the 200 quotes were moved to a trusted login and pass on both codes)
+
+# RED (GP-6-pre1): tests.test_export test_name_number_is_data_under_tests_only before TEST_FIXTURE_REFS
+# AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD  (a private repo cited by number under tests/ was not refused)

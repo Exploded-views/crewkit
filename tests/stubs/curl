@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Stub curl for the pointer tests. No network. It records what a call carried, in $PSTUB:
+#   curl.argv     every call's argv, one line per call
+#   curl.config   the -K - config read from stdin (the last call's)
+#   curl.body     the -d body (the last call's)
+#   curl.url      the URL, the last argument (the last call's)
+#   curl.count    the number of calls
+# Fault: CURL_FAIL=1 exits 22 (as -f does for an HTTP error) before anything else.
+# A call whose URL ends in /json is a stream: it prints $PSTUB/curl.stream.<N> (N = the call
+# number; nothing if there is none) and exits 0, as a connection that closed does.
+printf '%s\n' "$*" >> "$PSTUB/curl.argv"
+n=$(($(cat "$PSTUB/curl.count" 2>/dev/null || echo 0) + 1))
+echo "$n" > "$PSTUB/curl.count"
+[[ ${CURL_FAIL-} == 1 ]] && { echo "curl: (22) The requested URL returned error: 403" >&2; exit 22; }
+body='' cfg=0
+for a in "$@"; do
+  if [[ ${prev-} == -d ]]; then body=$a; fi
+  [[ $a == -K && ${prev-} == -K ]] && cfg=1
+  [[ ${prev-} == -K && $a == - ]] && cfg=1
+  prev=$a
+  url=$a
+done
+((cfg)) && cat > "$PSTUB/curl.config"
+printf '%s' "$body" > "$PSTUB/curl.body"
+printf '%s' "$url" > "$PSTUB/curl.url"
+if [[ $url == */json ]]; then
+  [[ -f $PSTUB/curl.stream.$n ]] && cat "$PSTUB/curl.stream.$n"
+fi
+exit 0

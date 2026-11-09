@@ -1,0 +1,192 @@
+# ck_user_set / ck_user_unset (libexec/ck/usersettings.sh) before any of that code. RED: the new suite with no usersettings.sh (every test fails, status 127 from the missing function):
+$ bats tests/crewkit-usersettings.bats
+1..23
+not ok 1 set then read back through crew_setting, values with spaces, # and :
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 32)
+#   `usp ck_user_set nodes.a.host 'u@homebox'' failed with status 127
+# _: line 1: <tmp>/test/1/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 2 replacing a key keeps other keys, comments and the body byte for byte
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 43)
+#   `usp ck_user_set nodes.a.host 'new@homebox'' failed with status 127
+# _: line 1: <tmp>/test/2/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 3 a new key is appended before the closing --- and the body is untouched
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 51)
+#   `usp ck_user_set nodes.b.host 'x@clientspoke'' failed with status 127
+# _: line 1: <tmp>/test/3/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 4 a key that is a prefix of another is not touched
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 58)
+#   `usp ck_user_set nodes.a.host 'new@homebox'' failed with status 127
+# _: line 1: <tmp>/test/4/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 5 a missing file is created 600 under a 700 ~/.claude
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 68)
+#   `usp ck_user_set nodes.a.host 'u@homebox'' failed with status 127
+# _: line 1: <tmp>/test/5/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 6 an existing ~/.claude keeps its mode
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 76)
+#   `usp ck_user_set k v' failed with status 127
+# _: line 1: <tmp>/test/6/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 7 a file without frontmatter gets frontmatter in front, body kept
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 82)
+#   `usp ck_user_set k v' failed with status 127
+# _: line 1: <tmp>/test/7/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 8 a quote, control character or padded value is 65; a bad key is 64; nothing written
+# (in test file tests/crewkit-usersettings.bats, line 89)
+#   `run usp ck_user_set k 'a"b';          [ "$status" -eq 65 ]' failed
+not ok 9 a world-writable file is refused (78), nothing written
+# (in test file tests/crewkit-usersettings.bats, line 108)
+#   `[ "$status" -eq 78 ]' failed
+not ok 10 a file owned by someone else is refused (78), nothing written
+# (in test file tests/crewkit-usersettings.bats, line 123)
+#   `[ "$status" -eq 78 ]' failed
+not ok 11 a symlinked crewkit.md or ~/.claude is refused (78), naming it, and not written through
+# (in test file tests/crewkit-usersettings.bats, line 133)
+#   `[ "$status" -eq 78 ]' failed
+not ok 12 dry run prints and writes nothing
+# (in test file tests/crewkit-usersettings.bats, line 154)
+#   `[ "$status" -eq 0 ]' failed
+not ok 13 CK_YES from the environment does not turn a dry run into a write
+# (in test file tests/crewkit-usersettings.bats, line 168)
+#   `[ "$status" -eq 0 ]' failed
+not ok 14 unset removes only that key
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 174)
+#   `usp ck_user_unset nodes.a.host' failed with status 127
+# _: line 1: <tmp>/test/14/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_unset: command not found
+not ok 15 unset of a key or file that is not there succeeds and changes nothing
+# (in test file tests/crewkit-usersettings.bats, line 183)
+#   `[ "$status" -eq 0 ]' failed
+not ok 16 a key only in the body is not replaced or removed
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 194)
+#   `usp ck_user_set nodes.a.host 'new@homebox'' failed with status 127
+# _: line 1: <tmp>/test/16/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 17 8 concurrent writers on different keys all land
+# (in test file tests/crewkit-usersettings.bats, line 205)
+#   `for i in 1 2 3 4 5 6 7 8; do grep -qx "k$i: \"v$i\"" "$F"; done' failed with status 2
+# _: line 1: <tmp>/test/17/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+# _: line 1: <tmp>/test/17/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+# _: line 1: <tmp>/test/17/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+# _: line 1: <tmp>/test/17/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+# _: line 1: <tmp>/test/17/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+# _: line 1: <tmp>/test/17/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+# _: line 1: <tmp>/test/17/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+# _: line 1: <tmp>/test/17/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+# grep: <tmp>/test/17/hub/.claude/crewkit.md: No such file or directory
+not ok 18 the lock is held during the write and released on success and on a refusal
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 211)
+#   `usp ck_user_set k v' failed with status 127
+# _: line 1: <tmp>/test/18/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 19 --secret reads the value from stdin, one line, and reads back
+# (in test file tests/crewkit-usersettings.bats, line 231)
+#   `printf '%s\nignored second line\n' "$CANARY" | usp ck_user_set --secret nodes.a.token' failed with status 127
+# _: line 1: <tmp>/test/19/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 20 --secret takes no value argument, and needs a value on stdin
+# (in test file tests/crewkit-usersettings.bats, line 239)
+#   `[ "$status" -eq 64 ]' failed
+not ok 21 the canary never appears in stdout or stderr: write, dry run, refusal
+# (in test file tests/crewkit-usersettings.bats, line 247)
+#   `[ "$status" -eq 0 ]' failed
+not ok 22 the value is in no external command's argv, and the temp file is created 600 (never chmodded)
+# (from function `seed' in file tests/crewkit-usersettings.bats, line 28,
+#  in test file tests/crewkit-usersettings.bats, line 280)
+#   `seed' failed with status 127
+# _: line 1: <tmp>/test/22/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+not ok 23 no temp file is left behind
+# (from function `usp' in file tests/crewkit-usersettings.bats, line 18,
+#  in test file tests/crewkit-usersettings.bats, line 297)
+#   `usp ck_user_set k v' failed with status 127
+# _: line 1: <tmp>/test/23/tree/libexec/ck/usersettings.sh: No such file or directory
+# _: line 1: ck_user_set: command not found
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `usp ck_user_set k a"b` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 89)
+BW01: `run`'s command `usp ck_user_set k v` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 107)
+BW01: `run`'s command `usp ck_user_set k v` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 122)
+BW01: `run`'s command `usp ck_user_set k v` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 132)
+BW01: `run`'s command `usd ck_user_set nodes.a.host new@homebox` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 153)
+BW01: `run`'s command `usd ck_user_set k v` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 167)
+BW01: `run`'s command `usp ck_user_unset nope` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 182)
+BW01: `run`'s command `usp ck_user_set --secret k canary-9f3e` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 238)
+BW01: `run`'s command `bash -c printf "%s\n" "$2" | "${@:3}" _ x canary-9f3e bash -c source "$1/lib/settings.sh"; source "$1/libexec/ck/common.sh"; source "$1/libexec/ck/usersettings.sh"; CK_YES=1; ck_user_set --secret k _ <tmp>/test/21/tree` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-usersettings.bats, line 246)
+
+# Fix round 1 (review): the new tests (~/.claude checked, a failing find refuses) against the first version of usersettings.sh:
+not ok 11 a ~/.claude writable by others or owned by someone else is refused (78)
+not ok 12 a find that fails makes the checks refuse (78), never pass
+
+# Fix round 2 (re-review): the new tests (awk shims that damage the output, owner of crewkit.md alone, id failing, crewkit.md a directory).
+# Items 2: the four pre-mv tests against the round-1 usersettings.sh (bats tests/crewkit-usersettings.bats):
+not ok 28 an awk that writes only part of the output (stops after the frontmatter): set and unset fail closed
+# (in test file tests/crewkit-usersettings.bats, line 399)
+#   `[ "$status" -ne 0 ]' failed
+not ok 29 an awk that drops only the last line fails closed (the body's end must survive)
+# (in test file tests/crewkit-usersettings.bats, line 417)
+#   `[ "$status" -ne 0 ]' failed
+not ok 30 a body line equal to the wanted line does not stand in for a frontmatter write that failed
+# (in test file tests/crewkit-usersettings.bats, line 428)
+#   `[ "$status" -ne 0 ]' failed
+not ok 31 an awk that leaves the key in the frontmatter on an unset (and loses a body line instead) fails closed
+# (in test file tests/crewkit-usersettings.bats, line 438)
+#   `[ "$status" -ne 0 ]' failed
+# Items 1 and 3 are test-only (the code already refuses): RED is the test failing against its mutant (tests/mutants/crewkit-usersettings.json):
+#   "crewkit.md owner not checked"                      -> not ok 13 a crewkit.md owned by someone else is refused (78), naming the file, nothing written
+#   "id failure ignored"                                -> not ok 14 an id that fails refuses (78); crewkit.md as a directory refuses (78), nothing written
+#   "directory accepted as crewkit.md"                  -> not ok 14 (same test)
+#   "pre-mv check ignores truncation"                   -> not ok 28, not ok 29 (against the new check)
+#   "pre-mv check matches outside the frontmatter"      -> not ok 30
+
+# Fix round 3: new tests against the round-2 usersettings.sh (32: closing fence cut to --, 34: secret in a shell variable; 33 passes, it is the duplicate-key gap, killed by its mutant):
+not ok 32 a frontmatter-only file whose closing fence is cut to -- is not renamed into place
+# (in test file tests/crewkit-usersettings.bats, line 450)
+#   `[ "$status" -ne 0 ]' failed
+ok 33 duplicate keys in the frontmatter: set keeps the first place and drops the twin, unset drops both
+not ok 34 --secret leaves no copy of the value in the caller's shell variables (unclosed frontmatter puts it on the last line)
+# (from function `none' in file tests/helpers.bash, line 122,
+#  in test file tests/crewkit-usersettings.bats, line 474)
+#   `none -q "$CANARY" <<<"$output"' failed
+#   "duplicate-key delta 0" -> not ok 33; "closing fence not checked" -> not ok 32; "scan variables not local" -> not ok 34

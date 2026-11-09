@@ -1,0 +1,185 @@
+# ck_claude_allow / ck_claude_allow_status (libexec/ck/claudesettings.sh) before any of that code. RED: the new suite with no claudesettings.sh (30 of 32 fail, status 127 from the missing function). The two that pass here, the temp-HOME guard and the status-writes-nothing check, assert absence and need no code:
+$ bats tests/crewkit-claudesettings.bats
+1..32
+not ok 1 a missing file is created with the entry, mode 600, and ~/.claude mode 700 when it is new
+# (in test file tests/crewkit-claudesettings.bats, line 36)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 an existing ~/.claude keeps its mode
+# (in test file tests/crewkit-claudesettings.bats, line 47)
+#   `[ "$status" -eq 0 ]' failed
+not ok 3 a file without permissions gets it, other keys and their order kept
+# (in test file tests/crewkit-claudesettings.bats, line 55)
+#   `[ "$status" -eq 0 ]' failed
+not ok 4 permissions without allow gets allow, its other keys and their order kept
+# (in test file tests/crewkit-claudesettings.bats, line 63)
+#   `[ "$status" -eq 0 ]' failed
+not ok 5 other allow entries: the tool is appended, every other entry and key kept in order
+# (in test file tests/crewkit-claudesettings.bats, line 72)
+#   `[ "$status" -eq 0 ]' failed
+not ok 6 already present: nothing is written, no backup, bytes and mtime unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 84)
+#   `[ "$status" -eq 0 ]' failed
+not ok 7 a second run adds no duplicate
+# (from function `caw' in file tests/crewkit-claudesettings.bats, line 18,
+#  in test file tests/crewkit-claudesettings.bats, line 93)
+#   `caw ck_claude_allow SendMessage' failed with status 127
+# _: line 1: <tmp>/bats-run-S3TXJY/test/7/tree/libexec/ck/claudesettings.sh: No such file or directory
+# _: line 1: ck_claude_allow: command not found
+not ok 8 malformed JSON is 65, the file is byte for byte unchanged, no backup
+# (in test file tests/crewkit-claudesettings.bats, line 104)
+#   `[ "$status" -eq 65 ]' failed
+not ok 9 each wrong shape is 65 and the file is unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 118)
+#   `[ "$status" -eq 65 ] || { echo "shape $shape: $status $output"; return 1; }' failed
+# shape []: 127 _: line 1: <tmp>/bats-run-S3TXJY/test/9/tree/libexec/ck/claudesettings.sh: No such file or directory
+# _: line 1: ck_claude_allow: command not found
+not ok 10 a symlinked settings.json is 78 and the target is unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 129)
+#   `[ "$status" -eq 78 ]' failed
+not ok 11 a symlinked ~/.claude is 78 and its target is untouched
+# (in test file tests/crewkit-claudesettings.bats, line 140)
+#   `[ "$status" -eq 78 ]' failed
+not ok 12 a symlinked backup path is 78 and nothing is written through it
+# (in test file tests/crewkit-claudesettings.bats, line 149)
+#   `[ "$status" -eq 78 ]' failed
+not ok 13 a world-writable settings.json is 78 and unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 159)
+#   `[ "$status" -eq 78 ]' failed
+not ok 14 a world-writable ~/.claude is 78
+# (in test file tests/crewkit-claudesettings.bats, line 168)
+#   `[ "$status" -eq 78 ]' failed
+not ok 15 settings.json that is a directory is 78
+# (in test file tests/crewkit-claudesettings.bats, line 175)
+#   `[ "$status" -eq 78 ]' failed
+not ok 16 a dry run writes nothing and says what it would do
+# (in test file tests/crewkit-claudesettings.bats, line 182)
+#   `[ "$status" -eq 0 ]' failed
+not ok 17 a dry run with no file creates neither the file nor the directory
+# (in test file tests/crewkit-claudesettings.bats, line 191)
+#   `[ "$status" -eq 0 ]' failed
+not ok 18 a dry run with the tool present says already allowed
+# (in test file tests/crewkit-claudesettings.bats, line 199)
+#   `[ "$status" -eq 0 ]' failed
+
+# Fix round 1 (review of the first implementation): the new and changed tests against that implementation. 11 of 43 fail: a lost update to a concurrent writer, file content in a jq argument, the predictable backup staging name followed through a symlink, tool names other than SendMessage, multi-document input, a directory at the backup path, an unreadable file, status on a deny entry, and a SIGTERM leaving temp files. The ownership and caller-trap tests already pass (they pin existing behaviour):
+$ bats tests/crewkit-claudesettings.bats
+1..43
+not ok 9 each wrong shape is 65 and the file is unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 127)
+#   `[ "$status" -eq 65 ] || { echo "shape $shape: $status $output"; return 1; }' failed
+# shape [] {"permissions":{"allow":["SendMessage"]}}: 0 already allowed: SendMessage
+not ok 23 the library allows SendMessage only: any other TOOL is 64 and writes nothing
+# (in test file tests/crewkit-claudesettings.bats, line 252)
+#   `[ "$status" -eq 64 ] || { echo "tool '$t': $status"; return 1; }' failed
+# tool 'Bash': 0
+not ok 28 a symlinked old staging name (settings.json.crewkit-bak.new) is never written through
+# (in test file tests/crewkit-claudesettings.bats, line 314)
+#   `[ "$(cat "$BATS_TEST_TMPDIR/victim")" = victim ]' failed
+not ok 29 a backup path that is a directory is 78 and nothing moves into it
+# (in test file tests/crewkit-claudesettings.bats, line 325)
+#   `[ "$status" -eq 78 ]' failed
+not ok 30 a settings.json you cannot read is 78, not a JSON error
+# (in test file tests/crewkit-claudesettings.bats, line 335)
+#   `[ "$status" -eq 78 ]' failed
+not ok 32 a rewrite of settings.json during the run is refused (75) and the other writer's bytes stay
+# (from function `seed' in file tests/crewkit-claudesettings.bats, line 26,
+#  in test file tests/crewkit-claudesettings.bats, line 368)
+#   `seed "$OTHERS"' failed
+# 0 allowed: SendMessage
+not ok 33 a settings.json that appears during the run (there was none) is refused (75), not overwritten
+# (in test file tests/crewkit-claudesettings.bats, line 379)
+#   `rm -f "$F"' failed
+# 0 allowed: SendMessage
+not ok 34 the file's content never appears in any process argument
+# (from function `seed' in file tests/crewkit-claudesettings.bats, line 26,
+#  in test file tests/crewkit-claudesettings.bats, line 388)
+#   `seed '{"env":{"SOME_VAR":"canary-4417"},"permissions":{"allow":["Read"]}}'' failed
+# 1 crewkit: the new settings file was not written as expected
+not ok 35 SIGTERM mid-run leaves no temp file behind and the settings untouched
+# (in test file tests/crewkit-claudesettings.bats, line 412)
+#   `[ "$(ls -A "$HOME/.claude")" = settings.json ]' failed
+not ok 37 a deny entry for the tool makes status unreadable (it would not take effect)
+# (in test file tests/crewkit-claudesettings.bats, line 428)
+#   `[ "$status" -eq 2 ]' failed
+not ok 41 status: unreadable and 2 for malformed JSON and each wrong shape
+# (in test file tests/crewkit-claudesettings.bats, line 488)
+#   `[ "$status" -eq 2 ] || { echo "shape $s: $status $output"; return 1; }' failed
+# shape [] {"permissions":{"allow":["SendMessage"]}}: 0 ok
+
+# Fix round 2 (re-review): the new tests against the round-1 implementation. 5 of 49 fail: the caller trap saw status 0 for a TERM mid-write, a group-writable ~/.claude and a hard-linked settings.json were accepted, a directory or symlink planted at the backup path was not caught, and a deny entry beside the allow gave no warning. The trap-unchanged test passes already (it pins that behaviour):
+$ bats tests/crewkit-claudesettings.bats
+1..49
+not ok 38 a caller's EXIT trap sees the real status when TERM lands mid-write (143, not 0)
+# (in test file tests/crewkit-claudesettings.bats, line 446)
+#   `[ "$(cat "$HOME/caller-rc")" = 143 ]' failed
+# Terminated: 15             jq --arg t "$tool" '.permissions = ((.permissions // {}) | .allow = ((.allow // []) + [$t]))' "$snap" > "$tmp" 2> /dev/null
+not ok 40 a group-writable ~/.claude is 78 and unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 467)
+#   `[ "$status" -eq 78 ]' failed
+not ok 41 a settings.json with a second hard link is 78 and unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 476)
+#   `[ "$status" -eq 78 ]' failed
+not ok 42 a directory, or a symlink to one, planted at the backup path after the check fails the run (1), settings.json untouched
+# (from function `keep' in file tests/crewkit-claudesettings.bats, line 35,
+#  in test file tests/crewkit-claudesettings.bats, line 498)
+#   `keep' failed
+# plant mkdir "<tmp>/bats-run-lJa91B/test/42/hub/.claude/settings.json.crewkit-bak": 0 allowed: SendMessage
+not ok 43 a deny entry beside the allow warns on stderr and changes no exit code
+# (in test file tests/crewkit-claudesettings.bats, line 510)
+#   `[[ $output == *"also in permissions.deny"* ]]' failed
+
+# Fix round 3: a group-writable ~/.claude is refused only when its group is not the user's own primary group (user-private groups make 775 the usual mode). The two tests against the round-2 implementation (own group refused, and the new message for a foreign group missing):
+$ bats tests/crewkit-claudesettings.bats
+1..50
+not ok 40 a group-writable ~/.claude of the user's own primary group is allowed (user-private groups)
+# (in test file tests/crewkit-claudesettings.bats, line 474)
+#   `[ "$status" -eq 0 ]' failed
+not ok 41 a group-writable ~/.claude of another group is 78 and unchanged (id -g stubbed to a foreign gid)
+# (in test file tests/crewkit-claudesettings.bats, line 481)
+#   `chmod 775 "$HOME/.claude"' failed
+
+# Fix round 4: the write must not land once its caller is gone or has lost the lock, and group-write on ~/.claude is allowed only for a user-private group (named after the user). The new tests against the round-3 implementation. 5 of 56 fail: a caller with no TERM trap, killed while the edit, the compare or the backup rename was paused, left a subshell that finished the write anyway; a lock taken over mid-edit was not noticed; a shared primary group (staff) at 770 was accepted. The race-free SIGTERM test, the group-750 test and the trap-at-exit check pass already (they pin behaviour):
+$ bats tests/crewkit-claudesettings.bats
+1..56
+not ok 40 TERM to a caller with no TERM trap, mid-edit: the orphaned write never lands, no temp file is left
+# (from function `same' in file tests/crewkit-claudesettings.bats, line 36,
+#  in test file tests/crewkit-claudesettings.bats, line 516)
+#   `same' failed
+# allowed: SendMessage
+not ok 41 the caller gone while the file is compared: the older backup is not replaced, settings.json unchanged
+# (from function `same' in file tests/crewkit-claudesettings.bats, line 36,
+#  in test file tests/crewkit-claudesettings.bats, line 528)
+#   `same' failed
+# allowed: SendMessage
+not ok 42 the caller gone after the backup rename: settings.json is still not replaced
+# (from function `same' in file tests/crewkit-claudesettings.bats, line 36,
+#  in test file tests/crewkit-claudesettings.bats, line 538)
+#   `same' failed
+# allowed: SendMessage
+not ok 43 a lock taken over mid-edit (the caller still alive) is refused (75), settings.json unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 556)
+#   `[ "$rc" -eq 75 ] || { echo "rc $rc: $(cat "$BATS_TEST_TMPDIR/err")"; return 1; }' failed
+# allowed: SendMessage
+# rc 0:
+not ok 45 a group-writable ~/.claude of a shared primary group (staff) is 78 and unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 595)
+#   `chmod 770 "$HOME/.claude"' failed
+# 0 allowed: SendMessage
+
+# Fix round 5: an unreaped (zombie) caller counts as gone, and the user and group names are looked up only for a group-writable ~/.claude. The new tests against the round-4 implementation. 3 of 59 fail: with a caller killed but left unreaped by its parent, the orphaned subshell still finished the write; a 700 ~/.claude was refused when id -gn failed; a group-writable one gave the id message instead of saying the names cannot be looked up:
+$ bats tests/crewkit-claudesettings.bats
+1..59
+not ok 43 TERM to a caller its own parent does not reap (a zombie): the orphaned write still never lands
+# (from function `same' in file tests/crewkit-claudesettings.bats, line 41,
+#  in test file tests/crewkit-claudesettings.bats, line 571)
+#   `same' failed
+not ok 49 a ~/.claude no group can write (700) is fine when the user or group name cannot be looked up
+# (in test file tests/crewkit-claudesettings.bats, line 670)
+#   `chmod 700 "$HOME/.claude"' failed
+# 78 id: cannot find name for ID 4242
+# crewkit: cannot tell your group (id -gn failed)
+not ok 50 a group-writable ~/.claude of your own gid is 78 when the names cannot be looked up (user-private unconfirmed)
+# (in test file tests/crewkit-claudesettings.bats, line 681)
+#   `chmod 770 "$HOME/.claude"' failed
+# id: cannot find name for ID 4242
+# crewkit: cannot tell your group (id -gn failed)

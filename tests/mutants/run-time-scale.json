@@ -1,0 +1,15 @@
+{
+  "target": "tests/run.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/coverage-py-sh.bats"
+  ],
+  "mutants": [
+    {
+      "name": "plain run.sh sets a scale",
+      "old": "root=$(git rev-parse --show-toplevel)\n",
+      "new": "root=$(git rev-parse --show-toplevel)\nexport CREWKIT_TEST_TIME_SCALE=10\n"
+    }
+  ]
+}

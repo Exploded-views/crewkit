@@ -1,0 +1,213 @@
+#!/usr/bin/env bash
+# changes-hook: `claude-memsync changes --hook` under a budget. It runs on every prompt, so it
+# may never pile up, hang or leave processes behind:
+#   - claude-memsync not on PATH: exit 0, silently.
+#   - coalescing: one run at a time. A non-blocking lock under the crewkit state dir
+#     ($XDG_STATE_HOME/crewkit/memory-notices, default ~/.local/state/...); a run that finds it
+#     held exits 0 at once, printing nothing. flock where there is one, else a mkdir lock whose
+#     recorded PID tells a stale lock from a live one.
+#   - timeout: CREWKIT_CHANGES_HOOK_TIMEOUT_MS (default 2000), far under the harness's 10 s. Read
+#     as a base-10 number and clamped to 100..5000; anything that is not digits falls back to 2000,
+#     so the deadline always fires.
+#     memsync runs as the leader of its own process group; at the timeout that group (found by
+#     the exact PID started here, never by name) gets TERM, then KILL 200 ms later. The output
+#     is discarded, nothing is printed, the line "timed out" goes to changes-hook.log (at most
+#     one per minute), and the exit status is 0.
+#   - no leftovers: when memsync returns, the rest of its process group (anything it started and
+#     left running) is stopped too, TERM then KILL. memsync must setsid whatever it means to
+#     outlive the hook.
+#   - otherwise, when memsync exits 0, its stdout is passed through unchanged (stdin reaches it,
+#     stderr is replayed). A memsync that fails has its output discarded and the failure logged.
+#     The exit status is always 0: a notice hook must never block a prompt.
+# This script reads no directories. Not used by tests: CREWKIT_CHANGES_HOOK_NO_FLOCK=1 forces
+# the mkdir lock.
+#
+# Portable to macOS's bash 3.2: no wait -n, no EPOCHREALTIME, no associative arrays.
+set -u
+
+command -v claude-memsync >/dev/null 2>&1 || exit 0
+
+ms=${CREWKIT_CHANGES_HOOK_TIMEOUT_MS:-2000}
+case $ms in
+  '' | *[!0-9]* | ??????????*) ms=2000 ;;
+  *)
+    ms=$((10#$ms)) # 10#: "0800" is 800, not an octal error that would leave the timer unarmed
+    [ "$ms" -ge 100 ] || ms=100
+    [ "$ms" -le 5000 ] || ms=5000
+    ;;
+esac
+
+[ -n "${XDG_STATE_HOME:-}${HOME:-}" ] || exit 0
+state=${XDG_STATE_HOME:-$HOME/.local/state}/crewkit/memory-notices
+umask 077
+# (Each fork costs a few ms on every prompt: builtins where there is one.)
+[ -d "$state" ] || mkdir -p "$state" 2>/dev/null || exit 0
+# Files of this run only (the PID in the name): a run that took over from a killed one, and that
+# run's leftover child and timer, never share them.
+out=$state/changes-hook.$$.out
+err=$state/changes-hook.$$.err
+flag=$state/changes-hook.$$.timedout
+lockd=$state/changes-hook.lock.d
+have_lockd=0
+cpid='' wpid=''
+
+# signal_group SIGNAL PID: the signal to the process group PID leads (an exact PID, never a name).
+signal_group() { kill "-$1" -- "-$2" 2>/dev/null; }
+
+# stop_group PID: TERM, then KILL 200 ms later.
+stop_group() {
+  signal_group TERM "$1"
+  sleep 0.2 9>&-
+  signal_group KILL "$1"
+}
+
+cleanup() {
+  rm -f "$out" "$err" "$flag"
+  if [ "$have_lockd" = 1 ]; then
+    # Only a lock this run still owns: a stale-lock break by another run may have replaced it.
+    owner=''
+    read -r owner _ 2>/dev/null < "$lockd/pid" || true
+    if [ "$owner" = "$$" ]; then rm -f "$lockd/pid"; rmdir "$lockd" 2>/dev/null; fi
+  fi
+}
+
+# log_once MESSAGE: one line in changes-hook.log, at most one per minute (a cap of 64 KiB, then rotated).
+log_once() {
+  local now last log=$state/changes-hook.log
+  now=$(date +%s)
+  last=$(cat "$state/changes-hook.log.stamp" 2>/dev/null)
+  case $last in '' | *[!0-9]*) last=0 ;; esac
+  [ $((now - last)) -ge 60 ] || return 0
+  if [ -f "$log" ] && [ $(($(wc -c < "$log") + 0)) -gt 65536 ]; then mv -f "$log" "$log.1"; fi
+  printf '%s changes-hook: %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$1" >> "$log"
+  echo "$now" > "$state/changes-hook.log.stamp"
+}
+
+# Killed by the harness (or a user): take the child and the timer down too.
+on_signal() {
+  if [ -n "$wpid" ]; then signal_group KILL "$wpid"; fi
+  if [ -n "$cpid" ]; then stop_group "$cpid"; fi
+  exit 0
+}
+# --- Coalescing ---------------------------------------------------------------------------
+if [ -z "${CREWKIT_CHANGES_HOOK_NO_FLOCK:-}" ] && command -v flock >/dev/null 2>&1; then
+  exec 9>>"$state/changes-hook.lock" || exit 0
+  flock -n 9 || exit 0
+else
+  # The lock directory is made complete (with its "PID START-EPOCH" file) under a name of its own
+  # and renamed into place, so it never exists without its holder line. Whoever reads back its own
+  # PID from $lockd after the rename holds the lock. No run lasts past the clamped maximum timeout
+  # (5 s) plus the kill, so a holder older than twice that is not a hook (its PID may have been
+  # reused).
+  started_at=$(date +%s)
+  mine=$lockd.new.$$.$RANDOM
+  try_lock() {
+    [ ! -e "$lockd" ] || return 1
+    mkdir "$mine" 2>/dev/null || return 1
+    echo "$$ $started_at" > "$mine/pid"
+    mv "$mine" "$lockd" 2>/dev/null
+    local owner=''
+    read -r owner _ 2>/dev/null < "$lockd/pid" || true
+    if [ "$owner" = "$$" ]; then return 0; fi
+    rm -rf "$mine" "$lockd/${mine##*/}" # lost the race (or the rename nested into a new lock)
+    return 1
+  }
+  if try_lock; then
+    have_lockd=1
+  else
+    holder='' since=''
+    read -r holder since 2>/dev/null < "$lockd/pid" || true
+    stale=0
+    case $holder in
+      '' | *[!0-9]*)
+        # No readable holder: a minute's grace.
+        if [ -n "$(find "$lockd" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then stale=1; fi ;;
+      *)
+        if ! kill -0 "$holder" 2>/dev/null; then
+          stale=1
+        else
+          case $since in
+            '' | *[!0-9]*) ;;
+            *) if [ $((started_at - since)) -gt 10 ]; then stale=1; fi ;;
+          esac
+        fi ;;
+    esac
+    [ "$stale" = 1 ] || exit 0
+    # Break it by renaming it to a name of its own (only one run can win that), make sure what was
+    # moved is what was judged stale, and then take the lock the usual way.
+    broken=$lockd.stale.$$.$RANDOM
+    mv "$lockd" "$broken" 2>/dev/null || exit 0
+    moved=''
+    read -r moved _ 2>/dev/null < "$broken/pid" || true
+    if [ "$moved" != "$holder" ]; then
+      # A live lock was moved by mistake: put it back, unless somebody has made a new one.
+      if [ ! -e "$lockd" ]; then mv "$broken" "$lockd" 2>/dev/null; fi
+      rm -rf "$broken" "$lockd/${broken##*/}"
+      exit 0
+    fi
+    rm -rf "$broken"
+    try_lock || exit 0
+    have_lockd=1
+  fi
+fi
+
+# Only the run that holds the lock cleans up (a run that backed off must leave the holder's files alone).
+trap cleanup EXIT
+trap on_signal TERM INT HUP
+
+# --- Run memsync as a process-group leader, with a timer beside it ---------------------------
+# `set -m` gives each background job its own process group (pgid == its pid) in plain bash 3.2+
+# on Linux and macOS alike; setsid is not on macOS.
+if [ -e "$flag" ]; then rm -f "$flag"; fi
+printf -v secs '%d.%03d' $((ms / 1000)) $((ms % 1000))
+exec 8>&2 2>/dev/null # job-control notices ("Terminated") go nowhere
+set -m
+claude-memsync changes --hook >"$out" 2>"$err" 9>&- 8>&- &
+cpid=$!
+# The timer keeps fd 9, so the lock outlives even a wrapper killed with -9, until the child is dealt with.
+# (Its sleeps close fd 9, so a sleep that outlives it never holds the lock.)
+(
+  sleep "$secs" 9>&-
+  if kill -0 "$cpid" 2>/dev/null; then
+    : > "$flag"
+    stop_group "$cpid"
+  fi
+  # A wrapper that was killed cannot clean up after itself ($$ is still the wrapper's PID here):
+  # its files go with its timer. No directory is read.
+  if ! kill -0 "$$" 2>/dev/null; then
+    rm -f "$out" "$err" "$flag"
+  fi
+) </dev/null >/dev/null 2>&1 8>&- &
+wpid=$!
+echo "$wpid" > "$state/changes-hook.timer.pid"
+
+wait "$cpid"
+rc=$?
+signal_group TERM "$wpid"
+wait "$wpid" 2>/dev/null
+set +m
+
+# Nothing memsync started may outlive this run (not after a timeout either: the timer may have
+# been stopped mid-way). TERM to the group; if anyone was there, KILL after 200 ms. A group that
+# is already empty costs no wait.
+if signal_group TERM "$cpid"; then
+  sleep 0.2 9>&-
+  signal_group KILL "$cpid"
+fi
+
+exec 2>&8 8>&-
+# A timeout or a failure: nothing is printed (a half-written or error text is not a notice).
+if [ -e "$flag" ] || [ "$rc" -ne 0 ]; then
+  if [ -e "$flag" ]; then
+    log_once "claude-memsync changes --hook timed out after $ms ms and was killed"
+  else
+    log_once "claude-memsync changes --hook exited with status $rc; its output was discarded"
+  fi
+  exit 0
+fi
+
+# read -d '' keeps every byte (newlines included) of text without NULs, with no fork.
+IFS= read -r -d '' text < "$out"
+printf '%s' "$text"
+if [ -s "$err" ]; then cat "$err" >&2; fi
+exit 0

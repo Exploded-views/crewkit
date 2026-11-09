@@ -1,0 +1,18 @@
+# Settings for the registry and the host limits (CREW_FILE_ONLY and CREW_USER_ONLY gain registry.* and limits.*; check_settings also scans bin/crewkit and libexec/**). RED: the new tests with the previous lib/settings.sh and tools/lint-skills.py:
+$ bats tests/settings.bats
+not ok 17 registry.* is read only from the user file
+# (in test file tests/settings.bats, line 160)
+#   `CREWKIT_REGISTRY_REMOTE=env lookup crew_setting registry.remote none; [ "$output" = good ]' failed
+not ok 18 limits.* is read only from the user file
+# (in test file tests/settings.bats, line 171)
+#   `CREWKIT_LIMITS_MAX_SESSIONS=env lookup crew_setting limits.max_sessions none; [ "$output" = 6 ]' failed
+not ok 19 crew_keys lists registry.* and limits.* only from the user file
+# (in test file tests/settings.bats, line 183)
+#   `[ "$output" = registry.remote ]' failed
+$ python3 -m unittest tests.test_lint_settings
+FAIL: test_an_undocumented_key_in_bin_crewkit_fails (tests.test_lint_settings.CheckSettings)
+AssertionError: False is not true : []
+FAIL: test_an_undocumented_key_in_libexec_fails (tests.test_lint_settings.CheckSettings)
+AssertionError: False is not true : []
+Ran 34 tests in 0.288s
+FAILED (failures=2)

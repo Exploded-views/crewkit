@@ -1,0 +1,42 @@
+# RED: tests/roles.bats before tools/lint-roles.py exists (all 24 fail)
+1..24
+not ok 1 the roles/ tree of this repo passes
+not ok 2 a well-formed tree passes, template placeholders and all
+not ok 3 a variant role.md without variant: fails and names the file and the key
+not ok 4 a variant with an empty variant: fails
+not ok 5 a variant that does not name its own folder fails
+not ok 6 a variant whose kind is not its parent folder fails
+not ok 7 a variant must restate permission_mode
+not ok 8 a base kind.md needs each of kind, lead, model, permission_mode and runs_as
+not ok 9 a base kind.md whose kind is not its folder fails
+not ok 10 a permission_mode outside the known set fails
+not ok 11 every known permission_mode passes
+not ok 12 a runs_as outside the known set fails
+not ok 13 cron and timer roles need a schedule; other runs_as do not
+not ok 14 dontAsk needs permission_detail, in a variant and in a base kind
+not ok 15 remove: without a ruling fails; with one it passes
+not ok 16 a trailing comment on a value does not hide the key or become part of it
+not ok 17 a file with no front matter fails
+not ok 18 front matter that never closes fails
+not ok 19 a key that appears only below the front matter does not count
+not ok 20 a kind folder without kind.md fails, and so does a variant folder without role.md
+not ok 21 the template must carry the required keys too
+not ok 22 every problem is reported, not just the first
+not ok 23 a missing roles directory is a usage error
+not ok 24 an empty roles directory fails rather than passing for nothing
+
+# RED (review round 1): tests/roles.bats before duplicate keys were reported (the indented-key test passed at once: it pins the existing top-level-only rule)
+not ok 18 a key given twice fails, so the last value cannot hide the first
+
+# RED (hosted markdown lint: the 26 exported role files carried 277 errors, 152 MD022 and 125 MD032, that no local check saw): tests/roles.bats before lint-roles.py checked the layout
+1..35
+not ok 28 a heading with a list right below it fails, and says which line
+not ok 29 a heading with no blank line above it fails
+not ok 30 a list with no blank line above it fails
+not ok 31 a list with no blank line below it fails
+# (tests 32 to 35 are the cases that must keep passing: lists ending the file, fenced code, a hash or dash inside a line, front matter; they passed at once)
+
+# GREEN: lint-roles.py checks the layout (MD022, MD032) and the 26 role files were reformatted: blank lines only (every non-blank line is identical to the committed copy; checked by diff of the non-blank lines), 146 lines added. The real markdownlint-cli2 0.18.1 (markdownlint 0.38.0, the version the hosted job runs) reports 0 errors on roles/**/*.md, from 277.
+# Two things found on the way: my first formatter put two blank lines where a heading sat directly above a list (the real linter reported MD012; blank lines are now collapsed), and two of the RED tests had their line numbers off by one (the front matter is five lines).
+# Tests 32 to 38 (negative cases, fence handling, hash/dash text, a heading under the front matter, the template) passed on first run: they are mutant-killers, not RED.
+# Mutants on the layout code: 38 of 39 killed at first; "a list above a heading needs no blank" SURVIVED, because the heading's own message already failed the file and nothing asserted the list message that the hosted lint also gives (MD022 and MD032 both fire). The test of a list under a heading now asserts both messages.

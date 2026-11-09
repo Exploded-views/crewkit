@@ -1,0 +1,20 @@
+RED: the watchline "stdin can't be read" test hung in the Linux gate (crewkit-ubuntu, bash 5.2.21)
+
+The gate of the dev tree at the time stopped at bats test 513 ("watchline check: 2
+when stdin can't be read, 64 for anything but 'check'") and held the heavy lock for about two
+hours at 0% CPU, in `python3 plugins/crew-orchestrator/lib/watchline.py check Exploded-views/bitc`.
+
+Cause: the test ran `run python3 "$WL" check ... <&-`. The redirection closes fd 0 around bats'
+run, which captures with $(...); bash 5.2 then makes the capture pipe with fd 0 free, so the
+pipe's read end becomes python's stdin, and python reads its own output pipe (it holds the
+write end too) and never sees EOF. /proc/<pid>/fd in the container showed fd 0, 1 and 2 on the
+same pipe. macOS bash 3.2 and 5.3 don't place the pipe on fd 0, so the Mac run passed.
+
+The old test, in crewkit-ubuntu, with BATS_TEST_TIMEOUT=20 added so it can't hold the lock:
+
+  not ok 1 watchline check: 2 when stdin can't be read, 64 for anything but 'check' # timeout after 20s
+  container rc=1 20s
+
+The fix closes stdin for python alone (bash -c 'exec python3 ... <&-'), after run's pipe is
+made, and the file sets BATS_TEST_TIMEOUT (default 120) so a hang fails instead of waiting.
+Same image, after: ok 1, container rc=0.

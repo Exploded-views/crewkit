@@ -1,0 +1,46 @@
+{
+  "target": "plugins/memory-notices/bin/shared-index",
+  "suite": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_shared_index"
+  ],
+  "mutants": [
+    {
+      "name": "shared-index deadline ignored",
+      "old": "signal.setitimer(signal.ITIMER_REAL, deadline_ms() / 1000)",
+      "new": "signal.setitimer(signal.ITIMER_REAL, 0)"
+    },
+    {
+      "name": "shared-index lists an unrelated dir",
+      "old": "        base = sync / \"distilled\"\n",
+      "new": "        base = sync / \"distilled\"\n        os.listdir(os.environ.get(\"TMPDIR\") or \"/\")\n"
+    },
+    {
+      "name": "partial index dropped at the deadline",
+      "old": "    if cut and not found[\"lines\"]:",
+      "new": "    if cut:"
+    },
+    {
+      "name": "default deadline far too long",
+      "old": "DEFAULT_TIMEOUT_MS = 2000\n",
+      "new": "DEFAULT_TIMEOUT_MS = 60000\n"
+    },
+    {
+      "name": "whole note read, not its frontmatter",
+      "old": "f.read(min(CHUNK, MAX_FRONTMATTER - len(data)))",
+      "new": "f.read()"
+    },
+    {
+      "name": "frontmatter bound back to 4000 bytes",
+      "old": "MAX_FRONTMATTER = 16 * 1024",
+      "new": "MAX_FRONTMATTER = 4000"
+    },
+    {
+      "name": "read continues past the closing fence",
+      "old": "        if data.find(b\"\\n---\\n\", 3) != -1:\n            break\n",
+      "new": "        if False:\n            break\n"
+    }
+  ]
+}

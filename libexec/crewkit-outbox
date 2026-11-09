@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# crewkit outbox add ID --owner yes|no [--session NAME] [--yes] "ONE LINE"
+#
+# The node side of the signal path, for a bridge of any kind to call: record an item and send the
+# holder a pointer to it. The record goes to <state_dir>/outbox/<session>.log (session default
+# "default") as `<iso> <ID> owner:<yes|no> <line>`, under the outbox lock. The pointer is
+# "<ID> owner:<yes|no>" and nothing else, posted with nodes.hub.pointer_token to
+# nodes.hub.pointer_url (both user-only, written by `crewkit join` from `crewkit holder tokens`).
+# A failed send, or no url or token, is exit 0 with a note: the holder's 10-minute poll finds the
+# item through the report anyway. Neither the url nor the token is ever printed. The same ID and
+# line again appends nothing and sends again; the same ID with another line or owner flag is 65.
+#
+# Without --yes it shows what it would do and does nothing. Exit: 0, 64 usage, 65 a bad id, owner
+# flag or line (one line, 200 characters at most, no control characters), 78 a bad setting.
+set -euo pipefail
+: "${CK_ROOT:?crewkit-outbox is run by bin/crewkit}"
+# shellcheck source=/dev/null
+source "$CK_ROOT/lib/settings.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/common.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/pointer.sh"
+# settings-keys: nodes.hub.pointer_url nodes.hub.pointer_token
+
+usage() { ck_die 64 "usage: crewkit outbox add ID --owner yes|no [--session NAME] [--yes] \"ONE LINE\""; }
+
+[[ ${1-} == add ]] || usage
+shift
+owner='' session=default pos=()
+while (($#)); do
+  case $1 in
+    --owner) (($# >= 2)) || usage; owner=$2; shift ;;
+    --session) (($# >= 2)) || usage; session=$2; shift ;;
+    --yes) CK_YES=1 ;;
+    -*) usage ;;
+    *) pos+=("$1") ;;
+  esac
+  shift
+done
+((${#pos[@]} == 2)) || usage
+id=${pos[0]} line=${pos[1]}
+[[ -n $owner ]] || usage
+ck_name_ok "$session" || ck_die 64 "bad --session name"
+
+ck_pointer_id_ok "$id" || ck_die 65 "the id must be a short lowercase prefix, a hyphen and a number (ob-12)"
+[[ $owner == yes || $owner == no ]] || ck_die 65 "--owner is yes or no"
+[[ -n $line ]] || ck_die 65 "the line is empty"
+[[ $line != *$'\n'* ]] || ck_die 65 "the line must be one line"
+((${#line} <= 200)) || ck_die 65 "the line is over 200 characters"   # characters, in the user's locale
+(
+  LC_ALL=C
+  [[ ! $line =~ [[:cntrl:]] ]]
+) || ck_die 65 "the line has a control character"
+
+url=$(crew_setting nodes.hub.pointer_url)
+token=$(crew_setting nodes.hub.pointer_token)
+if [[ -n $url ]]; then ck_pointer_url_ok "$url" || ck_die 78 "nodes.hub.pointer_url is not a plain http(s) URL"; fi
+if [[ -n $token ]]; then ck_pointer_token_ok "$token" || ck_die 78 "nodes.hub.pointer_token is not a plain token"; fi
+
+body="$id owner:$owner"
+if [[ ${CK_YES:-0} != 1 ]]; then
+  echo "would record $id (owner:$owner) in the $session outbox and send the pointer; run again with --yes"
+  exit 0
+fi
+
+state=$(ck_state_dir)
+dir=$state/outbox
+mkdir -p "$dir" && chmod 700 "$dir"
+ck_lock outbox
+trap 'ck_unlock outbox' EXIT
+shopt -s nullglob
+files=("$dir"/*.log)
+shopt -u nullglob
+have=''
+if ((${#files[@]})); then
+  have=$(awk -v id="$id" '$2 == id { sub(/^[^ ]+ [^ ]+ /, ""); print; exit }' "${files[@]}")
+fi
+if [[ -z $have ]]; then
+  printf '%s %s owner:%s %s\n' "$(ck_iso "$(ck_now)")" "$id" "$owner" "$line" >> "$dir/$session.log"
+  chmod 600 "$dir/$session.log"
+  echo "recorded $id"
+elif [[ $have == "owner:$owner $line" ]]; then
+  echo "already recorded $id"
+else
+  ck_die 65 "$id is already recorded with another line or owner flag"
+fi
+ck_unlock outbox
+trap - EXIT
+
+if [[ -n $url && -n $token ]] && ck_pointer_send "$url" "$token" "$body"; then
+  echo "pointer sent"
+else
+  echo "pointer not sent (the 10-minute poll will pick it up)"
+fi

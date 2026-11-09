@@ -1,0 +1,8 @@
+tools/mutate.py without the heavy lock: RED run, 2026-10-27:
+
+FAIL: test_a_descriptor_to_the_lock_that_another_process_holds_isnt_enough (tests.test_mutate.Mutate.test_a_descriptor_to_the_lock_that_another_process_holds_isnt_enough)
+FAIL: test_ci_alone_isnt_a_lock_but_a_github_hosted_run_is (tests.test_mutate.Mutate.test_ci_alone_isnt_a_lock_but_a_github_hosted_run_is)
+FAIL: test_the_gate_token_outside_a_container_isnt_a_lock (tests.test_mutate.Mutate.test_the_gate_token_outside_a_container_isnt_a_lock)
+FAIL: test_without_the_heavy_lock_it_refuses_and_runs_nothing (tests.test_mutate.Mutate.test_without_the_heavy_lock_it_refuses_and_runs_nothing)
+Ran 12 tests in 1.487s
+FAILED (failures=4)
