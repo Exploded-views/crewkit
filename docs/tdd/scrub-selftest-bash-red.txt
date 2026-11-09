@@ -1,0 +1,6 @@
+# RED: tests/scrub-history.bats, the self-test run as bash FILE on a copy without the exec bit
+$ bats -f 'exec bit' tests/scrub-history.bats
+1..1
+not ok 1 the self-test's history canary runs a copy without the exec bit, as bash FILE does
+# (in test file tests/scrub-history.bats, line 759)
+#   `[ "$status" -eq 0 ]' failed

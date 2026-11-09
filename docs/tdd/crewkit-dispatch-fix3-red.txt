@@ -1,0 +1,11 @@
+Task 3, fix round 3 (the second re-review of 9553704): a symlink to a directory at the lock path
+let every caller take the lock, because ln -s created the link inside the directory.
+RED, bats -f "never follows a symlink" tests/crewkit.bats:
+not ok 1 ck_lock never follows a symlink to a directory at the lock path
+#   `[ -z "$(ls -A "$s/locks/target")" ]' failed
+
+Also in this round, without a RED of their own:
+- ck_lock's wait compared SECONDS (whole seconds) with <, so lock_wait_seconds 1 could give up at
+  once if the start fell near a second boundary. It now uses <=, a wait of at least that long.
+  Seen once as a flaky "a junk link target counts as dead" under load; 6 reruns passed before.
+- A test used GNU-only `stat -c %a`; it falls back to `stat -f %Lp` like the other one.

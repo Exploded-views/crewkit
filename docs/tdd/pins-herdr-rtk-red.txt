@@ -1,0 +1,162 @@
+# RED: the herdr/rtk/crew-nodes tests (tests/install.bats) before install.sh and the pins existed.
+# Run: .cache/bats-v1.14.0/bin/bats tests/install.bats
+1..83
+ok 1 dry run exits 0 and changes nothing
+ok 2 dry run downloads nothing
+ok 3 an unknown flag is a usage error
+ok 4 an unpinned tool is skipped, not installed
+ok 5 memsync: a matching sha hands the unpacked release to its bootstrap as --prebuilt-dir
+ok 6 memsync: downloads the pinned asset and SHA256SUMS from the pinned URL
+ok 7 memsync: an archive the release's SHA256SUMS disagrees with is refused
+ok 8 memsync: an archive missing from SHA256SUMS is refused
+ok 9 memsync: runs the release's bootstrap with the flags after --
+ok 10 memsync: a sha mismatch is refused before anything is unpacked or run
+ok 11 memsync: bootstrap exit 3 (paused, needs a human) passes through and stops
+ok 12 memsync: a bootstrap failure fails the install
+ok 13 a pinned tag with no hash for this target is refused
+ok 14 a malformed hash is refused
+ok 15 pin files are parsed, never executed
+ok 16 a pinned URL must be https
+ok 17 an archive with a path outside its root is refused
+ok 18 an archive containing a link is refused
+ok 19 memsync: an archive without its claude-utils-<tag>-<os>-<arch>/ dir is refused
+ok 20 memsync: a release missing a binary is refused before its bootstrap runs
+ok 21 bitc: a matching sha installs bitc into ~/.local/bin
+ok 22 bitc: a sha mismatch installs nothing
+ok 23 bitc: on macOS the darwin build is installed
+ok 24 an unsupported OS is refused
+not ok 25 plugins: --yes adds the marketplace, installs the plugins and the rules fragment
+# (in test file tests/install.bats, line 215)
+#   `grep -qx 'claude plugin install crew-nodes@crewkit' "$CALLS"' failed
+ok 26 plugins: an edited rules file is backed up, not lost
+ok 27 --help prints usage and exits 0
+ok 28 an unsupported architecture is refused
+ok 29 a missing pin file is an error
+not ok 30 plugins: without claude on PATH the step is skipped with a note, dry run or --yes
+# (in test file tests/install.bats, line 257)
+#   `[ "$status" -eq 0 ]' failed
+ok 31 a tag that isn't vMAJOR.MINOR.PATCH is refused before any download
+ok 32 an archive with an absolute path is refused
+ok 33 an archive with a FIFO or other special file is refused
+ok 34 bitc: an archive without a bitc binary is refused
+ok 35 an inherited tmp variable doesn't redirect the work dir
+ok 36 a failing step exits 1 whatever the failing command's own code
+ok 37 plugins: a second edit keeps the first backup too
+ok 38 bootstrap flags are not echoed in the plan
+ok 39 flags after -- are reported when the memsync step isn't run
+ok 40 plugins: a re-run with everything installed adds and installs nothing
+ok 41 plugins: only the missing plugin is installed
+ok 42 plugins: a plugin from another marketplace with the same name doesn't count
+ok 43 plugins: a current rules fragment is left alone on a re-run
+ok 44 plugins: a dry run makes no claude calls (it stays fast)
+ok 45 an unknown --only step is a usage error (64)
+ok 46 bitc: the release's checksums.txt must list the pinned hash
+ok 47 bitc: the installed binary must report the pinned version as a release
+ok 48 bitc: a version that only starts with the pinned one is refused
+ok 49 bitc: a development build (release=false) is refused
+ok 50 bitc: a failed version check leaves an existing bitc in place
+ok 51 memsync: a pre-release tag (vX.Y.Z-suffix) is installed
+ok 52 memsync: the unpacked claude-memsync must report the pinned tag, or its bootstrap never runs
+ok 53 pin checks are ASCII whatever the locale: a non-ASCII tag or URL is refused
+ok 54 memsync: only the version's first line counts, so extra lines after it don't fail the check
+not ok 55 plugins: crew-nodes is installed first, then agent-practice, then memory-notices
+# (in test file tests/install.bats, line 487)
+#   `[ "$a" -lt "$b" ]; [ "$b" -lt "$c" ]' failed with status 2
+# tests/install.bats: line 487: [: : integer expected
+not ok 56 herdr: a matching sha installs the bare binary and runs the integration of the one agent on PATH
+# (in test file tests/install.bats, line 493)
+#   `[ "$status" -eq 0 ]' failed
+not ok 57 herdr: every agent CLI on PATH gets its integration
+# (in test file tests/install.bats, line 504)
+#   `[ "$status" -eq 0 ]' failed
+not ok 58 herdr: cursor's agent CLI is cursor-agent, and its integration is cursor
+# (in test file tests/install.bats, line 514)
+#   `[ "$status" -eq 0 ]' failed
+not ok 59 herdr: with no agent CLI on PATH herdr is installed, no integration runs, and that is success
+# (in test file tests/install.bats, line 522)
+#   `[ "$status" -eq 0 ]' failed
+not ok 60 herdr: an integration that fails (the agent was never run) is a note, not a failed step
+# (in test file tests/install.bats, line 531)
+#   `[ "$status" -eq 0 ]' failed
+not ok 61 herdr: a sha mismatch installs nothing and runs nothing
+# (in test file tests/install.bats, line 540)
+#   `[ "$status" -eq 1 ]' failed
+not ok 62 herdr: a binary that reports another version is refused before it replaces anything
+# (in test file tests/install.bats, line 550)
+#   `[ "$status" -eq 1 ]' failed
+not ok 63 herdr: a version that only starts like the pin (0.9.50) is refused
+# (in test file tests/install.bats, line 559)
+#   `[ "$status" -eq 1 ]' failed
+not ok 64 herdr: only the first line of --version counts
+# (in test file tests/install.bats, line 567)
+#   `[ "$status" -eq 0 ]' failed
+not ok 65 herdr: on linux arm64 the herdr-linux-aarch64 asset is fetched
+# (in test file tests/install.bats, line 574)
+#   `[ "$status" -eq 0 ]' failed
+not ok 66 herdr: on macOS the herdr-macos-aarch64 and herdr-macos-x86_64 assets are fetched
+# (in test file tests/install.bats, line 582)
+#   `[ "$status" -eq 0 ]' failed
+not ok 67 rtk: installs the pinned archive and runs rtk init -g
+# (in test file tests/install.bats, line 594)
+#   `[ "$status" -eq 0 ]' failed
+not ok 68 rtk: a sha mismatch installs nothing
+# (in test file tests/install.bats, line 606)
+#   `[ "$status" -eq 1 ]' failed
+not ok 69 rtk: an archive the release's checksums.txt disagrees with is refused
+# (in test file tests/install.bats, line 615)
+#   `[ "$status" -eq 1 ]' failed
+not ok 70 rtk: an archive missing from checksums.txt is refused
+# (in test file tests/install.bats, line 624)
+#   `[ "$status" -eq 1 ]' failed
+not ok 71 rtk: a binary that reports another version is refused before it replaces anything
+# (in test file tests/install.bats, line 631)
+#   `[ "$status" -eq 1 ]' failed
+not ok 72 rtk: an archive without an rtk binary is refused
+# (in test file tests/install.bats, line 644)
+#   `[ "$status" -eq 1 ]' failed
+not ok 73 rtk: on each other target the matching triple is fetched
+# (in test file tests/install.bats, line 652)
+#   `[ "$status" -eq 0 ]' failed
+not ok 74 rtk: existing settings.json hooks survive rtk init -g
+# (in test file tests/install.bats, line 669)
+#   `[ "$status" -eq 0 ]' failed
+not ok 75 rtk: an init that drops a hook is undone and fails the step
+# (in test file tests/install.bats, line 678)
+#   `[ "$status" -eq 1 ]' failed
+not ok 76 rtk: a re-run with the hook and @RTK.md present doesn't call rtk init
+# (in test file tests/install.bats, line 686)
+#   `[ "$status" -eq 0 ]' failed
+not ok 77 rtk: the hook present but no @RTK.md line still runs rtk init
+# (in test file tests/install.bats, line 698)
+#   `[ "$status" -eq 0 ]' failed
+not ok 78 rtk: settings.json that isn't JSON is refused before rtk init touches it
+# (in test file tests/install.bats, line 707)
+#   `[ "$status" -eq 1 ]' failed
+not ok 79 rtk: without jq the step fails naming it
+# (in test file tests/install.bats, line 720)
+#   `[ "$status" -eq 1 ]' failed
+not ok 80 --only herdr and --only rtk are accepted; --only cli and --only nope are usage errors
+# (in test file tests/install.bats, line 727)
+#   `[ "$status" -eq 0 ]' failed
+not ok 81 the default steps run in order: bitc memsync herdr rtk plugins
+# (in test file tests/install.bats, line 741)
+#   `[ "$order" = 'bitc:memsync:herdr:rtk:plugins:' ]' failed
+not ok 82 dry run names the herdr and rtk assets and downloads nothing
+# (in test file tests/install.bats, line 749)
+#   `[[ $output == *herdr-linux-x86_64* && $output == *rtk-x86_64-unknown-linux-musl.tar.gz* ]]' failed
+
+# The full run above stopped at test 80 (the run was interrupted there); tests 80-83 re-run with --filter:
+# bats tests/install.bats --filter "^(--only herdr|the default steps|dry run names|herdr and rtk)"
+1..4
+not ok 1 --only herdr and --only rtk are accepted; --only cli and --only nope are usage errors
+# (in test file tests/install.bats, line 727)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 the default steps run in order: bitc memsync herdr rtk plugins
+# (in test file tests/install.bats, line 741)
+#   `[ "$order" = 'bitc:memsync:herdr:rtk:plugins:' ]' failed
+not ok 3 dry run names the herdr and rtk assets and downloads nothing
+# (in test file tests/install.bats, line 749)
+#   `[[ $output == *herdr-linux-x86_64* && $output == *rtk-x86_64-unknown-linux-musl.tar.gz* ]]' failed
+not ok 4 herdr and rtk: an unpinned tool is skipped
+# (in test file tests/install.bats, line 757)
+#   `[ "$status" -eq 0 ]' failed

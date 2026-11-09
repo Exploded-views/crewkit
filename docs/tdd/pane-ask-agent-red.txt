@@ -1,0 +1,142 @@
+# pane-ask suite after the redesign (crew-nodes, nodes.* settings, herdr agent prompt --wait), run against the first version (pane run plus its own status polling, pane_ask.* settings), moved to plugins/crew-nodes/bin unchanged.
+# Paths are replaced with <repo> and <tmp>. Tests that passed only check usage errors the old version also refused
+# (unknown options such as --node and --machine are usage errors there); test 9 also passed
+# its last case for the wrong reason: the old version exits 78 because pane_ask.host is unset.
+
+1..49
+ok 1 no arguments is a usage error
+ok 2 an empty message, or too many arguments, is a usage error
+ok 3 an unknown option, or a malformed number, is a usage error
+ok 4 --node, --host and --machine are exclusive
+not ok 5 no node, host or machine anywhere is a config error (78) naming nodes.default
+# (in test file tests/pane-ask.bats, line 91)
+#   `[[ $output == *nodes.default* ]]' failed
+not ok 6 a node with neither host nor machine is a config error (78)
+# (in test file tests/pane-ask.bats, line 97)
+#   `[ "$status" -eq 78 ]' failed
+not ok 7 bad settings are config errors (78)
+# (in test file tests/pane-ask.bats, line 105)
+#   `[[ $output == *nodes.timeout_seconds* ]]' failed
+not ok 8 nodes.* settings are file-only: CREWKIT_* can't point pane-ask at another host
+# (in test file tests/pane-ask.bats, line 115)
+#   `[ "$status" -eq 0 ]' failed
+ok 9 a host, machine label or node name that starts with a dash is refused before anything runs
+ok 10 a target that starts with a dash or holds shell characters is refused
+not ok 11 a prefix that starts with a dash is refused
+# (in test file tests/pane-ask.bats, line 147)
+#   `[ "$status" -eq 64 ]' failed
+not ok 12 a target listed in the node's lead_pane is refused (65), nothing sent
+# (in test file tests/pane-ask.bats, line 155)
+#   `[ "$status" -eq 65 ]' failed
+not ok 13 with --host or --machine, a lead pane of any node is refused
+# (in test file tests/pane-ask.bats, line 167)
+#   `[ "$status" -eq 65 ]' failed
+not ok 14 reading a lead pane is allowed
+# (in test file tests/pane-ask.bats, line 176)
+#   `[ "$status" -eq 0 ]' failed
+not ok 15 --read prints the agent's tail with agent read, without sending anything
+# (in test file tests/pane-ask.bats, line 183)
+#   `[ "$status" -eq 0 ]' failed
+not ok 16 --read --lines N reads N lines, and nodes.read_lines sets the default
+# (in test file tests/pane-ask.bats, line 191)
+#   `[ "$status" -eq 0 ]' failed
+not ok 17 the target defaults to the node's bridge
+# (in test file tests/pane-ask.bats, line 202)
+#   `[ "$status" -eq 0 ]' failed
+not ok 18 no target and no bridge is a usage error
+# (in test file tests/pane-ask.bats, line 212)
+#   `[[ $output == *bridge* ]]' failed
+not ok 19 --node picks another node; --host is an ad hoc ssh target; ssh runs in batch mode
+# (in test file tests/pane-ask.bats, line 218)
+#   `[ "$status" -eq 0 ]' failed
+not ok 20 a failed ssh is exit 1 with a message
+# (in test file tests/pane-ask.bats, line 230)
+#   `[ "$status" -eq 1 ]' failed
+not ok 21 a message is sent prefixed, once, with agent prompt --wait and the timeout in ms
+# (in test file tests/pane-ask.bats, line 238)
+#   `[ "$status" -eq 0 ]' failed
+not ok 22 --timeout and nodes.timeout_seconds set the wait
+# (in test file tests/pane-ask.bats, line 248)
+#   `grep -q -- '--wait --timeout 5000$' "$PSTUB/herdr.log"' failed
+not ok 23 --prefix overrides nodes.prefix, which defaults to orchestrator_name
+# (in test file tests/pane-ask.bats, line 256)
+#   `[ "$(cat "$PSTUB/sent.1")" = "helper: a" ]' failed
+# cat: <tmp>/test/23/pstub/sent.1: No such file or directory
+not ok 24 it prints only the output from the sent message on
+# (in test file tests/pane-ask.bats, line 267)
+#   `[ "$status" -eq 0 ]' failed
+not ok 25 an earlier copy of the same message on the screen is skipped: output starts at the last one
+# (in test file tests/pane-ask.bats, line 275)
+#   `[ "$status" -eq 0 ]' failed
+not ok 26 a message scrolled out of the read: the whole read is printed, with a note
+# (in test file tests/pane-ask.bats, line 282)
+#   `[ "$status" -eq 0 ]' failed
+not ok 27 a timeout is exit 40: maybe delivered, never resent
+# (in test file tests/pane-ask.bats, line 290)
+#   `[ "$status" -eq 40 ]' failed
+not ok 28 agent_prompt_stalled is exit 40 too, and not resent
+# (in test file tests/pane-ask.bats, line 300)
+#   `[ "$status" -eq 40 ]' failed
+not ok 29 agent_blocked from agent prompt is exit 75, nothing sent
+# (in test file tests/pane-ask.bats, line 308)
+#   `[ "$status" -eq 75 ]' failed
+not ok 30 a turn that ends blocked at a dialog is exit 41, with the screen printed
+# (in test file tests/pane-ask.bats, line 316)
+#   `[ "$status" -eq 41 ]' failed
+not ok 31 any other failure of the send is exit 1 and says not to resend blindly
+# (in test file tests/pane-ask.bats, line 324)
+#   `[ "$status" -eq 1 ]' failed
+not ok 32 a herdr too old for agent prompt --wait (exit 2) is exit 1 naming the minimum version
+# (in test file tests/pane-ask.bats, line 332)
+#   `[ "$status" -eq 1 ]' failed
+not ok 33 a lost ssh connection during the send is exit 1 and says not to resend blindly
+# (in test file tests/pane-ask.bats, line 346)
+#   `[ "$status" -eq 1 ]' failed
+not ok 34 a working agent: agent wait for it to settle, then one send
+# (in test file tests/pane-ask.bats, line 355)
+#   `[ "$status" -eq 0 ]' failed
+not ok 35 an agent that stays working: exit 75, nothing sent
+# (in test file tests/pane-ask.bats, line 364)
+#   `[ "$status" -eq 75 ]' failed
+not ok 36 an agent that settles blocked is not sent to: exit 75
+# (in test file tests/pane-ask.bats, line 372)
+#   `[ "$status" -eq 75 ]' failed
+not ok 37 a blocked agent is refused at once (75), without waiting
+# (in test file tests/pane-ask.bats, line 379)
+#   `[ "$status" -eq 75 ]' failed
+not ok 38 nodes.wait_idle false: a busy agent is refused at once (75)
+# (in test file tests/pane-ask.bats, line 389)
+#   `[ "$status" -eq 75 ]' failed
+not ok 39 unknown counts as busy
+# (in test file tests/pane-ask.bats, line 398)
+#   `[ "$status" -eq 75 ]' failed
+not ok 40 done counts as idle by default; nodes.idle_statuses changes the set
+# (in test file tests/pane-ask.bats, line 404)
+#   `[ "$status" -eq 0 ]' failed
+not ok 41 a failed status read is exit 1, nothing sent
+# (in test file tests/pane-ask.bats, line 414)
+#   `[ "$status" -eq 1 ]' failed
+not ok 42 a status reply that isn't herdr's JSON is exit 1, nothing sent
+# (in test file tests/pane-ask.bats, line 423)
+#   `[ "$status" -eq 1 ]' failed
+not ok 43 quotes, $, backticks, $(...), backslashes and newlines arrive byte for byte, with no remote injection
+# (in test file tests/pane-ask.bats, line 432)
+#   `[ "$status" -eq 0 ]' failed
+not ok 44 a prefix with shell characters arrives as it is
+# (in test file tests/pane-ask.bats, line 442)
+#   `[ "$status" -eq 0 ]' failed
+not ok 45 herdr is reached by path: ~/.local/bin/herdr by default, not PATH
+# (in test file tests/pane-ask.bats, line 449)
+#   `[ "$status" -eq 0 ]' failed
+not ok 46 nodes.<name>.herdr: a path with spaces and quotes, under ~, is quoted for the remote shell
+# (in test file tests/pane-ask.bats, line 458)
+#   `[ "$status" -eq 0 ]' failed
+not ok 47 a missing herdr on the host is exit 1
+# (in test file tests/pane-ask.bats, line 466)
+#   `[ "$status" -eq 1 ]' failed
+not ok 48 a node with a machine profile: the local herdr with --machine, no ssh
+# (in test file tests/pane-ask.bats, line 476)
+#   `[ "$status" -eq 0 ]' failed
+not ok 49 --machine is an ad hoc profile, and nodes.local_herdr names the local binary
+# (in test file tests/pane-ask.bats, line 490)
+#   `[ "$status" -eq 0 ]' failed

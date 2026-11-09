@@ -1,0 +1,180 @@
+{
+  "target": "push-gate/push-gate.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/push-gate.bats"
+  ],
+  "mutants": [
+    {
+      "name": "fail-open (a): rev-list failure ignored",
+      "old": "commits=$(g rev-list --stdin <<<\"$revs\") || fatal \"git rev-list failed\"",
+      "new": "commits=$(g rev-list --stdin <<<\"$revs\")"
+    },
+    {
+      "name": "git show failure ignored",
+      "old": "\"$c\") || fatal \"git show failed for a commit\"",
+      "new": "\"$c\")"
+    },
+    {
+      "name": "fail-open (b): grep exit 2 on a commit read as no hits",
+      "old": "((rc <= 1)) || fatal \"grep failed on a commit\"",
+      "new": ":"
+    },
+    {
+      "name": "git grep failure ignored",
+      "old": "((rc <= 1)) || fatal \"git grep failed on the pushed tree\"",
+      "new": ":"
+    },
+    {
+      "name": "git ls-tree failure ignored",
+      "old": "names=$(g ls-tree -r --name-only \"$lsha\") || fatal \"git ls-tree failed on the pushed tree\"",
+      "new": "names=$(g ls-tree -r --name-only \"$lsha\")"
+    },
+    {
+      "name": "grep exit 2 on the path list read as no hits",
+      "old": "((rc <= 1)) || fatal \"grep failed on the pushed paths\"",
+      "new": ":"
+    },
+    {
+      "name": "grep exit 2 on the branch name read as no term",
+      "old": "((rc <= 1)) || fatal \"grep failed on the branch name\"",
+      "new": ":"
+    },
+    {
+      "name": "grep exit 2 on a hit's path prints it",
+      "old": "((rc <= 1)) || fatal \"grep failed on a path\"",
+      "new": ":"
+    },
+    {
+      "name": "a pushed sha missing from the repo allowed",
+      "old": "g cat-file -e \"$lsha^{commit}\" 2>/dev/null || fatal \"the pushed commit isn't in this repository\"",
+      "new": ":"
+    },
+    {
+      "name": "a malformed pre-push line allowed",
+      "old": "[[ $lsha =~ ^[0-9a-f]{40,64}$ && ${rsha:-} =~ ^[0-9a-f]{40,64}$ ]] || fatal \"a pre-push line git didn't write\"",
+      "new": ":"
+    },
+    {
+      "name": "missing denylist allowed",
+      "old": "[[ -r $denylist ]] || { echo \"no denylist at $(tilde \"$denylist\")\"; return; }",
+      "new": ":"
+    },
+    {
+      "name": "empty denylist allowed",
+      "old": "[[ -s $pats ]] || { echo \"the denylist at $(tilde \"$denylist\") has no patterns\"; return; }",
+      "new": ":"
+    },
+    {
+      "name": "invalid denylist pattern allowed",
+      "old": "(($? == 2)) && echo \"the denylist at $(tilde \"$denylist\") has an invalid pattern\"",
+      "new": ":"
+    },
+    {
+      "name": "denylist not checked",
+      "old": "if ((deny)); then p=$(denylist_problem); [[ -z $p ]] || block \"$p\"; fi",
+      "new": ":"
+    },
+    {
+      "name": "missing gitleaks allowed",
+      "old": "[[ -x $gitleaks ]] || { echo \"no gitleaks",
+      "new": "[[ -x $gitleaks ]] || [[ 1 ]] || { echo \"no gitleaks"
+    },
+    {
+      "name": "gitleaks sha256 not compared",
+      "old": "[[ $want =~ ^[0-9a-f]{64}$ && $got == \"$want\" ]] ||",
+      "new": "[[ $want =~ ^[0-9a-f]{64}$ ]] ||"
+    },
+    {
+      "name": "no recorded sha256 allowed",
+      "old": "[[ -r $gitleaks.sha256 ]] || { echo",
+      "new": "true || { echo"
+    },
+    {
+      "name": "gitleaks not checked",
+      "old": "p=$(gitleaks_problem \"$root/gitleaks.sha256\"); [[ -z $p ]] || block \"$p\"",
+      "new": ":"
+    },
+    {
+      "name": "gitleaks failure ignored",
+      "old": "    if ((rc != 0)); then\n      say \"gitleaks:",
+      "new": "    if ((rc == 1)); then\n      say \"gitleaks:"
+    },
+    {
+      "name": "invalid exempt pattern read as not exempt",
+      "old": "((rc <= 1)) || fatal \"the exempt file has an invalid pattern\"",
+      "new": ":"
+    },
+    {
+      "name": "invalid skip-all pattern ignored",
+      "old": "((rc == 1)) || fatal \"the exempt file has an invalid skip-all pattern\"",
+      "new": ":"
+    },
+    {
+      "name": "exempt skips gitleaks too",
+      "old": "((rc == 0)) && deny=0",
+      "new": "((rc == 0)) && { lg SKIP; exit 0; }"
+    },
+    {
+      "name": "a term in a file not reported",
+      "old": "say \"denylist: file $f in $ref: ${path##*:} line(s)\"; findings=1",
+      "new": "say \"denylist: file $f in $ref: ${path##*:} line(s)\""
+    },
+    {
+      "name": "commit messages not scanned",
+      "old": "--format='%an <%ae>%n%cn <%ce>%n%B'",
+      "new": "--format='%an <%ae>%n%cn <%ce>'"
+    },
+    {
+      "name": "history not scanned, tree only",
+      "old": "for c in $commits; do",
+      "new": "for c in; do"
+    },
+    {
+      "name": "branch name printed",
+      "old": "ref=\"(a branch name that holds a term)\"",
+      "new": "ref=$rref"
+    },
+    {
+      "name": "path holding a term printed",
+      "old": "((rc == 0)) && f=\"(a path that itself holds a term)\"",
+      "new": ":"
+    },
+    {
+      "name": "local paths gated or not: always skipped",
+      "old": "if [[ -z ${PUSH_GATE_LOCAL:-} && ( $url == /* || $url == file://* ) ]] && local_unpublished; then exit 0; fi",
+      "new": "if [[ $url == /* || $url == file://* ]]; then exit 0; fi"
+    },
+    {
+      "name": "doctor: global gate not compared",
+      "old": "  elif [[ ${hp%/} != \"$GATE_DIR/push-gate/hooks\" ]]; then report global-gate FAIL",
+      "new": "  elif false; then report global-gate FAIL"
+    },
+    {
+      "name": "doctor: stale dispatcher ok",
+      "old": "if [[ $got == \"$want\" ]]; then report dispatcher ok",
+      "new": "if true; then report dispatcher ok"
+    },
+    {
+      "name": "doctor: repo without the shim ok",
+      "old": "elif has_shim \"$hp/pre-push\"; then report \"$id\" ok",
+      "new": "elif [[ -d $hp ]]; then report \"$id\" ok"
+    },
+    {
+      "name": "doctor: root unset ok",
+      "old": "report root FAIL \"push_gate.root is not set (docs/settings.md)\"; bad=1",
+      "new": "report root ok \"unset\""
+    },
+    {
+      "name": "doctor: a FAIL repo doesn't fail the exit",
+      "old": "check_repo \"$w\" || bad=1",
+      "new": "check_repo \"$w\" || :"
+    },
+    {
+      "name": "doctor: listing error not exit 2",
+      "old": "under $(tilde \"$scan_root\")\" >&2; exit 2; }",
+      "new": "under $(tilde \"$scan_root\")\" >&2; }"
+    }
+  ]
+}

@@ -1,0 +1,377 @@
+#!/usr/bin/env bash
+# pane-ask: one message to an agent session in herdr on another node, and its reply.
+#
+#   pane-ask [--node NAME | --host SSH_TARGET | --machine LABEL] [--prefix NAME]
+#            [--timeout SECS] [--lines N] [TARGET] MESSAGE
+#   pane-ask --read [--node NAME | --host SSH_TARGET | --machine LABEL] [--lines N] [TARGET]
+#
+# Bridge to bridge only. Across hosts, only a host's bridge sends, and only to the other node's
+# configured bridge (nodes.<name>.bridge); on one host, sessions use SendMessage, not this. The one
+# local case is a watch daemon waking its own host's bridge: a caller with no HERDR_PANE_ID in its
+# environment (in no herdr pane), sending to the bridge of a local node (nodes.<name>.this_host: true), run
+# through the local herdr, no ssh. Anything else is refused (exit
+# 45) before the node is called. This is a guard rail, not enforcement: the caller is judged by
+# HERDR_PANE_ID, an env check that stops accidents, not a determined caller; any session can
+# claim another pane or unset the variable. Real enforcement waits on herdr's access control.
+# A thin wrapper over herdr's agent commands (herdr 0.9.0 or later on the node):
+#   1. `herdr agent get TARGET`: a status outside nodes.idle_statuses is busy. blocked (a
+#      dialog waiting for its owner) is refused at once; anything else is waited for with
+#      `herdr agent wait` (unless nodes.wait_idle is false). Still busy: exit 75, nothing sent.
+#   2. `herdr agent prompt TARGET "NAME: MESSAGE" --wait --timeout MS`, once. herdr submits it
+#      (bracketed paste and Enter), refuses a blocked agent, and waits for working, then settled.
+#   3. `herdr agent read TARGET --source recent-unwrapped --lines N`, printed from the sent
+#      message on.
+# --read prints the target's tail and sends nothing.
+#
+# The node (nodes.<name>.*, --node, or nodes.default) is reached through its saved herdr machine
+# profile (`herdr --machine`, herdr 0.9.1 or later on both sides) when nodes.<name>.machine is
+# set, and otherwise over ssh to nodes.<name>.host, running herdr by its path there. Over ssh the
+# message travels on stdin, so it is not on the ssh command line on this machine, and every other
+# argument is single-quoted for the remote shell (the node's login shell must be POSIX-like).
+# herdr takes the prompt only as an argument, though: on the node, `herdr agent prompt` has the
+# message in its argv, and with a machine profile the local `herdr --machine` does, both visible
+# to ps for as long as the turn runs. TARGET defaults to nodes.<name>.bridge. A target listed in
+# the node's nodes.<name>.lead_pane (any node's, with --host or --machine) is refused, as typed
+# and as herdr resolves it (its pane id and its name, if it has one; without case): a guard against mistakes,
+# not a security boundary.
+#
+# A timeout does not prove the message wasn't delivered: never send it again blindly.
+#
+# Exit (docs/exit-codes.md) 0 = replied (or read), 1 = an ssh or herdr call failed, 40 = sent
+# (maybe) but no settled reply in time (timeout, agent_prompt_stalled), 41 = the turn ended
+# blocked at a dialog, 45 = not a bridge (the caller, the target, or a local send the rule
+# doesn't allow), 64 = usage, 65 = the target is a lead pane, 75 = the agent was busy or blocked
+# and nothing was sent, 78 = a setting is missing or invalid.
+set -uo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=SCRIPTDIR/../lib/settings.sh
+source "$here/../lib/settings.sh"
+
+usage() {
+  [[ -z ${1:-} ]] || echo "pane-ask: $1" >&2
+  echo "usage: pane-ask [--node NAME | --host SSH_TARGET | --machine LABEL] [--prefix NAME] [--timeout SECS] [--lines N] [TARGET] MESSAGE" >&2
+  echo "       pane-ask --read [--node NAME | --host SSH_TARGET | --machine LABEL] [--lines N] [TARGET]" >&2
+  exit 64
+}
+die() { echo "pane-ask: $2" >&2; exit "$1"; }
+bad_setting() { die 78 "setting '$1' $2 (got '$3'); see docs/settings.md"; }
+# this_host_flag NAME: 0 when nodes.NAME.this_host is true, 1 when it is false or empty; any other
+# value is a config error (78).
+this_host_flag() {
+  local v
+  v=$(crew_setting "nodes.$1.this_host")   # settings-keys: nodes.<name>.this_host
+  case $v in
+    true) return 0 ;;
+    false | "") return 1 ;;
+  esac
+  bad_setting "nodes.$1.this_host" "must be true or false" "$v"
+}
+
+# An ssh target, machine label or target may hold no shell characters and must not start with
+# "-" (ssh and herdr would read it as an option). A machine label may hold spaces: it only ever
+# travels as one argument to the local herdr.
+HOST_RE='^[A-Za-z0-9_.@%:][A-Za-z0-9_.@%:-]*$'
+MACHINE_RE='^[A-Za-z0-9_.][A-Za-z0-9_. -]*$'
+TARGET_RE='^[A-Za-z0-9_][A-Za-z0-9_.:-]*$'
+NODE_RE='^[a-z0-9_][a-z0-9_-]*$'
+SESSION_RE='^[A-Za-z0-9_][A-Za-z0-9_.-]*$'
+
+read_mode=0 node="" host="" machine="" prefix="" timeout="" lines="" picked=0
+while (($#)); do
+  case $1 in
+    --read) read_mode=1 ;;
+    --node) [[ ${2:-} =~ $NODE_RE ]] || usage; node=$2; picked=$((picked + 1)); shift ;;
+    --host) [[ ${2:-} =~ $HOST_RE ]] || usage; host=$2; picked=$((picked + 1)); shift ;;
+    --machine) [[ ${2:-} =~ $MACHINE_RE ]] || usage; machine=$2; picked=$((picked + 1)); shift ;;
+    --prefix) [[ -n ${2:-} && $2 != -* && $2 != *[[:cntrl:]]* ]] || usage; prefix=$2; shift ;;
+    --timeout) [[ ${2:-} =~ ^[1-9][0-9]*$ ]] || usage; timeout=$2; shift ;;
+    --lines) [[ ${2:-} =~ ^[1-9][0-9]*$ ]] || usage; lines=$2; shift ;;
+    --) shift; break ;;
+    -*) usage ;;
+    *) break ;;
+  esac
+  shift
+done
+((picked <= 1)) || usage "--node, --host and --machine are exclusive"
+target="" message=""
+if ((read_mode)); then
+  (($# <= 1)) || usage
+  target=${1-}
+else
+  (($# == 1 || $# == 2)) || usage
+  if (($# == 2)); then target=$1; fi
+  message=${!#}
+  [[ -n $message ]] || usage
+fi
+
+# ---- settings (every nodes.* key is file-only) -------------------------------------------------
+if ((picked == 0)); then
+  node=$(crew_setting nodes.default)
+  [[ -n $node ]] || die 78 "no node: pass --node, --host or --machine, or set 'nodes.default' (see docs/settings.md)"
+  [[ $node =~ $NODE_RE ]] || bad_setting nodes.default "must be a node name" "$node"
+fi
+herdr=""
+node_local=0
+if [[ -n $node ]]; then
+  ! this_host_flag "$node" || node_local=1
+  machine=$(crew_setting "nodes.$node.machine")   # settings-keys: nodes.<name>.machine
+  if ((node_local)); then
+    machine="" host=""   # this host's own node: the local herdr, no ssh
+  elif [[ -n $machine ]]; then
+    [[ $machine =~ $MACHINE_RE ]] || bad_setting "nodes.$node.machine" "must be a saved herdr machine label" "$machine"
+  else
+    host=$(crew_setting "nodes.$node.host")   # settings-keys: nodes.<name>.host
+    [[ -n $host ]] || die 78 "node '$node' has neither 'nodes.$node.host' nor 'nodes.$node.machine' (see docs/settings.md)"
+    [[ $host =~ $HOST_RE ]] || bad_setting "nodes.$node.host" "must be an ssh target that doesn't start with -" "$host"
+  fi
+  # shellcheck disable=SC2088  # the ~ is the node's home, expanded there
+  herdr=$(crew_setting "nodes.$node.herdr" "~/.local/bin/herdr")   # settings-keys: nodes.<name>.herdr
+  if [[ -z $target ]]; then
+    target=$(crew_setting "nodes.$node.bridge")   # settings-keys: nodes.<name>.bridge
+  fi
+else
+  # shellcheck disable=SC2088
+  herdr="~/.local/bin/herdr"
+fi
+[[ -n $target ]] || usage "no TARGET, and no nodes.<name>.bridge to default to"
+[[ $target =~ $TARGET_RE ]] || usage "a target is a pane id or agent name (got '$target')"
+[[ -n $herdr ]] || bad_setting "nodes.$node.herdr" "must name herdr's path on the node" "$herdr"
+# A backslash inside single quotes means something else to a non-POSIX login shell (fish, csh).
+[[ $herdr != *\\* ]] || bad_setting "nodes.$node.herdr" "must not hold a backslash" "$herdr"
+local_herdr=$(crew_setting nodes.local_herdr herdr)
+if [[ -z $timeout ]]; then
+  timeout=$(crew_setting nodes.timeout_seconds 900)
+  [[ $timeout =~ ^[1-9][0-9]*$ ]] || bad_setting nodes.timeout_seconds "must be a whole number above 0" "$timeout"
+fi
+if [[ -z $lines ]]; then
+  if ((read_mode)); then
+    lines=$(crew_setting nodes.read_lines 80)
+    [[ $lines =~ ^[1-9][0-9]*$ ]] || bad_setting nodes.read_lines "must be a whole number above 0" "$lines"
+  else
+    lines=$(crew_setting nodes.scan_lines 1000)
+    [[ $lines =~ ^[1-9][0-9]*$ ]] || bad_setting nodes.scan_lines "must be a whole number above 0" "$lines"
+  fi
+fi
+where=${machine:-$host}
+
+lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+# ---- lead panes --------------------------------------------------------------------------------
+# The node's lead panes, or every node's with --host or --machine (pane ids are per node, so
+# that errs towards refusing).
+if [[ -n $node ]]; then
+  leads=$(crew_setting "nodes.$node.lead_pane")   # settings-keys: nodes.<name>.lead_pane
+else
+  leads=""
+  while IFS= read -r key; do
+    [[ $key == nodes.*.lead_pane ]] && leads+=",$(crew_setting "$key")"   # settings-keys: nodes.<name>.lead_pane
+  done < <(crew_keys nodes.)
+fi
+# Entries are separated by commas or whitespace, and compared without case on both sides.
+leads=,$(lc "${leads//[[:space:]]/,}"),
+is_lead() { [[ -n $1 && $leads == *",$1,"* ]]; }
+lead_refused() { die 65 "$1 is a lead pane (nodes.<name>.lead_pane); pane-ask never types into a lead session. Nothing sent."; }
+# The target as typed (or the bridge); then, after agent get, the pane id and agent name herdr
+# resolves it to (.pane_id and .name; .agent is the agent's kind, such as claude, not its name),
+# so an agent name or another spelling can't reach a lead pane.
+((read_mode)) || [[ -z $target ]] || ! is_lead "$(lc "$target")" || lead_refused "$target"
+
+
+# ---- bridge to bridge only ---------------------------------------------------------------------
+# Applies to sends and --read alike (--status, when it lands, is a read-only agent get and exempt).
+not_a_bridge() { die 45 "$1. Nothing sent. (A guard rail, not enforcement; see docs/exit-codes.md.)"; }
+# This host's own nodes are the ones marked nodes.<name>.this_host: true (a host may serve several).
+# A node on this host has neither a host nor a machine: one that does is a contradiction (78).
+local_names=()
+while IFS= read -r key; do
+  [[ $key == nodes.*.this_host ]] || continue
+  n=${key#nodes.}; n=${n%.this_host}
+  if this_host_flag "$n"; then
+    [[ -z $(crew_setting "nodes.$n.host") && -z $(crew_setting "nodes.$n.machine") ]] ||   # settings-keys: nodes.<name>.host nodes.<name>.machine
+      die 78 "node '$n' is marked nodes.$n.this_host and also has a host or machine; a node is on this host or elsewhere (see docs/settings.md)"
+    local_names+=("$n")
+  fi
+done < <(crew_keys nodes.)
+((${#local_names[@]})) || die 78 "no node is marked 'nodes.<name>.this_host: true' (this host's own node); pane-ask judges bridges by it (see docs/settings.md)"
+# This host's bridges: with one local node, its .bridge. With several, only the node whose
+# nodes.<name>.session equals HERDR_SESSION (absent means "default"); none matches: no bridges.
+sess_names=()
+if ((${#local_names[@]} > 1)); then
+  for n in "${local_names[@]}"; do
+    [[ $(crew_setting "nodes.$n.session") != "${HERDR_SESSION:-default}" ]] || sess_names+=("$n")   # settings-keys: nodes.<name>.session
+  done
+else
+  sess_names=("${local_names[@]}")
+fi
+my_bridges=()
+if ((${#sess_names[@]})); then
+  for n in "${sess_names[@]}"; do
+    b=$(crew_setting "nodes.$n.bridge")   # settings-keys: nodes.<name>.bridge
+    [[ -z $b ]] || my_bridges+=("$(lc "$b")")
+  done
+  ((${#my_bridges[@]})) || die 78 "this host's node '${sess_names[0]}' has no 'nodes.${sess_names[0]}.bridge' (see docs/settings.md)"
+fi
+# The node being asked: --node (or nodes.default), else the node whose host (--host) or machine
+# (--machine) matches, by that key alone.
+gnode=$node
+if [[ -z $gnode ]]; then
+  want=host
+  [[ -z $machine ]] || want=machine
+  while IFS= read -r key; do
+    [[ $key == nodes.*."$want" ]] || continue
+    v=$(crew_setting "$key")   # settings-keys: nodes.<name>.host nodes.<name>.machine
+    n=${key#nodes.}; n=${n%.*}
+    if [[ $v == "$host$machine" ]]; then gnode=$n; break; fi
+  done < <(crew_keys nodes.)
+  [[ -n $gnode ]] || not_a_bridge "$where is not a configured node (nodes.<name>.$want), so its bridge is unknown"
+fi
+local_target=0 lsession=""
+! this_host_flag "$gnode" || local_target=1
+node_bridge=$(crew_setting "nodes.$gnode.bridge")   # settings-keys: nodes.<name>.bridge
+[[ -n $node_bridge ]] || die 78 "node '$gnode' has no 'nodes.$gnode.bridge' (see docs/settings.md)"
+caller=${HERDR_PANE_ID:-}
+[[ -z $caller || $caller =~ $TARGET_RE ]] || not_a_bridge "HERDR_PANE_ID is not a pane id"
+if ((local_target)); then
+  # Sessions on one host use SendMessage. The one exception: a watch daemon (in no pane) waking
+  # this host's recorded bridge.
+  [[ -z $caller ]] || not_a_bridge "the target is on this host, and sessions on one host use SendMessage, not a pane prompt"
+  [[ -z $target || $(lc "$target") == "$(lc "$node_bridge")" ]] ||
+    not_a_bridge "the target is on this host and is not this host's bridge; only a watch daemon may prompt it, and only the bridge"
+  # Which herdr session is this node? With several nodes on this host the node must say.
+  lsession=$(crew_setting "nodes.$gnode.session")   # settings-keys: nodes.<name>.session
+  if [[ -z $lsession ]] && ((${#local_names[@]} > 1)); then
+    die 78 "this host has several nodes marked this_host; 'nodes.$gnode.session' must say which herdr session '$gnode' is (ambiguous)"
+  fi
+  [[ -z $lsession || $lsession =~ $SESSION_RE ]] || bad_setting "nodes.$gnode.session" "must be a herdr session name" "$lsession"
+else
+  caller_ok=0 lookup=""
+  if [[ -n $caller ]] && ((${#my_bridges[@]})); then
+    for b in "${my_bridges[@]}"; do
+      [[ $(lc "$caller") != "$b" ]] || caller_ok=1
+    done
+    if ((!caller_ok)); then
+      if cj=$("$local_herdr" agent get "$caller" 2>/dev/null); then
+        # The caller's own pane, read-only and local: is its agent name the bridge's?
+        while IFS= read -r r; do
+          for b in "${my_bridges[@]}"; do [[ $r != "$b" ]] || caller_ok=1; done
+        done < <(jq -r '.result.agent | [.pane_id, .name] | map(select(. != null))[]' <<<"$cj" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+      else
+        lookup=" (herdr couldn't resolve pane $caller)"
+      fi
+    fi
+  fi
+  ((${#my_bridges[@]})) || lookup=" (this host has several nodes marked this_host, and HERDR_SESSION matches none of their nodes.<name>.session)"
+  ((caller_ok)) || not_a_bridge "the caller is not this host's bridge (a local node's nodes.<name>.bridge)$lookup; only a bridge prompts another node"
+  [[ $(lc "${target:-$node_bridge}") == "$(lc "$node_bridge")" ]] ||
+    not_a_bridge "the target is not the configured bridge of node '$gnode' (nodes.$gnode.bridge)"
+fi
+if ((local_target)); then machine="" host=""; fi   # this host's own node: the local herdr, no ssh
+where=${machine:-${host:-this host}}
+
+# ---- herdr on the node -------------------------------------------------------------------------
+sq() { local q="'\\''"; printf "'%s'" "${1//\'/$q}"; }
+STDIN_ARG=@pane-ask-stdin@
+# The remote script, run with sh -c: $1 is herdr's path (a leading ~/ is the node's home), the
+# rest herdr's arguments; an argument that is exactly @pane-ask-stdin@ becomes the whole of
+# stdin, trailing newlines kept. No `exec`: bash's exec expands a quoted ~/ itself, which no
+# other sh does, so a bug in the ~/ handling would pass on one shell and fail on another.
+# shellcheck disable=SC2016  # expanded by the remote sh, not here
+REMOTE='h=$1; shift
+case $h in "~/"*) h=$HOME/${h#"~/"} ;; esac
+n=$#; i=0
+while [ "$i" -lt "$n" ]; do
+  a=$1; shift
+  if [ "$a" = @pane-ask-stdin@ ]; then a=$(cat; echo .); a=${a%.}; fi
+  set -- "$@" "$a"; i=$((i + 1))
+done
+"$h" "$@"'
+
+# herdr_on_node ARGS...: run herdr on the node. An argument equal to $STDIN_ARG stands for the
+# message ($sent): over ssh it goes on stdin; with a machine profile it is passed as it is.
+# BatchMode: ssh never stops at a password prompt.
+herdr_on_node() {
+  local a cmd args=()
+  if ((local_target)); then
+    [[ -z $lsession ]] || args=(--session "$lsession")
+    for a in "$@"; do [[ $a == "$STDIN_ARG" ]] && a=$sent; args+=("$a"); done
+    "$local_herdr" "${args[@]}"
+    return
+  fi
+  if [[ -n $machine ]]; then
+    for a in "$@"; do [[ $a == "$STDIN_ARG" ]] && a=$sent; args+=("$a"); done
+    "$local_herdr" --machine "$machine" "${args[@]}"
+    return
+  fi
+  cmd="sh -c $(sq "$REMOTE") pane-ask $(sq "$herdr")"
+  for a in "$@"; do cmd+=" $(sq "$a")"; done
+  if [[ " $* " == *" $STDIN_ARG "* ]]; then
+    printf '%s' "$sent" | ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30 -- "$host" "$cmd"
+  else
+    ssh -n -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30 -- "$host" "$cmd"
+  fi
+}
+
+screen() { herdr_on_node agent read "$target" --source recent-unwrapped --lines "$lines"; }
+
+if ((read_mode)); then
+  screen || die 1 "reading $target on $where failed"
+  exit 0
+fi
+
+prefix=${prefix:-$(crew_setting nodes.prefix "$(crew_setting orchestrator_name orchestrator)")}
+[[ -n $prefix && $prefix != -* && $prefix != *[[:cntrl:]]* ]] || bad_setting nodes.prefix "must be a name on one line" "$prefix"
+wait_idle=$(crew_setting nodes.wait_idle true)
+[[ $wait_idle == true || $wait_idle == false ]] || bad_setting nodes.wait_idle "must be true or false" "$wait_idle"
+idle_set=$(crew_setting nodes.idle_statuses "idle,done")
+idle_set=",${idle_set//[[:space:]]/,},"
+sent="$prefix: $message"
+ms=$((timeout * 1000))
+
+status_of() { jq -r '.result.agent.agent_status // empty' 2>/dev/null <<<"$1"; }
+is_idle() { [[ $idle_set == *",$1,"* ]]; }
+
+# ---- 1. idle before the send -------------------------------------------------------------------
+json=$(herdr_on_node agent get "$target") || die 1 "reading $target's status on $where failed; nothing sent"
+st=$(status_of "$json")
+[[ -n $st ]] || die 1 "herdr's reply for $target on $where has no agent_status; nothing sent"
+while IFS= read -r r; do
+  ! is_lead "$r" || lead_refused "$target (resolved to $r on $where)"
+done < <(jq -r '.result.agent | (.pane_id // empty), (.name // empty)' <<<"$json" | tr '[:upper:]' '[:lower:]')
+if ! is_idle "$st"; then
+  [[ $st != blocked ]] || die 75 "$target on $where is blocked at a dialog waiting for its owner; nothing sent"
+  [[ $wait_idle == true ]] || die 75 "$target on $where is busy ($st); nothing sent"
+  json=$(herdr_on_node agent wait "$target" --timeout "$ms") ||
+    die 75 "$target on $where stayed busy ($st) for ${timeout}s; nothing sent"
+  st=$(status_of "$json")
+  is_idle "$st" || die 75 "$target on $where settled $st, not idle; nothing sent"
+fi
+
+# ---- 2. the send, and herdr's wait -------------------------------------------------------------
+err=$(mktemp)
+trap 'rm -f "$err"' EXIT
+json=$(herdr_on_node agent prompt "$target" "$STDIN_ARG" --wait --timeout "$ms" 2>"$err")
+rc=$?
+if ((rc != 0)); then
+  # Only herdr's JSON line counts: ssh or a login shell may print other lines to stderr first.
+  code=$(jq -rR 'fromjson? | .error.code // empty' <"$err" | tail -1)
+  case $rc:$code in
+    1:agent_blocked) die 75 "$target on $where is blocked at a dialog waiting for its owner (agent_blocked); nothing sent" ;;
+    1:timeout|1:agent_prompt_stalled)
+      die 40 "$code: no settled reply from $target on $where within ${timeout}s. The message may have been delivered: don't send it again; read it later with pane-ask --read $target" ;;
+    2:*) cat "$err" >&2
+      die 1 "herdr on $where refused agent prompt --wait: pane-ask needs herdr 0.9.0 or later there" ;;
+  esac
+  cat "$err" >&2
+  die 1 "sending to $target on $where failed (${code:-exit $rc}). The message may have been delivered: check with pane-ask --read $target before sending it again"
+fi
+st=$(status_of "$json")
+
+# ---- 3. the reply ------------------------------------------------------------------------------
+out=$(screen) || die 1 "the turn settled, but reading $target on $where failed: pane-ask --read $target"
+first=${sent%%$'\n'*}
+if ! NEEDLE=${first:0:40} awk 'index($0, ENVIRON["NEEDLE"]) { start = NR } { line[NR] = $0 }
+    END { if (!start) exit 1; for (i = start; i <= NR; i++) print line[i] }' <<<"$out"; then
+  echo "pane-ask: the message has scrolled out of the last $lines lines; printing them all" >&2
+  printf '%s\n' "$out"
+fi
+[[ $st != blocked ]] || die 41 "$target on $where stopped at a dialog waiting for its owner (blocked); don't answer it through herdr"
+exit 0

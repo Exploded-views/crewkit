@@ -28,6 +28,23 @@
     "land-batch-checks-one-pr": {
       "p95_ms": 300,
       "note": "a dry run over one PR with the stub gh: settings, a local clone and every eligibility check; about 190 ms measured"
+    },
+    "pane-ask-read": {
+      "p95_ms": 60,
+      "note": "crew-nodes' pane-ask --read with the stub ssh and herdr: the settings lookups, one ssh call, the remote sh and herdr. Each of its herdr calls costs about the same, plus the network"
+    },
+    "changes-hook-present-fast": {
+      "p95_ms": 50,
+      "note": "memory-notices' changes-hook around a stub claude-memsync that returns at once; owner's target: every per-prompt hook under 200 ms, this wrapper well inside it"
+    },
+    "changes-hook-timeout": {
+      "p95_ms": 800,
+      "ci_headroom": 1.0,
+      "note": "a stub that never returns, with the wrapper's timeout set to 500 ms: wall time must stay under timeout + 300 ms (the TERM, the 200 ms grace and the KILL). Measured with 5 runs; a hard limit, not loosened in CI (ci_headroom 1.0)"
+    },
+    "crewkit-node-report": {
+      "p95_ms": 200,
+      "note": "crewkit node report with the stub herdr, three agents and a node state. Budget is the owner's 200 ms hot-path target, not a fit to the measurement: measured p95 181.8 ms at load1 6.67 (2026-10-29), when four other scenarios also ran 1.2-2x over theirs"
     }
   }
 }

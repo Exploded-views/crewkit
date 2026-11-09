@@ -1,0 +1,32 @@
+# RED: tests/crewkit-holder.bats before libexec/crewkit-holder-run existed
+# (every test fails with exit 127, the missing script; the 3 'missing secret/setting' tests
+#  fail the same way, so only their mutants prove they bite)
+1..19
+not ok 1 a missing secret is 78, names the file, and prints no value
+not ok 2 a secret file that others can read is 78
+not ok 3 a mode 400 secret is accepted
+not ok 4 missing settings are 78 and name the variable
+not ok 5 the tailscale auth key reaches tailscale as file:, never in argv or env
+not ok 6 ntfy binds the tailnet address only, with deny-all by default
+not ok 7 ntfy's auth database is a private copy, not the mounted secret
+not ok 8 userspace networking is used when the tun device is absent, and not when present
+not ok 9 tailscale up failing stops the holder before ntfy or git run
+not ok 10 the sync repo is cloned with the deploy key, and registry settings are written for crewkit
+not ok 11 an unreachable sync repo stops the holder (non-zero) and says so
+not ok 12 the first round pulls every node, and the poll pulls everyone again after CK_POLL_SECONDS
+not ok 13 the poll interval is honoured: nothing runs between polls
+not ok 14 a pointer for homebox pulls homebox only; the poll pulls everyone
+not ok 15 a pointer line that is not a node name is dropped and pulls nothing
+not ok 16 the holder runs crewkit as itself: report keys by directory, no agent, no ssh of its own
+not ok 17 ntfy dying stops the holder (non-zero)
+not ok 18 tailscaled dying stops the holder (non-zero)
+not ok 19 the holder's own daemons are stopped when it exits
+
+# RED: tests/test_lint_pins.py (holder pins linux-only, Dockerfile digest) before the lint change
+# Ran 16 tests: FAILED (failures=1, errors=5): check_dockerfiles missing (5 errors), ntfy/tailscale pins asked for darwin hashes (1 failure)
+
+# RED (gate round 2): tests/test_export.py test_exporting_this_repo_changes_markdown_only before the OTHER_REPOS entry
+# Ran 107 tests: FAILED (failures=1): "export: pins/ntfy.env:5: links to a repo that isn't public"
+# RED: the "a daemon that ignores TERM" test against the mutant that drops the KILL step
+# before: the holder waited forever and the mutant run timed out (241 s, not counted as killed)
+# after: the test fails at the holder's 20 s timeout with "expected exit code 0, got 124"

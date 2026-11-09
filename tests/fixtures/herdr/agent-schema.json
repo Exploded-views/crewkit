@@ -1,0 +1,198 @@
+{
+  "_comment": "Copied from `herdr api schema --json` (herdr 0.9.5, protocol 22, schema_version 1) by jq: the parts the stub herdr answers with. tests/herdr-stub.bats checks the stub against it. Refresh it from a newer herdr when pane-ask moves to one. The documents section is not from the schema: it is the field names and types of `herdr status --json` and `herdr session list --json` (the replies that have no id/result wrapper), as read from herdr 0.9.5.",
+  "success_response": {
+    "required": [
+      "id",
+      "result"
+    ]
+  },
+  "results": [
+    {
+      "type": "agent_info",
+      "required": [
+        "type",
+        "agent"
+      ],
+      "agent": "#/schemas/success_response/$defs/AgentInfo",
+      "agents": null
+    },
+    {
+      "type": "agent_prompted",
+      "required": [
+        "type",
+        "agent"
+      ],
+      "agent": "#/schemas/success_response/$defs/AgentInfo",
+      "agents": null
+    },
+    {
+      "type": "agent_list",
+      "required": [
+        "type",
+        "agents"
+      ],
+      "agent": null,
+      "agents": "#/schemas/success_response/$defs/AgentInfo"
+    }
+  ],
+  "AgentInfo": {
+    "required": [
+      "terminal_id",
+      "agent_status",
+      "workspace_id",
+      "tab_id",
+      "pane_id",
+      "focused",
+      "revision"
+    ],
+    "properties": {
+      "agent": [
+        "string",
+        "null"
+      ],
+      "agent_session": [
+        "$ref:AgentSessionInfo",
+        "null"
+      ],
+      "agent_status": [
+        "$ref:AgentStatus"
+      ],
+      "completion_seq": [
+        "integer",
+        "null"
+      ],
+      "cwd": [
+        "string",
+        "null"
+      ],
+      "display_agent": [
+        "string",
+        "null"
+      ],
+      "focused": [
+        "boolean"
+      ],
+      "foreground_cwd": [
+        "string",
+        "null"
+      ],
+      "interactive_ready": [
+        "boolean"
+      ],
+      "launch_pending": [
+        "boolean"
+      ],
+      "name": [
+        "string",
+        "null"
+      ],
+      "pane_id": [
+        "string"
+      ],
+      "revision": [
+        "integer"
+      ],
+      "screen_detection_skipped": [
+        "boolean"
+      ],
+      "state_change_seq": [
+        "integer"
+      ],
+      "state_labels": [
+        "object"
+      ],
+      "tab_id": [
+        "string"
+      ],
+      "terminal_id": [
+        "string"
+      ],
+      "terminal_title": [
+        "string",
+        "null"
+      ],
+      "terminal_title_stripped": [
+        "string",
+        "null"
+      ],
+      "title": [
+        "string",
+        "null"
+      ],
+      "tokens": [
+        "object"
+      ],
+      "workspace_id": [
+        "string"
+      ]
+    }
+  },
+  "AgentStatus": [
+    "idle",
+    "working",
+    "blocked",
+    "done",
+    "unknown"
+  ],
+  "error_response": {
+    "required": [
+      "id",
+      "error"
+    ],
+    "error_required": [
+      "code",
+      "message"
+    ]
+  },
+  "documents": {
+    "session_list": {
+      "required": [
+        "sessions"
+      ],
+      "item": {
+        "name": [
+          "string"
+        ],
+        "default": [
+          "boolean"
+        ],
+        "running": [
+          "boolean"
+        ],
+        "socket_path": [
+          "string"
+        ],
+        "session_dir": [
+          "string"
+        ]
+      }
+    },
+    "status": {
+      "required": [
+        "client",
+        "server"
+      ],
+      "client": {
+        "version": [
+          "string"
+        ],
+        "protocol": [
+          "integer"
+        ]
+      },
+      "server": {
+        "running": [
+          "boolean"
+        ],
+        "version": [
+          "string",
+          "null"
+        ],
+        "protocol": [
+          "integer",
+          "null"
+        ]
+      }
+    }
+  }
+}

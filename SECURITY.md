@@ -21,5 +21,8 @@ need to post a working exploit. Expect an acknowledgement within a week.
 - No secrets, client data or personal details in the repo; placeholders only.
 - `tools/scrub.sh` runs before each commit (with a private denylist kept outside the repo) and
   in CI (secret rules only). It prints counts and file names, never the matched text.
+  A reviewed `.scrub-allow` can exempt single `long-hex` or `uuid` values by hash; never the
+  denylist or any other rule. A hash line looks like a 64-hex secret, so every change to that file
+  needs human review.
 - CI actions are pinned by full commit SHA, checkout doesn't persist credentials, and the
   workflow token is read-only.

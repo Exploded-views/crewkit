@@ -8,13 +8,13 @@
   "mutants": [
     {
       "name": "binary content skipped",
-      "old": "    | grep -aEio -- \"$re\" \\",
-      "new": "    | grep -Eio -- \"$re\" \\"
+      "old": "    | LC_ALL=C grep -aEio -- \"$re\" \\",
+      "new": "    | LC_ALL=C grep -Eio -- \"$re\" \\"
     },
     {
       "name": "a failed denylist search counts as zero",
-      "old": "      (( rc == 1 )) || { echo \"scrub: the denylist search failed",
-      "new": "      true || { echo \"scrub: the denylist search failed"
+      "old": "  n1=$(grep -aEic -f <(deny_patterns) -- \"$f\" 2>/dev/null) || { rc=$?; (( rc == 1 )) || return 1; }\n  n2=$(LC_ALL=C grep -aEic -f <(deny_patterns) -- \"$f\" 2>/dev/null) || { rc=$?; (( rc == 1 )) || return 1; }",
+      "new": "  n1=$(grep -aEic -f <(deny_patterns) -- \"$f\" 2>/dev/null) || { rc=$?; true || return 1; }\n  n2=$(LC_ALL=C grep -aEic -f <(deny_patterns) -- \"$f\" 2>/dev/null) || { rc=$?; true || return 1; }"
     },
     {
       "name": "an empty denylist passes",
@@ -38,7 +38,7 @@
     },
     {
       "name": "known-versions exemption covers any long hex",
-      "old": "      sed -E \"$marked\" -- \"$f\" | grep -aEv '^[0-9a-f]{40}$'",
+      "old": "      LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\" | LC_ALL=C grep -aEv '^[0-9a-f]{40}$'",
       "new": "      grep -av '[0-9a-f]\\{40\\}' -- \"$f\""
     },
     {
@@ -65,6 +65,56 @@
       "name": "a denylisted path is printed",
       "old": "    printf '(a tracked file whose path matches the denylist)'",
       "new": "    printf '%s' \"$1\""
+    },
+    {
+      "name": "Cargo.lock exemption: any file",
+      "old": "elif [[ $r == long-hex && $ctx =~ (^|/)Cargo\\.lock$ ]]; then",
+      "new": "elif [[ $r == long-hex ]]; then"
+    },
+    {
+      "name": "Cargo.lock exemption: any line in Cargo.lock",
+      "old": "grep -aEv '^checksum = \"[0-9a-f]{64}\"$'",
+      "new": "grep -aEv '^'"
+    },
+    {
+      "name": "Cargo.lock exemption: any hex length",
+      "old": "grep -aEv '^checksum = \"[0-9a-f]{64}\"$'",
+      "new": "grep -aEv '^checksum = \"[0-9a-f]+\"$'"
+    },
+    {
+      "name": "Cargo.lock exemption: NUL not split",
+      "old": "LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\" | LC_ALL=C grep -aEv '^checksum = \"[0-9a-f]{64}\"$'",
+      "new": "LC_ALL=C sed -E \"$marked\" -- \"$f\" | LC_ALL=C grep -aEv '^checksum = \"[0-9a-f]{64}\"$'"
+    },
+    {
+      "name": "pins exemption: NUL not split",
+      "old": "LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\" | LC_ALL=C grep -aEv \"$pin_line\"",
+      "new": "LC_ALL=C sed -E \"$marked\" -- \"$f\" | LC_ALL=C grep -aEv \"$pin_line\""
+    },
+    {
+      "name": "known-versions exemption: NUL not split",
+      "old": "LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\" | LC_ALL=C grep -aEv '^[0-9a-f]{40}$'",
+      "new": "LC_ALL=C sed -E \"$marked\" -- \"$f\" | LC_ALL=C grep -aEv '^[0-9a-f]{40}$'"
+    },
+    {
+      "name": "Cargo.lock exemption: directory anchor dropped",
+      "old": "$ctx =~ (^|/)Cargo\\.lock$ ]]",
+      "new": "$ctx =~ Cargo\\.lock$ ]]"
+    },
+    {
+      "name": "Cargo.lock exemption: line start anchor dropped",
+      "old": "grep -aEv '^checksum = \"[0-9a-f]{64}\"$'",
+      "new": "grep -aEv 'checksum = \"[0-9a-f]{64}\"$'"
+    },
+    {
+      "name": "Cargo.lock exemption: dot unescaped",
+      "old": "$ctx =~ (^|/)Cargo\\.lock$ ]]",
+      "new": "$ctx =~ (^|/)Cargo.lock$ ]]"
+    },
+    {
+      "name": "NUL split after the marked sed",
+      "old": "elif [[ $r == long-hex ]]; then LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\"",
+      "new": "elif [[ $r == long-hex ]]; then LC_ALL=C sed -E \"$marked\" -- \"$f\" | LC_ALL=C tr '\\0' '\\n'"
     }
   ]
 }

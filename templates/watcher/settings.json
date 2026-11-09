@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(crewkit watchline repo *)",
+      "Bash(crewkit watchline log *)",
+      "Bash(date*)"
+    ],
+    "deny": [
+      "Edit",
+      "Write",
+      "NotebookEdit",
+      "WebFetch",
+      "Bash(gh api -X*)",
+      "Bash(gh api * -X*)",
+      "Bash(gh api --method*)",
+      "Bash(gh api * --method*)",
+      "Bash(gh api * -f*)",
+      "Bash(gh api * -F*)",
+      "Bash(gh api * --field*)",
+      "Bash(gh api * --raw-field*)",
+      "Bash(gh api * --input*)",
+      "Bash(gh api * -H*)",
+      "Bash(gh api * --header*)",
+      "Bash(gh issue*)",
+      "Bash(gh pr*)",
+      "Bash(gh release*)",
+      "Bash(gh workflow*)",
+      "Bash(gh run*)",
+      "Bash(gh label*)",
+      "Bash(gh repo*)",
+      "Bash(gh secret*)",
+      "Bash(git*)",
+      "Bash(curl*)",
+      "Bash(*>*)",
+      "Bash(herdr*)",
+      "Bash(ssh*)",
+      "Bash(git push*)",
+      "Bash(*merge*)",
+      "Bash(*release*)",
+      "Bash(*deploy*)",
+      "Bash(*send-keys*)",
+      "Bash(*agent prompt*)",
+      "Bash(crewkit watchline check*)",
+      "WebSearch",
+      "Read(~/.ssh/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.claude/**)"
+    ]
+  }
+}

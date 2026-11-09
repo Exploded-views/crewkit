@@ -1,0 +1,476 @@
+{
+  "target": "push-gate/no-bypass-hook.py",
+  "suite": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_no_bypass_hook"
+  ],
+  "mutants": [
+    {
+      "name": "-c <key> (two words) missed",
+      "old": "        if lw == \"-c\" and nxt.startswith(HOOK_KEYS):",
+      "new": "        if False:"
+    },
+    {
+      "name": "-c<key> (one word) missed",
+      "old": "        if lw.startswith(tuple(\"-c\" + k for k in HOOK_KEYS)):",
+      "new": "        if False:"
+    },
+    {
+      "name": "--config-env missed",
+      "old": "        if abbrev_of(lw, \"--config-env\", len(\"--config-e\")) and (\n                lw.split(\"=\", 1)[-1].startswith(HOOK_KEYS)",
+      "new": "        if False and (\n                lw.split(\"=\", 1)[-1].startswith(HOOK_KEYS)"
+    },
+    {
+      "name": "GIT_CONFIG_PARAMETERS missed",
+      "old": "        if lw.startswith(\"git_config_parameters=\") and any(k in lw for k in HOOK_KEYS):",
+      "new": "        if False:"
+    },
+    {
+      "name": "GIT_CONFIG_KEY_<n> missed",
+      "old": "        if re.match(r\"git_config_key_[0-9]+=\", lw) and",
+      "new": "        if False and"
+    },
+    {
+      "name": "--no-verify missed",
+      "old": "        if abbrev_of(lw, \"--no-verify\", len(\"--no-v\")):",
+      "new": "        if False:"
+    },
+    {
+      "name": "abbreviations missed",
+      "old": "    return len(base) >= shortest and option.startswith(base)",
+      "new": "    return base == option"
+    },
+    {
+      "name": "include keys missed",
+      "old": "HOOK_KEYS = (HOOKSPATH, \"include.path\", \"includeif.\")",
+      "new": "HOOK_KEYS = (HOOKSPATH,)"
+    },
+    {
+      "name": "git config writes missed",
+      "old": "        elif in_config and not config_read and lw.startswith(HOOK_KEYS) and has_value(words, i):",
+      "new": "        elif False:"
+    },
+    {
+      "name": "git config reads refused",
+      "old": "        elif in_config and lw in READ_FLAGS and cfg_clean:\n            config_read = True\n",
+      "new": ""
+    },
+    {
+      "name": "git commit -n missed",
+      "old": "        elif in_commit and commit_short_n(w):",
+      "new": "        elif False:"
+    },
+    {
+      "name": "push -n refused too (it is --dry-run)",
+      "old": "                in_commit, in_config = sub == \"commit\", sub == \"config\"",
+      "new": "                in_commit, in_config = sub in (\"commit\", \"push\"), sub == \"config\""
+    },
+    {
+      "name": "case-sensitive match",
+      "old": "        lw = w.lower()",
+      "new": "        lw = w"
+    },
+    {
+      "name": "substitution punctuation kept",
+      "old": "    return w.lstrip(\"$(`\").rstrip(\")`\")",
+      "new": "    return w"
+    },
+    {
+      "name": "nested commands not split again",
+      "old": "            found = finding_in(raw, depth + 1, risky)",
+      "new": "            found = None"
+    },
+    {
+      "name": "commit messages split again (over-refusal)",
+      "old": " and not message:",
+      "new": ":"
+    },
+    {
+      "name": "unreadable input allowed",
+      "old": "        print(\"no-bypass-hook: refused: the hook input can't be read\", file=sys.stderr)\n        return 2",
+      "new": "        print(\"no-bypass-hook: refused: the hook input can't be read\", file=sys.stderr)\n        return 0"
+    },
+    {
+      "name": "install not idempotent",
+      "old": "        print(f\"already installed in {path}\")\n        return 0",
+      "new": "        pass"
+    },
+    {
+      "name": "install without a backup",
+      "old": "        shutil.copy2(path, path + \".bak-no-bypass\")",
+      "new": "        pass"
+    },
+    {
+      "name": "install dry run writes",
+      "old": "        print(\"(dry run: nothing changed; --yes to do it)\")\n        return 0",
+      "new": "        pass"
+    },
+    {
+      "name": "install over a non-object",
+      "old": "        print(f\"no-bypass-hook: {path} isn't a settings object\", file=sys.stderr)\n        return 1",
+      "new": "        settings = {\"hooks\": {}}"
+    },
+    {
+      "name": "a separated --config-env missed",
+      "old": " or (\"=\" not in lw and nxt.startswith(HOOK_KEYS))):",
+      "new": "):"
+    },
+    {
+      "name": "a message with a substitution exempt",
+      "old": " and \"$(\" not in raw and \"`\" not in raw\n",
+      "new": "\n"
+    },
+    {
+      "name": "# mid-word starts a comment",
+      "old": "        lexer.commenters = \"\"\n",
+      "new": "\n"
+    },
+    {
+      "name": "a newline joins commands",
+      "old": "shlex.shlex(text.replace(\"\\n\", \" ; \"), posix=True",
+      "new": "shlex.shlex(text, posix=True"
+    },
+    {
+      "name": "a hook key unset allowed",
+      "old": "        elif in_config and config_unset and lw.startswith(HOOK_KEYS):",
+      "new": "        elif False:"
+    },
+    {
+      "name": "unset read as a read",
+      "old": "UNSET_FLAGS = {\"--unset\", \"--unset-all\", \"unset\"}",
+      "new": "UNSET_FLAGS = set()"
+    },
+    {
+      "name": "a hook section removed or renamed",
+      "old": "        elif in_config and lw in SECTION_FLAGS and",
+      "new": "        elif False and"
+    },
+    {
+      "name": "a config variable set for git allowed",
+      "old": "            if risky:\n                return risky + \" set for git\"\n",
+      "new": "            pass\n"
+    },
+    {
+      "name": "HOME not a config variable",
+      "old": "\"GIT_CONFIG_NOSYSTEM\", \"HOME\",",
+      "new": "\"GIT_CONFIG_NOSYSTEM\","
+    },
+    {
+      "name": "a config variable refused off git (over-refusal)",
+      "old": "                if m.group(1).upper() in CONFIG_ENV:\n                    risky = risky or m.group(1)",
+      "new": "                if m.group(1).upper() in CONFIG_ENV:\n                    return m.group(1)"
+    },
+    {
+      "name": "env -i missed",
+      "old": "            elif prefix == \"env\" and lw in (\"-i\", \"--ignore-environment\", \"-\"):",
+      "new": "            elif False:"
+    },
+    {
+      "name": "env -u missed",
+      "old": "            elif prefix == \"env\" and lw in (\"-u\", \"--unset\") and",
+      "new": "            elif False and"
+    },
+    {
+      "name": "a nested command loses its variables",
+      "old": "            found = finding_in(raw, depth + 1, risky)",
+      "new": "            found = finding_in(raw, depth + 1)"
+    },
+    {
+      "name": "an unparsable command allowed",
+      "old": "        if depth == 0:\n            return \"a command that can't be parsed\"\n",
+      "new": ""
+    },
+    {
+      "name": "a comment read as words",
+      "old": "        elif c == \"#\" and last() in",
+      "new": "        elif False and last() in"
+    },
+    {
+      "name": "-c alias.* missed",
+      "old": "        if lw == \"-c\" and nxt.startswith(\"alias.\"):",
+      "new": "        if False:"
+    },
+    {
+      "name": "-calias.* missed",
+      "old": "        if lw.startswith(\"-calias.\"):",
+      "new": "        if False:"
+    },
+    {
+      "name": "--config-env alias.* missed",
+      "old": "        if abbrev_of(lw, \"--config-env\", len(\"--config-e\")) and (\n                lw.split(\"=\", 1)[-1].startswith(\"alias.\")",
+      "new": "        if False and (\n                lw.split(\"=\", 1)[-1].startswith(\"alias.\")"
+    },
+    {
+      "name": "git config alias.* missed",
+      "old": "        elif in_config and not config_read and lw.startswith(\"alias.\") and raw_next:",
+      "new": "        elif False:"
+    },
+    {
+      "name": "an alias in GIT_CONFIG_PARAMETERS missed",
+      "old": "        if lw.startswith(\"git_config_parameters=\") and \"alias.\" in lw:",
+      "new": "        if False:"
+    },
+    {
+      "name": "a line continuation kept",
+      "old": "        if c == \"\\\\\" and command[i + 1:i + 2] == \"\\n\":\n            i += 2\n            continue\n",
+      "new": ""
+    },
+    {
+      "name": "ANSI-C quoting not decoded",
+      "old": "            q = shlex.quote(ansi_c(\"\".join(buf)))",
+      "new": "            q = shlex.quote(\"\".join(buf))"
+    },
+    {
+      "name": "plumbing allowed",
+      "old": "PLUMBING = {\"commit-tree\", \"send-pack\", \"http-push\"}",
+      "new": "PLUMBING = set()"
+    },
+    {
+      "name": "SKIP not a config variable",
+      "old": "\"XDG_CONFIG_HOME\", \"SKIP\"}",
+      "new": "\"XDG_CONFIG_HOME\"}"
+    },
+    {
+      "name": "config file writes allowed",
+      "old": "    found = config_write(normalize(command, drop_heredocs=False))\n    if found:\n        return found\n",
+      "new": ""
+    },
+    {
+      "name": "a heredoc body hidden from the config-file check",
+      "old": "config_write(normalize(command, drop_heredocs=False))",
+      "new": "config_write(normalize(command))"
+    },
+    {
+      "name": "tee onto a config file missed",
+      "old": "                or re.search(r\"\\btee\\b\", seg) \\",
+      "new": "                or False \\"
+    },
+    {
+      "name": "sed -i onto a config file missed",
+      "old": "                or (re.search(r\"\\b(?:sed|perl)\\b\", seg) and",
+      "new": "                or (False and"
+    },
+    {
+      "name": "a substitution starts no command",
+      "old": "        if SEPARATOR.fullmatch(lw) or raw.startswith((\"$(\", \"`\", \"(\")):",
+      "new": "        if SEPARATOR.fullmatch(lw):"
+    },
+    {
+      "name": "an unquoted heredoc that runs a command dropped",
+      "old": "(not quoted and (\"$(\" in text or \"`\" in text))",
+      "new": "False"
+    },
+    {
+      "name": "a heredoc inside double quotes",
+      "old": "        elif c == '\"':\n            stack.append(\"dq\")",
+      "new": "        elif False:\n            stack.append(\"dq\")"
+    },
+    {
+      "name": "2>&1 split into a separator",
+      "old": "    words = join_redirects(words)",
+      "new": "    words = list(words)"
+    },
+    {
+      "name": "commit anywhere starts git commit",
+      "old": "        elif in_commit and commit_short_n(w):",
+      "new": "        elif lw == \"commit\":\n            in_commit = True\n        elif in_commit and commit_short_n(w):"
+    },
+    {
+      "name": "a redirection read as a config value",
+      "old": "        if not m:\n            return w",
+      "new": "        if True:\n            return w"
+    },
+    {
+      "name": "-am not a message flag",
+      "old": "or re.fullmatch(r\"-[A-Za-z]*[mF]\", prev)",
+      "new": "or False"
+    },
+    {
+      "name": "--message= not a message",
+      "old": "            or re.match(r\"--message=|-[A-Za-z]*m.\", raw))",
+      "new": "            or False)"
+    },
+    {
+      "name": "gh -b not a message flag",
+      "old": "GH_MESSAGE_FLAGS = {\"-b\", \"-t\", ",
+      "new": "GH_MESSAGE_FLAGS = {\"-t\", "
+    },
+    {
+      "name": "--body not a message flag",
+      "old": "\"-F\", \"--body\", \"--title\", \"--body-file\"}",
+      "new": "\"-F\", \"--title\", \"--body-file\"}"
+    },
+    {
+      "name": "a value flag doesn't end git commit's short flags",
+      "old": "        if ch in \"mFCctSu\" or not ch.isalpha():\n            return False\n",
+      "new": ""
+    },
+    {
+      "name": "deeper nesting allowed",
+      "old": "                return \"a command nested deeper than the hook follows\"",
+      "new": "                continue"
+    },
+    {
+      "name": "a shell's heredoc dropped as data",
+      "old": "                elif not message or (not quoted and",
+      "new": "                elif (not quoted and"
+    },
+    {
+      "name": "heredoc bodies not checked",
+      "old": "        found = found or finding_in(text_, depth + 1, env or (line_env and line_env.group(0).strip()), body=True)",
+      "new": "        pass"
+    },
+    {
+      "name": "any heredoc a message",
+      "old": "    return bool(GIT_MESSAGE_LINE.match(seg) or GH_MESSAGE_LINE.match(seg))",
+      "new": "    return True"
+    },
+    {
+      "name": "message heredocs read as commands",
+      "old": "    return bool(GIT_MESSAGE_LINE.match(seg) or GH_MESSAGE_LINE.match(seg))",
+      "new": "    return False"
+    },
+    {
+      "name": "a message heredoc whose line pipes on",
+      "old": "message_line(before) and not after.strip()",
+      "new": "message_line(before)"
+    },
+    {
+      "name": "a nested parse error allowed",
+      "old": "        return f\"a nested command that can't be parsed, holding {m.group(0)!r}\" if m else None",
+      "new": "        return None"
+    },
+    {
+      "name": "a nested parse error always refused (over-refusal)",
+      "old": "        return f\"a nested command that can't be parsed, holding {m.group(0)!r}\" if m else None",
+      "new": "        return \"a nested command that can't be parsed\""
+    },
+    {
+      "name": "the git message exemption for any command",
+      "old": "        git_message = cmd == \"git\" and sub in MESSAGE_SUBS and (",
+      "new": "        git_message = ("
+    },
+    {
+      "name": "the gh message exemption for any command",
+      "old": "        gh_message = cmd == \"gh\" and (",
+      "new": "        gh_message = ("
+    },
+    {
+      "name": "an unparsable nested word with a metacharacter searched as text",
+      "old": "        if not body and METACHARS.search(text) and RUNS_GIT.search(plain):",
+      "new": "        if False:"
+    },
+    {
+      "name": "heredoc bodies held to the metacharacter rule (over-refusal)",
+      "old": "        if not body and METACHARS.search(text) and RUNS",
+      "new": "        if METACHARS.search(text) and RUNS"
+    },
+    {
+      "name": "quotes and backslashes kept in the plain-text search",
+      "old": "        plain = re.sub(r\"[\\\\'\\\"]\", \"\", text).lower()",
+      "new": "        plain = text.lower()"
+    },
+    {
+      "name": "a heredoc line's variables not carried into its body",
+      "old": "env or (line_env and line_env.group(0).strip())",
+      "new": "env"
+    },
+    {
+      "name": "another $( before a git message heredoc",
+      "old": "(?:commit|tag|notes|merge)(?=\\s)\"\n    r\"(?:(?!\\$\\(|`).)*(?:",
+      "new": "(?:commit|tag|notes|merge)(?=\\s)\"\n    r\".*(?:"
+    },
+    {
+      "name": "another $( before a gh message heredoc",
+      "old": "gh\\s(?:(?!\\$\\(|`).)*\\s(?:-[bt]",
+      "new": "gh\\s.*\\s(?:-[bt]"
+    },
+    {
+      "name": "unparseable prose with a metacharacter refused even when it can't run git",
+      "old": " and RUNS_GIT.search(plain):",
+      "new": ":"
+    },
+    {
+      "name": "$ or ` (a name built at run time) doesn't count as could-run-git",
+      "old": "RUNS_GIT = re.compile(r\"\\bgit\\b|[$`?*\\[\\]{}]\")",
+      "new": "RUNS_GIT = re.compile(r\"\\bgit\\b|[?*\\[\\]{}]\")"
+    },
+    {
+      "name": "a glob or brace (g?t, {g,x}it) doesn't count as could-run-git",
+      "old": "RUNS_GIT = re.compile(r\"\\bgit\\b|[$`?*\\[\\]{}]\")",
+      "new": "RUNS_GIT = re.compile(r\"\\bgit\\b|[$`]\")"
+    },
+    {
+      "name": "a config value: an empty one is no value",
+      "old": "lw.startswith(HOOK_KEYS) and has_value(words, i):",
+      "new": "lw.startswith(HOOK_KEYS) and has_value(words, i) and nxt:"
+    },
+    {
+      "name": "a config value: a dash-led one is no value",
+      "old": "lw.startswith(HOOK_KEYS) and has_value(words, i):",
+      "new": "lw.startswith(HOOK_KEYS) and has_value(words, i) and not nxt.startswith(\"-\"):"
+    },
+    {
+      "name": "a config value: a redirect is a value",
+      "old": "        if not m:\n            return not SEPARATOR.fullmatch(words[j])",
+      "new": "        if True:\n            return not SEPARATOR.fullmatch(words[j])"
+    },
+    {
+      "name": "a config value: a separator is a value",
+      "old": "            return not SEPARATOR.fullmatch(words[j])",
+      "new": "            return True"
+    },
+    {
+      "name": "a config value: a redirect's target is a value",
+      "old": "        j += 1 if m.group(1) else 2\n    return False",
+      "new": "        j += 1\n    return False"
+    },
+    {
+      "name": "set, add and replace-all not writes",
+      "old": "        elif in_config and lw in CONFIG_WRITE_WORDS:\n            cfg_clean, config_read = False, False\n",
+      "new": ""
+    },
+    {
+      "name": "a write word leaves an earlier read standing",
+      "old": "cfg_clean, config_read = False, False",
+      "new": "cfg_clean = False"
+    },
+    {
+      "name": "any other word keeps the options clean",
+      "old": "        elif in_config:\n            cfg_clean = False   # any other word: an option it doesn't know, or a positional\n",
+      "new": ""
+    },
+    {
+      "name": "--value taken for a no-argument option",
+      "old": "\"--all\", \"--regexp\"}",
+      "new": "\"--all\", \"--regexp\", \"--value\"}"
+    },
+    {
+      "name": "an abbreviation taken for its option",
+      "old": "        elif in_config and lw in CONFIG_NOARG_OPTS:\n            pass\n",
+      "new": "        elif in_config and any(o.startswith(lw) and len(lw) > 4 for o in CONFIG_NOARG_OPTS | {\"--value\", \"--comment\", \"--file\", \"--type\", \"--default\", \"--blob\"}):\n            pass\n"
+    },
+    {
+      "name": "--global not a known option",
+      "old": "{\"--global\", \"--local\",",
+      "new": "{\"--local\","
+    },
+    {
+      "name": "--show-origin not a known option",
+      "old": "\"--show-origin\", ",
+      "new": ""
+    },
+    {
+      "name": "a read flag honoured after any other word",
+      "old": "lw in READ_FLAGS and cfg_clean:",
+      "new": "lw in READ_FLAGS:"
+    },
+    {
+      "name": "the options never clean at git config",
+      "old": "                cfg_clean = True\n",
+      "new": "                cfg_clean = False\n"
+    }
+  ]
+}

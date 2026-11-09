@@ -1,0 +1,16 @@
+scrub.sh allowlist review round 1, RED run, 2026-10-28, new tests against 1020f38 (the review's required change and nits).
+
+$ bats tests/scrub-allow.bats   (failing tests and their first failure)
+1..27
+not ok 6 a malformed .scrub-allow line fails closed, names its line, and prints nothing from it
+#   `[[ $output == *"$want"* ]] || { echo "shape $i: wrong refusal: $output"; return 1; }' failed
+# shape 5: wrong refusal: scrub: .scrub-allow line 3 names an unknown rule
+not ok 24 only long-hex and uuid can be allowlisted: other rules are refused with a reason code
+#   `[ "$status" -ne 0 ] || { echo "$rule: passed"; return 1; }' failed
+# github-token: passed
+not ok 25 --history: one old blob per bad shape each count their hex
+#   `[[ $output == *long-hex*"history:blob "*" 1"*"history:blob "*" 1"*"history:blob "*" 1"* ]]' failed
+not ok 26 --history reads HEAD's .scrub-allow, not the index; the tree scan reads the index
+#   `[ "$status" -eq 1 ]                                    # history: HEAD has no allowlist' failed
+
+After the fix: tests/scrub-allow.bats 27/27, tests/scrub-history.bats 73/73, tests/docs.bats 2/2; mutants in tests/mutants/scrub-allow.json: all 13 killed (the review round added: rule allowlist widened, looser self-exemption regex, --history reading the index, work-tree read).

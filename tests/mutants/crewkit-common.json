@@ -1,0 +1,100 @@
+{
+  "target": "libexec/ck/common.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit.bats"
+  ],
+  "mutants": [
+    {
+      "name": "ck_run runs without --yes",
+      "old": "  if [[ ${CK_YES:-0} == 1 ]]; then \"$@\"; fi",
+      "new": "  \"$@\""
+    },
+    {
+      "name": "ck_run runs on any non-zero CK_YES",
+      "old": "if [[ ${CK_YES:-0} == 1 ]]; then",
+      "new": "if [[ ${CK_YES:-0} != 0 ]]; then"
+    },
+    {
+      "name": "dead-lock takeover removed",
+      "old": "    if [[ -L $lock ]] && ! ck_pid_alive \"$pid\"; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "lock timeout is not 75",
+      "old": "ck_die 75 \"lock",
+      "new": "ck_die 1 \"lock"
+    },
+    {
+      "name": "ck_unlock removes another holder's lock",
+      "old": "  if [[ -L $lock && $(readlink \"$lock\" 2>/dev/null || true) == \"$$\" ]]; then rm -f \"$lock\"; fi",
+      "new": "  rm -f \"$lock\""
+    },
+    {
+      "name": "bash check skipped",
+      "old": "  if ((major < 4 || (major == 4 && minor < 4))); then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "bash check not run when sourced",
+      "old": "ck_bash_ok \"$ck_vmaj\" \"$ck_vmin\"",
+      "new": "true"
+    },
+    {
+      "name": "label key may hold a dot",
+      "old": "^[a-z][a-z0-9_-]{0,31}$ && ${1#*=}",
+      "new": "^[a-z][a-z0-9_.-]{0,31}$ && ${1#*=}"
+    },
+    {
+      "name": "state dir not private",
+      "old": "chmod 700 \"$d\"",
+      "new": "chmod 755 \"$d\""
+    },
+    {
+      "name": "reap re-check removed",
+      "old": "        if [[ $(readlink \"$lock\" 2>/dev/null || true) == \"$pid\" ]]; then rm -f \"$lock\"; fi",
+      "new": "        rm -f \"$lock\""
+    },
+    {
+      "name": "CK_YES inherited from the environment",
+      "old": "\nCK_YES=0\n",
+      "new": "\nCK_YES=${CK_YES:-0}\n"
+    },
+    {
+      "name": "CK_BASH_VERSION can loosen the check",
+      "old": "  if ((10#${BASH_REMATCH[1]} < ck_vmaj ||",
+      "new": "  if ((10#${BASH_REMATCH[1]} > ck_vmaj ||"
+    },
+    {
+      "name": "state_dir failure ignored by ck_lock",
+      "old": "  dir=$(ck_state_dir) || exit $?",
+      "new": "  dir=$(ck_state_dir) || true"
+    },
+    {
+      "name": "stale reap mutex never cleared",
+      "old": "-mmin +1 -exec rmdir {} \\; 2>/dev/null || true",
+      "new": "-mmin +99999999 -exec rmdir {} \\; 2>/dev/null || true"
+    },
+    {
+      "name": "reap mutex skipped",
+      "old": "      if mkdir \"$reap\" 2>/dev/null; then",
+      "new": "      if true; then"
+    },
+    {
+      "name": "a directory at the lock path accepted",
+      "old": "    [[ -d $lock && ! -L $lock ]] && ck_die 78",
+      "new": "    false && ck_die 78"
+    },
+    {
+      "name": "pid 0 counts as alive",
+      "old": "[[ ${1-} =~ ^[1-9][0-9]*$ ]] || return 1",
+      "new": "[[ ${1-} =~ ^[0-9]+$ ]] || return 1"
+    },
+    {
+      "name": "a symlink to a directory is followed",
+      "old": "    ln -sn \"$$\" \"$lock\" 2>/dev/null && return 0",
+      "new": "    ln -s \"$$\" \"$lock\" 2>/dev/null && return 0"
+    }
+  ]
+}

@@ -1,0 +1,180 @@
+# bin/crewkit, libexec/ck/common.sh and install.sh's cli step: tests/crewkit.bats and the cli tests in tests/install.bats before any code (bin/crewkit, libexec/ and the cli step don't exist yet, so every test fails). Two runs: bats tests/crewkit.bats, then bats -f '^cli:' tests/install.bats.
+
+1..29
+not ok 1 --version prints the VERSION file
+# (in test file tests/crewkit.bats, line 15)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 no verb or an unknown verb is usage (64), on stderr
+# (in test file tests/crewkit.bats, line 22)
+#   `[ "$status" -eq 64 ]' failed
+not ok 3 a verb with a slash, dots, capitals or an option is usage, never a path
+# (in test file tests/crewkit.bats, line 34)
+#   `[ "$status" -eq 64 ] || { echo "verb '$bad' gave $status"; return 1; }' failed
+# verb '../../tmp/x' gave 127
+not ok 4 a word that is shaped like a verb but is not one is usage (nothing is run)
+# (from function `ck_own_libexec' in file tests/crewkit-helpers.bash, line 52,
+#  in test file tests/crewkit.bats, line 45)
+#   `ck_own_libexec' failed
+# cp: cannot stat '<repo>/libexec/VERSION': No such file or directory
+not ok 5 registry move and node report reach their scripts
+# (from function `ck_own_libexec' in file tests/crewkit-helpers.bash, line 52,
+#  in test file tests/crewkit.bats, line 60)
+#   `ck_own_libexec' failed
+# cp: cannot stat '<repo>/libexec/VERSION': No such file or directory
+not ok 6 a known verb whose script is missing fails with 1 and a message
+# (from function `ck_own_libexec' in file tests/crewkit-helpers.bash, line 52,
+#  in test file tests/crewkit.bats, line 78)
+#   `ck_own_libexec' failed
+# cp: cannot stat '<repo>/libexec/VERSION': No such file or directory
+not ok 7 a verb's exit status is the script's
+# (from function `ck_own_libexec' in file tests/crewkit-helpers.bash, line 52,
+#  in test file tests/crewkit.bats, line 85)
+#   `ck_own_libexec' failed
+# cp: cannot stat '<repo>/libexec/VERSION': No such file or directory
+not ok 8 CK_ROOT is the tree as reached, also through a link to the command
+# (from function `ck_own_libexec' in file tests/crewkit-helpers.bash, line 52,
+#  in test file tests/crewkit.bats, line 93)
+#   `ck_own_libexec' failed
+# cp: cannot stat '<repo>/libexec/VERSION': No such file or directory
+not ok 9 verbs run from HOME: a project's settings file never applies
+# (from function `ck_own_libexec' in file tests/crewkit-helpers.bash, line 52,
+#  in test file tests/crewkit.bats, line 104)
+#   `ck_own_libexec' failed
+# cp: cannot stat '<repo>/libexec/VERSION': No such file or directory
+not ok 10 bash below 4.4 exits 78 naming bash 4.4 before anything else runs
+# (from function `ck_own_libexec' in file tests/crewkit-helpers.bash, line 52,
+#  in test file tests/crewkit.bats, line 123)
+#   `ck_own_libexec' failed
+# cp: cannot stat '<repo>/libexec/VERSION': No such file or directory
+not ok 11 the real stock bash 3.2, when there is one, exits 78 with the message
+# (in test file tests/crewkit.bats, line 147)
+#   `[ "$status" -eq 78 ]' failed
+not ok 12 ck_bash_ok 3 2 exits 78 naming bash 4.4; 4 4 and 5 0 pass
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 154)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/12/tree/libexec/ck/common.sh: No such file or directory
+not ok 13 ck_die prints crewkit: MSG on stderr and exits with CODE
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 169)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/13/tree/libexec/ck/common.sh: No such file or directory
+not ok 14 ck_age: -5 -> 0s, 0 -> 0s, 59 -> 59s, 60 -> 1m, 3599 -> 59m, 3600 -> 1h, 7200 -> 2h, 172799 -> 47h, 172800 -> 2d
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 177)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/14/tree/libexec/ck/common.sh: No such file or directory
+not ok 15 ck_now is CK_NOW when set, else the clock; ck_iso formats epoch seconds in UTC
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 185)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/15/tree/libexec/ck/common.sh: No such file or directory
+not ok 16 ck_new_id n is n- plus 10 base32 characters, and two differ
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 196)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/16/tree/libexec/ck/common.sh: No such file or directory
+not ok 17 ck_sq quotes for a POSIX shell, quotes and spaces and newlines included
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 207)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/17/tree/libexec/ck/common.sh: No such file or directory
+not ok 18 ck_run prints and does nothing without --yes
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 218)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/18/tree/libexec/ck/common.sh: No such file or directory
+not ok 19 ck_run with CK_YES=1 prints the command and runs it, passing its status on
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 234)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/19/tree/libexec/ck/common.sh: No such file or directory
+not ok 20 ck_state_dir expands ~, creates the directory with mode 700 and prints it
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 245)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/20/tree/libexec/ck/common.sh: No such file or directory
+not ok 21 ck_state_dir defaults to ~/.local/state/crewkit, and refuses a relative path (78)
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 255)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/21/tree/libexec/ck/common.sh: No such file or directory
+not ok 22 ck_lock takes a free lock, ck_unlock releases only our own
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 263)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/22/tree/libexec/ck/common.sh: No such file or directory
+not ok 23 ck_lock waits then exits 75; a dead holder's lock is taken over
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 276)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/23/tree/libexec/ck/common.sh: No such file or directory
+not ok 24 ck_lock: a lock with no pid file or a junk one counts as dead once it is old
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 298)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/24/tree/libexec/ck/common.sh: No such file or directory
+not ok 25 ck_lock refuses a name that is not a plain word (64)
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 314)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/25/tree/libexec/ck/common.sh: No such file or directory
+not ok 26 ck_name_ok takes codenames only
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 325)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/26/tree/libexec/ck/common.sh: No such file or directory
+not ok 27 ck_label_ok takes KEY=VALUE with a dot-free key (herdr rejects dotted keys)
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 337)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/27/tree/libexec/ck/common.sh: No such file or directory
+not ok 28 ck_owner_steps_done returns 3 with steps, 0 without
+# (from function `ck_lib' in file tests/crewkit-helpers.bash, line 44,
+#  in test file tests/crewkit.bats, line 349)
+#   `ck_lib' failed
+# <repo>/tests/crewkit-helpers.bash: line 44: <tmp>/test/28/tree/libexec/ck/common.sh: No such file or directory
+not ok 29 sourcing common.sh under an old bash exits 78 before it defines anything
+# (in test file tests/crewkit.bats, line 365)
+#   `[ "$status" -eq 78 ]' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `ck --version` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit.bats, line 14)
+BW01: `run`'s command `ck` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit.bats, line 21)
+BW01: `run`'s command `ck ../../tmp/x` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit.bats, line 33)
+BW02: Using flags on `run` requires at least BATS_VERSION=1.5.0. Use `bats_require_minimum_version 1.5.0` to fix this message.
+      (from function `bats_warn_minimum_guaranteed_version' in file .cache/bats-v1.14.0/lib/bats-core/warnings.bash, line 32,
+       from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 359,
+       in test file tests/crewkit.bats, line 146)
+BW01: `run`'s command `/bin/bash <tmp>/test/11/tree/bin/crewkit --version` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit.bats, line 146)
+
+1..7
+not ok 1 cli: --yes links ~/.local/bin/crewkit to the tree's bin/crewkit
+# (in test file tests/install.bats, line 901)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 cli: a second run says the link is already current and changes nothing
+# (in test file tests/install.bats, line 909)
+#   `[ "$status" -eq 0 ]' failed
+not ok 3 cli: a dry run prints the link and makes none
+# (in test file tests/install.bats, line 916)
+#   `[ "$status" -eq 0 ]' failed
+not ok 4 cli: an existing crewkit that isn't our link is refused
+# (in test file tests/install.bats, line 925)
+#   `[ "$status" -eq 1 ]' failed
+not ok 5 cli: a link to some other file, or a dangling one, is refused and left alone
+# (in test file tests/install.bats, line 935)
+#   `[ "$status" -eq 1 ]' failed
+not ok 6 cli: a directory named crewkit is refused
+# (in test file tests/install.bats, line 944)
+#   `[ "$status" -eq 1 ]' failed
+not ok 7 cli: is the last default step
+# (in test file tests/install.bats, line 952)
+#   `[[ $output == *$'\ncli:'* ]]' failed

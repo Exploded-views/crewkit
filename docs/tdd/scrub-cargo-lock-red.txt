@@ -1,0 +1,72 @@
+scrub.sh long-hex: Cargo.lock checksum exemption, RED run, 2026-10-28, tests written before the exemption existed.
+Self-test cases (tools/scrub.sh --self-test) and Cargo.lock cases in tests/scrub-history.bats:
+
+$ tools/scrub.sh --self-test | tail -5
+  FALSE-POSITIVE Cargo.lock checksum line (2)
+  ok    checksum lines in Cargo.lock.bak
+  ok    checksum lines outside Cargo.lock
+  ok    other hex in Cargo.lock
+scrub self-test: FAILED
+
+$ bats -f 'Cargo.lock' tests/scrub-history.bats
+1..5
+not ok 1 Cargo.lock: checksum lines are exempt from long-hex (tree and history)
+# (in test file tests/scrub-history.bats, line 520)
+#   `[ "$status" -eq 0 ]' failed
+ok 2 Cargo.lock: the exemption is for the file name Cargo.lock only
+not ok 3 Cargo.lock: only the whole checksum line is exempt, and the other lines still count
+# (in test file tests/scrub-history.bats, line 540)
+#   `[[ $output == *"long-hex"*"Cargo.lock"*" 2"* ]]' failed
+ok 4 Cargo.lock: a checksum that is not 64 lowercase hex is flagged
+not ok 5 Cargo.lock: the denylist still applies inside it
+# (in test file tests/scrub-history.bats, line 561)
+#   `[[ $output != *long-hex* ]]' failed
+
+Tests 2, 4 (the negatives) passed at once: the code already flags those; their mutants are the proof they bite.
+Four other tests in the file (author/committer identity cases) fail on main before this change; unrelated.
+
+
+## Review of 509f43c (NUL bytes, name and line anchors), RED run, 2026-10-28
+
+The NUL and anchor tests before the fix (macOS BSD grep reads NUL as the end of a line for $):
+
+$ tools/scrub.sh --self-test | grep -v "  ok"
+  MISS  NUL after a Cargo.lock checksum line (0)
+  MISS  NUL after a pins/*.env line (0)
+  MISS  NUL after a known-versions line (0)
+scrub self-test: FAILED
+
+$ bats -f 'NUL:|name that only ends' tests/scrub-history.bats
+1..4
+ok 1 Cargo.lock: a name that only ends in Cargo.lock, and a line that only contains a checksum, are flagged
+not ok 2 NUL: hex after an exempt Cargo.lock checksum line, on the same line, is still counted
+# (in test file tests/scrub-history.bats, line 582)
+#   `[ "$status" -eq 1 ]' failed
+not ok 3 NUL: hex after an exempt pins/*.env sha256 line is still counted
+# (in test file tests/scrub-history.bats, line 590)
+#   `[ "$status" -eq 1 ]' failed
+not ok 4 NUL: hex after an exempt tools/scrub-known-versions.txt blob line is still counted
+# (in test file tests/scrub-history.bats, line 598)
+#   `[ "$status" -eq 1 ]' failed
+
+The anchor test (1) passed at once on existing behaviour; its mutants are the proof it bites.
+
+## Review of 837bc85 (the marked-line sed ran before the NUL split), RED run, 2026-10-28
+
+$ tools/scrub.sh --self-test | grep -v "  ok"
+  MISS  NUL after a marked line (notes.txt) (0)
+  MISS  NUL after a marked line (src-tauri/Cargo.lock) (0)
+  MISS  NUL after a marked line (pins/tool.env) (0)
+scrub self-test: FAILED
+
+$ bats -f 'NUL: a secret hex after a scrub' tests/scrub-history.bats
+1..3
+not ok 1 NUL: a secret hex after a scrub:pinned-hash line and a NUL is counted (plain file)
+# (in test file tests/scrub-history.bats, line 607)
+#   `[ "$status" -eq 1 ]' failed
+not ok 2 NUL: a secret hex after a scrub:pinned-hash line and a NUL is counted (Cargo.lock)
+# (in test file tests/scrub-history.bats, line 614)
+#   `[ "$status" -eq 1 ]' failed
+not ok 3 NUL: a secret hex after a scrub:pinned-hash line and a NUL is counted (pins/*.env)
+# (in test file tests/scrub-history.bats, line 622)
+#   `[ "$status" -eq 1 ]' failed

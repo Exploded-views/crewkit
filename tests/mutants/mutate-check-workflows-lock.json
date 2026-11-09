@@ -1,0 +1,16 @@
+{
+  "target": "tools/mutate-check-workflows.py",
+  "suite": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_heavy_lock"
+  ],
+  "mutants": [
+    {
+      "name": "mutate-check-workflows.py runs without the lock",
+      "old": "    if not heavy_lock.proof():",
+      "new": "    if False:"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+Mutation survivor on linux-gate (Linux gate, 2026-10-27):
+  mutants-linux-gate  SURVIVED  head re-read from the branch
+    head=$(git -C "$work/repo" rev-parse HEAD)  ->  head=$(git -C "$src" rev-parse "$branch")
+
+Why: the head is read before the container runs, and the only head test moves the branch during
+the container step, so the mutant read the same commit. New test: a tag with the branch's name on
+another commit. clone -b takes the branch; rev-parse of the bare name takes the tag.
+
+bats -f on both head tests, mutant applied (Mac):
+  ok 1 head is the full SHA the gate cloned, even if the branch moves during the run
+  not ok 2 head is the clone's, even when a tag shares the branch's name (rev-parse would take the tag)
+  #   `grep -qx "head *topic $want" "$OUT/summary.txt"' failed
+Clean: ok.

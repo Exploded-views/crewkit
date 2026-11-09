@@ -1,0 +1,61 @@
+Linux gate review round: RED runs before the fixes (2026-10-28).
+
+1. A bare `wait` also waits on bats's own timeout watchdog, so under BATS_TEST_TIMEOUT it
+hangs until the limit kills the test. Before, BATS_TEST_TIMEOUT=20, one test each:
+
+not ok 1 concurrent writers don't lose updates # timeout after 20s            (tests/lane-state.bats, line 82)
+not ok 1 26 the landing lock is shared: busy means exit 75 and nothing merged # timeout after 20s   (land-batch.bats, line 298)
+not ok 1 --lock-wait overrides lock_wait_seconds # timeout after 20s           (land-batch.bats, line 748)
+
+After: the three wait on specific pids (hold_lock records HOLD_PID) and pass. The guard
+("no suite has a bare wait") is red against a copy of tests/ with one `wait "$HOLD_PID"` put
+back to a bare `wait`:
+
+not ok 3 no suite has a bare wait (wait on specific pids)
+
+2. The mutant "no test time limit under kcov" (tools/linux-gate.sh: BATS_TEST_TIMEOUT="$test_timeout"
+removed from the kcov line) SURVIVED with BATS_TEST_TIMEOUT=45 in the environment, as tools/mutate.py
+sets it: the coverage.sh stub inherited 45, the value the test asked for. The test now runs the
+gate with an ambient BATS_TEST_TIMEOUT=47; the mutant is KILLED.
+
+3. tests/mutants/no-bypass-hook.json, before (the suite as it was):
+
+SURVIVED git config reads refused
+SURVIVED substitution punctuation kept
+SURVIVED a heredoc inside double quotes
+
+New cases: a read with a further argument (git config --get core.hooksPath /tmp) passes; a << inside
+double quotes passes (the mutant took it for a heredoc whose body swallows the closing quote and
+refused the command as unparseable). Writing the third showed what "punctuation kept" really
+changes: the hook stripped a bare $ or ) down to nothing, so a substitution ending a word list
+looked like no word at all. These were allowed, and are bypasses:
+
+git config core.hooksPath $(git rev-parse HEAD)
+x=$(git rev-parse HEAD) git commit -n -m x
+$(git log) git config core.hooksPath /x
+
+They are now refused (strip_subst leaves a word that would strip to nothing as it is). That left
+"a substitution starts no command" surviving (the old bare-"(" case had been what killed it); a
+case with a quoted substitution before a git command kills it. All 79 mutants killed.
+
+4. tests/mutants/push-gate.json, before:
+
+SURVIVED a term in a file not reported
+   (the commit scan found the term too; now the remote already has the commit holding it)
+
+The mutant "gitleaks: a header line starting with - dropped (not only a hunk's)" is equivalent:
+the only line starting with - outside a hunk is a file's "--- a/PATH" header, and PATH is also
+on the "diff --git" line of the same file (the "+++" line is /dev/null for a delete, so it
+doesn't count), which stays, so no fixture can tell the two awk programs apart. Replaced by two mutants on the same awk line that the suite does kill: a
+hunk's added lines dropped too, and a hunk that never starts (removed lines kept).
+
+5. LINUX_GATE_MUTANTS_ONLY=1 and LINUX_GATE_BASE, tests/linux-gate.bats before tools/linux-gate.sh knew them:
+
+not ok 1 mutants-only: the container gets the flag and the specs, the head line is first, the native checks stay
+not ok 2 mutants-only: it needs a SPEC, and refuses FULL=1 (64, nothing runs)
+not ok 3 mutants-only: a spec's step that never ran still fails the gate, and a failing one is named
+not ok 4 mutants-only: run.sh runs tools/mutate.py for each spec and nothing else; a failing baseline is that step's rc
+not ok 5 mutants-only: it refuses to start without a passed base run of this head (1, nothing runs, no summary)
+
+One mutant ("mutants-only: no base needed") first survived: the missing-file message also names
+LINUX_GATE_BASE; the test now looks for "needs LINUX_GATE_BASE".

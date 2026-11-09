@@ -4,5 +4,5 @@
 *.local.md
 denylist.txt
 .scratch/
-.cache/
+.cache
 __pycache__/

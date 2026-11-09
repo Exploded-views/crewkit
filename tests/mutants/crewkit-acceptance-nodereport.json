@@ -1,0 +1,15 @@
+{
+  "target": "libexec/crewkit-node-report",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-acceptance.bats"
+  ],
+  "mutants": [
+    {
+      "name": "the report carries the hostname",
+      "old": "nr_arch=$(LC_ALL=C uname -m)\ncase $nr_arch in\n  x86_64 | amd64) nr_arch=amd64 ;;\n  aarch64 | arm64) nr_arch=arm64 ;;\n  *) nr_arch=other ;;\nesac",
+      "new": "nr_arch=$(LC_ALL=C uname -n)"
+    }
+  ]
+}

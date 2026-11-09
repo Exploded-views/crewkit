@@ -1,0 +1,8 @@
+# The push gate's doctor: push-gate.sh schedule fills the @...@ values, escaped for the quotes.
+[Unit]
+Description=crewkit push gate doctor (notifies when the FAIL set changes)
+
+[Service]
+Type=oneshot
+Environment="PATH=@PATH@"
+ExecStart="@GATE@" doctor-watch

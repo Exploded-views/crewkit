@@ -1,0 +1,11 @@
+# Fix for tests/crewkit-herdr.bats under kcov: the hde helper ran bash -c with set -u, where BASH_SOURCE is unset and kcov's trace hook fails. The same tests pass in the plain bats run. Only the failures are kept.
+
+not ok 194 retag under set -e: a malformed entry first is skipped with a stderr line and the rest apply
+# (in test file tests/crewkit-herdr.bats, line 417)
+#   `[ "$status" -eq 0 ]' failed
+not ok 195 the whole retag and tag paths work under set -euo pipefail
+# (in test file tests/crewkit-herdr.bats, line 428)
+#   `[ "$status" -eq 0 ]' failed
+not ok 200 retag: tokens that are not an object are skipped with a stderr line, the rest applied
+# (in test file tests/crewkit-herdr.bats, line 478)
+#   `[ "$status" -eq 0 ]' failed

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# crewkit watchline repo SOURCE N TYPE ASSOCIATION URL [--author LOGIN] [--text TEXT]
+# crewkit watchline log SERVICE HOST LEVEL COUNT WINDOW
+# crewkit watchline check OWNER/REPO...        (lines on stdin)
+#
+# The content-free watcher's output. `repo` and `log` print one line made of fixed fields
+# (libexec/ck/watchline.sh has the patterns), or nothing and exit 65; a watcher that reads
+# untrusted text can pass on only what these accept. `check` is the orchestrator's side: it
+# reads lines on stdin, prints the ones that match exactly (and that point into one of the OWNER/REPO
+# repositories given, at least one), and counts the rest on stderr ("dropped N", never the
+# dropped text). TEXT is accepted only with --author LOGIN
+# for a login in watch.trusted_authors (user-only); the line then carries author:<login>, and
+# `check` decides again from its own setting. The association never grants a text.
+#
+# Exit: 0, 64 usage, 65 a field that is not a fixed value (nothing is printed, and the value is
+# never echoed).
+set -euo pipefail
+: "${CK_ROOT:?crewkit-watchline is run by bin/crewkit}"
+# shellcheck source=/dev/null
+source "$CK_ROOT/lib/settings.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/common.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/watchline.sh"
+# settings-keys: watch.trusted_authors
+
+usage() {
+  ck_die 64 "usage: crewkit watchline repo SOURCE N TYPE ASSOCIATION URL [--author LOGIN] [--text TEXT] | log SERVICE HOST LEVEL COUNT WINDOW | check OWNER/REPO..."
+}
+
+(($#)) || usage
+verb=$1
+shift
+case $verb in
+  repo)
+    pos=() login='' text='' have_text=0
+    while (($#)); do
+      case $1 in
+        --author) (($# >= 2)) || usage; login=$2; shift 2 ;;
+        --text) (($# >= 2)) || usage; text=$2; have_text=1; shift 2 ;;
+        --*) usage ;;
+        *) pos+=("$1"); shift ;;
+      esac
+    done
+    ((${#pos[@]} == 5)) || usage
+    if ((have_text)); then
+      ck_wl_repo_line "${pos[@]}" "$login" "$text" || ck_die 65 "a field is not a fixed value, or the author's text is not allowed"
+    else
+      [[ -z $login ]] || usage
+      ck_wl_repo_line "${pos[@]}" || ck_die 65 "a field is not a fixed value"
+    fi
+    ;;
+  log)
+    (($# == 5)) || usage
+    ck_wl_log_line "$@" || ck_die 65 "a field is not a fixed value"
+    ;;
+  check)
+    # At least one repository: a check that names none would let any repository through.
+    (($# >= 1)) || usage
+    for repo in "$@"; do
+      ck_wl_repo_arg_ok "$repo" || usage
+    done
+    dropped=0
+    while IFS= read -r line || [[ -n $line ]]; do
+      if ck_wl_line_ok "$line" "$@"; then
+        printf '%s\n' "$line"
+      else
+        dropped=$((dropped + 1))
+      fi
+    done
+    ((dropped == 0)) || echo "crewkit: watchline check dropped $dropped line(s)" >&2
+    ;;
+  *) usage ;;
+esac

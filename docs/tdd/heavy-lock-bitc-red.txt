@@ -1,0 +1,91 @@
+# RED: tests.test_heavy_lock.BitcHold before tools/heavy_lock.py accepted a bitc-verified hold
+# run: python3 -m unittest tests.test_heavy_lock   (from the repo root)
+# The 8 failures are the positive cases (a holder that is this process, the parent, two levels up,
+# each accepted pool, the CLI): no bitc path exists yet. The refusal tests pass at once because
+# nothing accepts a bitc hold; their mutants prove they bite.
+FAIL: test_a_holder_that_is_the_parent_passes
+FAIL: test_a_holder_that_is_this_process_passes
+FAIL: test_a_holder_two_levels_up_passes   (failed on a harness error in the test's child process, fixed in the change commit)
+FAIL: test_bitc_on_PATH_is_found_when_BITC_is_unset
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [heavy]
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [gate]
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [bench]
+FAIL: test_the_cli_passes_on_a_bitc_hold
+Ran 83 tests in 2.867s
+FAILED (failures=8)
+
+# review round 1: run `python3 -m unittest tests.test_heavy_lock` on e527b31 (repo root)
+# New BitcProduction class (test switch OFF), the argv-shape, slot-size, one-ps-call, pinned-hash and
+# real-bitc argv tests. Cases (a) a BITC stub, (b) a PATH stub, (c) a scratch BITC_DIR, (d) a replaced
+# binary at the pinned path, (e) a binary owned by another user pass as bypasses or are unimplemented there.
+ERROR: test_the_argv_the_proof_builds_is_accepted_by_the_real_bitc
+FAIL: test_a_holder_that_is_the_parent_passes
+FAIL: test_a_holder_that_is_this_process_passes
+FAIL: test_a_holder_two_levels_up_passes
+FAIL: test_a_refusal_names_the_bitc_reason_when_BITC_JOB_was_set
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [heavy]
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [gate]
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [bench]
+FAIL: test_the_argv_the_proof_builds_has_the_global_flags_before_status
+FAIL: test_the_cli_passes_on_a_bitc_hold
+FAIL: test_the_parent_chain_is_read_with_one_ps_call
+FAIL: test_with_the_test_switch_on_BITC_DIR_reaches_bitc
+FAIL: test_BITC_DIR_set_to_the_canonical_dir_passes
+FAIL: test_a_BITC_stub_is_never_run
+FAIL: test_a_BITC_stub_is_never_run_even_with_the_test_flag_but_no_lock_override
+FAIL: test_a_stub_first_on_PATH_is_never_run
+FAIL: test_the_canonical_binary_is_used_with_an_explicit_state_dir_and_a_scrubbed_env
+FAIL: test_the_pinned_hash_matches_in_either_case
+Ran 106 tests in 5.619s
+FAILED (failures=17, errors=1)
+
+# review round 1, part 2 (the install.sh hash record): the same run on the unchanged tools/heavy_lock.py
+# (HEAD 9399113) with the record-based tests; and `bats --filter "bitc:" tests/install.bats` before install.sh
+# wrote ~/.local/share/crewkit/bitc.sha256 (fails: "recorded for the heavy-lock check", "a re-install records").
+ERROR: test_the_argv_the_proof_builds_is_accepted_by_the_real_bitc
+FAIL: test_a_holder_that_is_the_parent_passes
+FAIL: test_a_holder_that_is_this_process_passes
+FAIL: test_a_holder_two_levels_up_passes
+FAIL: test_a_refusal_names_the_bitc_reason_when_BITC_JOB_was_set
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [heavy]
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [gate]
+FAIL: test_pools_that_count_are_heavy_gate_and_bench [bench]
+FAIL: test_the_argv_the_proof_builds_has_the_global_flags_before_status
+FAIL: test_the_cli_passes_on_a_bitc_hold
+FAIL: test_the_parent_chain_is_read_with_one_ps_call
+FAIL: test_with_the_test_switch_on_BITC_DIR_reaches_bitc
+FAIL: test_BITC_DIR_set_to_the_canonical_dir_passes
+FAIL: test_a_BITC_stub_is_never_run
+FAIL: test_a_BITC_stub_is_never_run_even_with_the_test_flag_but_no_lock_override
+FAIL: test_a_mismatching_record_is_a_refusal
+FAIL: test_a_missing_record_is_a_refusal_that_says_to_reinstall
+FAIL: test_a_record_that_matches_passes_in_either_case [subtest]
+FAIL: test_a_record_that_matches_passes_in_either_case [subtest]
+FAIL: test_a_record_that_matches_passes_in_either_case [subtest]
+FAIL: test_a_stub_first_on_PATH_is_never_run
+FAIL: test_the_canonical_binary_is_used_with_an_explicit_state_dir_and_a_scrubbed_env
+Ran 109 tests in 5.189s
+FAILED (failures=21, errors=1)
+
+# review round 3: `python3 -m unittest tests.test_heavy_lock` on b718a16 with the new tests, plus
+# `bats --filter "bitc: " tests/install.bats` (the umask 002 test fails: the record is not mode 0644).
+# The error-path tests (parent chain, open, hash read, record read, BITC_CONFIG off) pass at once; their mutants prove them.
+ERROR: test_a_deeply_nested_status_is_a_refusal_not_a_traceback
+FAIL: test_a_light_pool_without_a_size_does_not_hide_a_heavy_hold
+FAIL: test_a_config_writable_by_others_is_left_out
+FAIL: test_a_missing_config_is_left_out_so_bitc_uses_its_defaults
+FAIL: test_an_unsafe_binary_says_which_path_and_why
+Ran 122 tests in 8.956s
+FAILED (failures=4, errors=1)
+not ok: bitc: the record and a new ~/.local/bin get fixed modes under umask 002
+
+# review round 4: an existing but unsafe ~/.config/bitc/bitc.toml (mode, link, owner) must refuse the bitc hold,
+# not be left out of the argv; `python3 -m unittest tests.test_heavy_lock` on 2716613 with the new tests:
+FAIL: test_a_config_owned_by_someone_else_is_a_refusal
+FAIL: test_a_symlinked_config_is_a_refusal
+FAIL: test_an_unsafe_config_is_a_refusal_not_a_config_left_out [0o666]
+FAIL: test_an_unsafe_config_is_a_refusal_not_a_config_left_out [0o664]
+FAIL: test_an_unsafe_config_is_a_refusal_not_a_config_left_out [0o646]
+FAIL: test_an_unsafe_config_is_a_refusal_not_a_config_left_out
+Ran 124 tests in 9.133s
+FAILED (failures=6)

@@ -136,7 +136,7 @@ tests/run.sh                                            # every bats suite
 python3 -m unittest discover -s tests -p 'test_*.py'    # the Python tools' tests
 python3 tools/lint-skills.py                            # skills, settings, links, the mutants matrix
 python3 tools/check-workflows.py                        # hosted runners only, pinned actions
-python3 tools/mutate.py tests/mutants/land-batch.json   # a mutation spec (one per file in tests/mutants)
+flock ~/.local/state/crew/heavy.lock python3 tools/mutate.py tests/mutants/land-batch.json   # a mutation spec, under the heavy lock
 python3 tools/perf.py                                   # performance budgets
 tools/scrub.sh --require-denylist                       # private terms and secrets, before every push
 ```
@@ -144,3 +144,35 @@ tools/scrub.sh --require-denylist                       # private terms and secr
 Coverage runs only in CI (see [docs/testing.md](../../docs/testing.md)). Write every change test
 first and record the failing run in [docs/tdd/](../../docs/tdd/). Every safety line gets a mutant,
 and floors in `coverage-floors.json` only ever go up.
+
+## public-watch: watching public repositories without reading them
+
+Anyone can write an issue or a comment on a public repository, and text that reaches a session
+with write powers can steer it. A watcher session therefore reads no such text: it runs
+`public-watch` on a schedule and forwards its lines, unchanged, to the lead.
+
+```bash
+public-watch --since 2026-10-27T00:00:00Z OWNER/REPO [OWNER/REPO...]
+public-watch --settings OWNER/REPO...    # a read-only settings.json for the watcher
+tools/check-watcher-settings.py <settings.json> OWNER/REPO...   # prove one allows no write tool
+```
+
+Each line is `public:<repo>#<n> <issue|pr|comment> author=<ASSOCIATION> <github.com URL>`, built
+from numbers and GitHub's fixed association names only; an OWNER, MEMBER or COLLABORATOR issue or
+PR adds `title: <sanitized title>`. Bodies are never fetched. `tests/watcher-injection.bats`
+runs it against fixtures full of injection payloads, for any list of repositories (`WATCH_REPOS`),
+and checks a real watcher's settings when `WATCHER_SETTINGS` names them.
+
+The grammar lives in one place, `lib/watchline.py`: public-watch builds its lines with it, and
+whatever receives them filters with it, so a forged or garbled line is dropped instead of read:
+
+```bash
+python3 lib/watchline.py check OWNER/REPO... < lines   # stdout: the valid lines, in order
+```
+
+`check` keeps a line only if public-watch could have written it for one of the watched
+repositories (owner and name, without case): the URL's number, kind and repository match the
+line's own, the association is one of GitHub's, and a title appears only on a
+trusted issue or PR and is exactly what the sanitizer leaves. It prints `watchline: dropped N
+line(s)` on stderr when it drops any, and exits 0 whatever it drops; 2 if stdin can't be read, 64
+for anything but `check`. `tests/fixtures/watcher/` holds reusable injection fixtures.

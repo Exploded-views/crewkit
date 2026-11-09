@@ -1,0 +1,50 @@
+{
+  "target": "tools/install-hooks.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/install-hooks.bats"
+  ],
+  "mutants": [
+    {
+      "name": "hook written into the worktree's .git file path",
+      "old": "hooks=\"$(git rev-parse --path-format=absolute --git-common-dir)/hooks\"",
+      "new": "hooks=\"$root/.git/hooks\""
+    },
+    {
+      "name": "hook written to the worktree's own git dir, not the common one",
+      "old": "--git-common-dir)/hooks",
+      "new": "--git-dir)/hooks"
+    },
+    {
+      "name": "core.hooksPath ignored",
+      "old": "if [[ -n $hp && $hp != \"$(git config --global core.hooksPath || true)\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "the scrub left out of the hook",
+      "old": "\"$root/tools/scrub.sh\"\npython3",
+      "new": "python3"
+    },
+    {
+      "name": "the lint left out of the hook",
+      "old": "python3 \"$root/tools/lint-skills.py\"\n\"$root/tools/lint-markdown.sh\"",
+      "new": "\"$root/tools/lint-markdown.sh\""
+    },
+    {
+      "name": "any scope's core.hooksPath refused",
+      "old": " && $hp != \"$(git config --global core.hooksPath || true)\"",
+      "new": ""
+    },
+    {
+      "name": "markdownlint left out of the hook",
+      "old": "\"$root/tools/lint-markdown.sh\"\nHOOK",
+      "new": "HOOK"
+    },
+    {
+      "name": "only the local core.hooksPath read (includes, includeIf and config.worktree missed)",
+      "old": "hp=$(git config core.hooksPath || true)",
+      "new": "hp=$(git config --local core.hooksPath || true)"
+    }
+  ]
+}

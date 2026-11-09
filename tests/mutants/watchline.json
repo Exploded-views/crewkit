@@ -1,0 +1,120 @@
+{
+  "target": "plugins/crew-orchestrator/lib/watchline.py",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/watcher-injection.bats"
+  ],
+  "mutants": [
+    {
+      "name": "a title for every author",
+      "old": "    if a in TRUSTED and title is not None:",
+      "new": "    if title is not None:"
+    },
+    {
+      "name": "the association taken as given",
+      "old": "return a if a in ASSOCIATIONS else \"UNKNOWN\"",
+      "new": "return a"
+    },
+    {
+      "name": "ANSI escapes kept",
+      "old": "t = _ANSI_RE.sub(\"\", raw)",
+      "new": "t = raw"
+    },
+    {
+      "name": "control characters kept",
+      "old": "t = \"\".join(\" \" if unicodedata.category(c)[0] in \"CZ\" else c for c in t)",
+      "new": "pass"
+    },
+    {
+      "name": "URLs kept",
+      "old": "t = _URL_RE.sub(\"[link]\", t).replace(\"@\", \"\")",
+      "new": "t = t.replace(\"@\", \"\")"
+    },
+    {
+      "name": "@ kept",
+      "old": "t = _URL_RE.sub(\"[link]\", t).replace(\"@\", \"\")",
+      "new": "t = _URL_RE.sub(\"[link]\", t)"
+    },
+    {
+      "name": "no word cap",
+      "old": "\" \".join(words[:MAX_WORDS])",
+      "new": "\" \".join(words)"
+    },
+    {
+      "name": "agent text not withheld",
+      "old": "    if _AGENT_RE.search(\" \".join(words)):",
+      "new": "    if False:"
+    },
+    {
+      "name": "field-like text not defused",
+      "old": "t = _FIELD_RE.sub(lambda m: m.group(1) + \" \", t)",
+      "new": "pass"
+    },
+    {
+      "name": "URL from the kind, wrong path",
+      "old": "{'pull' if kind == 'pr' else 'issues'}/{n}\"",
+      "new": "issues/{n}\""
+    },
+    {
+      "name": "check: any title accepted",
+      "old": "    return bool(m.group(\"kind\")) and a in TRUSTED and sanitize_title(title) == title",
+      "new": "    return True"
+    },
+    {
+      "name": "check: a title on a comment accepted",
+      "old": "    return bool(m.group(\"kind\")) and a in TRUSTED and",
+      "new": "    return a in TRUSTED and"
+    },
+    {
+      "name": "check: a title from anyone accepted",
+      "old": "bool(m.group(\"kind\")) and a in TRUSTED and sanitize_title",
+      "new": "bool(m.group(\"kind\")) and sanitize_title"
+    },
+    {
+      "name": "check: an unsanitized title accepted",
+      "old": "and sanitize_title(title) == title",
+      "new": "and True"
+    },
+    {
+      "name": "check: label not tied to the repo",
+      "old": "or label_of(repo) != m.group(\"label\"):",
+      "new": ":"
+    },
+    {
+      "name": "check: kind not tied to the path",
+      "old": "    if m.group(\"kind\") and (m.group(\"path\") == \"pull\") != (m.group(\"kind\") == \"pr\"):\n        return False\n",
+      "new": ""
+    },
+    {
+      "name": "check: unknown association accepted",
+      "old": "if a not in ASSOCIATIONS + (\"UNKNOWN\",) or",
+      "new": "if"
+    },
+    {
+      "name": "check: number not tied to the URL",
+      "old": "/(?P<path>issues|pull)/(?P=n)",
+      "new": "/(?P<path>issues|pull)/[0-9]+"
+    },
+    {
+      "name": "check: drops not reported",
+      "old": "        print(f\"watchline: dropped {dropped} line(s)\", file=sys.stderr)",
+      "new": "        pass"
+    },
+    {
+      "name": "check: unreadable stdin is exit 0",
+      "old": "        return 2\n    lines",
+      "new": "        return 0\n    lines"
+    },
+    {
+      "name": "check: any owner's repository accepted",
+      "old": "    if repo.lower() not in {r.lower() for r in repos}:\n        return False\n",
+      "new": ""
+    },
+    {
+      "name": "check: repository compared with case",
+      "old": "if repo.lower() not in {r.lower() for r in repos}:",
+      "new": "if repo not in set(repos):"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+no-bypass hook, prose in a nested word: RED run, 2026-10-27 (macOS), with the new cases in place and the hook
+at 210b468, which refuses ANY word shlex can't split again that holds a metacharacter (so a plain
+echo "don't (x)" was refused as a nested command). The three BLOCKED cases already pass (they are
+the guard the narrowed rule must keep).
+
+FAIL: test_ordinary_commands_pass (test_no_bypass_hook.NoBypassHook.test_ordinary_commands_pass) (command='echo "don\'t (x)"')
+FAIL: test_ordinary_commands_pass (test_no_bypass_hook.NoBypassHook.test_ordinary_commands_pass) (command='grep -n "it\'s (fixed); done" notes.md')
+FAIL: test_ordinary_commands_pass (test_no_bypass_hook.NoBypassHook.test_ordinary_commands_pass) (command='echo "can\'t > maybe | no"')
+Ran 9 tests in 6.255s
+FAILED (failures=3)

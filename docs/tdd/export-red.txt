@@ -25,5 +25,110 @@ FAIL: test_the_tool_itself_may_describe_the_clone_path_form
 The tool's own files transformed (found by the public repo's first CI run: the export dropped a
 drop-region fixture from tests/test_export.py, and the "blank lines around a dropped region
 doubled" mutant survived there). The new tests on the old export.py:
-FAIL: test_exporting_this_repo_leaves_the_tools_files_unchanged
+FAIL: test_exporting_this_repo_changes_markdown_only
 FAIL: test_the_tools_own_files_are_copied_verbatim
+
+2026-10-27, the review of the verbatim-copy change: an export:drop marker in a MAY_NAME file (copied verbatim) would keep its region public. RED, python3 -m unittest tests.test_export:
+   6 FAIL: test_a_drop_marker_in_another_verbatim_file_fails_the_export
+   1 FAILED
+   1 Ran 21 tests in 8.349s
+Two mutants added to tests/mutants/export.json.
+
+2026-10-27, the review of the marker-in-a-verbatim-file fix: a marker with a prefix (`# <!-- ... -->`, a string) in a verbatim file, or a near-miss spelling (no spaces, other case) anywhere, kept its region public. RED, python3 -m unittest tests.test_export:
+  12 FAIL: test_a_marker_anywhere_in_a_line_of_a_verbatim_file_fails_the_export (3 files x 4 forms)
+   2 FAIL: test_a_marker_not_alone_on_its_line_or_misspelled_fails_the_export (a.md, b.md: no-space and spaced forms; the prefixed .sh and quoted .md forms already refused)
+   1 FAILED (failures=14)
+   1 Ran 22 tests
+
+2026-10-27, that fix's delta review: near-miss markers still leaked: a triple-dash close, an underscore, no hyphen, a dash for the colon, an unclosed comment, a zero-width space, a fullwidth colon or letters (every file type), a marker split over lines in a verbatim file, and any marker in a file that isn't UTF-8 (copied byte for byte, unchecked). RED, python3 -m unittest tests.test_export:
+  25 FAIL: test_a_near_miss_marker_refuses_in_every_kind_of_file (8 forms x 3 file types, and the split form in the verbatim file)
+   1 FAIL: test_a_non_utf8_file_with_a_marker_fails_the_export
+   1 FAILED (failures=26)
+
+2026-10-27, the export follow-up issue (with that fix's second delta review): UTF-16 files (NUL bytes) and comments the pattern missed (a > inside, export and drop reversed, the Markdown [//]: # and [x]: <> forms, a Cyrillic or Greek lookalike letter) still leaked; a file with one bad byte was scanned as latin-1, so a zero-width space inside a word survived; and a refused export left its tree, private text included, in --out. RED, python3 -m unittest tests.test_export:
+  21 FAIL: test_a_near_miss_marker_refuses_in_every_kind_of_file (7 forms x 3 file types)
+   3 FAIL: test_a_utf16_file_with_a_marker_fails_the_export (with BOM, LE and BE without)
+   1 FAIL: test_one_bad_byte_doesnt_hide_a_lookalike_marker
+   1 FAIL: test_a_refused_export_leaves_nothing_in_out
+   1 FAILED (failures=26)
+
+The same issue, from its mutation run: two UTF-16 mutants survived, and the test that followed found
+a leak. A UTF-16 file whose bytes are all below 0x80 (ASCII plus letters like Cyrillic е, 0x35 0x04)
+is also valid UTF-8, so it went through the text transforms with its NULs, and a lookalike marker
+there was never read as UTF-16. RED, the new test against 2bd0069:
+   2 FAIL: test_a_utf16_file_with_a_lookalike_marker_fails_the_export (utf-16-le, utf-16-be)
+   1 FAILED (failures=2)
+
+The same issue, from an automated security review of 5d8466c: a UTF-16 file with a BOM and no zero
+byte (fullwidth text) skipped the UTF-16 decodes, and the byte-for-byte path skipped the lesson
+citation check that transformed text gets. RED, the new tests against f2465df:
+   1 FAIL: test_a_bom_utf16_file_with_no_nul_bytes_is_still_read_as_utf16
+   1 FAIL: test_a_file_copied_byte_for_byte_gets_every_text_check
+   1 FAILED (failures=2)
+
+The same issue, from the Opus review of fface63: a region still leaked with exit 0 behind a
+one-dash comment, a comment without "export", a blockquote or list-item Markdown comment, any link
+reference definition, a bogus comment, a processing instruction, five unfolded characters (a
+combining grapheme joiner, a variation selector, a Hangul filler, a combining acute, Armenian o),
+GBK text, a real region in tests/test_export.py (exempt), and a marker-like file name. RED, the
+reviewer's export probe (run with python3 -I against tools/export.py) against fface63:
+  15 probes rc=0 LEAK (the cases above)
+  14 probes refused or dropped correctly
+After the fix every probe refuses (rc=1) or drops, with no traceback: see the PR.
+The same issue, item 3: short references into the dev repo (its name with a number, or its
+owner/name slug) reached the public tree, and bare PR numbers in history prose (README, CHANGELOG,
+docs) cited private PRs. RED, the new tests against fface63:
+   1 FAIL: test_a_bare_number_ref_fails_in_history_prose (4 subtests)
+   1 FAIL: test_a_dev_repo_ref_in_a_utf16_file_fails_the_export
+   1 FAIL: test_a_dev_repo_ref_in_a_verbatim_file_fails_the_export
+   1 FAIL: test_a_dev_repo_short_ref_fails_the_export_in_any_file_naming_its_line (3 subtests)
+   1 FAIL: test_the_dev_repo_slug_fails_the_export
+   1 FAILED (failures=10)
+
+2026-10-27, the export-hardening mutation run at 9c1ded9: 11 export mutants survived. The broader rules added in 9c1ded9 (non-ASCII in any comment is refused; a non-UTF-8 or NUL file not marked binary is refused before the byte scan) refused the old fixtures for a different reason, so the old tests passed with the mutants too. The tests now isolate the rule they name: disguised text on a plain line outside any comment, in a non-verbatim file; byte-path fixtures in *.bin files marked binary, asserting the "copied byte for byte" message and not "not UTF-8 text". RED, each mutant applied to a scratch copy of tools/export.py, python3 -m unittest tests.test_export:
+  a file with NULs is not tried as UTF-16: FAIL test_a_utf16_file_with_a_lookalike_marker_fails_the_export (utf-16-le, utf-16-be)
+  a bad byte sends the scan to latin-1: FAIL test_one_bad_byte_doesnt_hide_a_lookalike_marker
+  a BOM without NULs is not read as UTF-16: FAIL test_a_bom_utf16_file_with_no_nul_bytes_is_still_read_as_utf16
+  the byte path skips the lesson-citation check: FAIL test_a_file_copied_byte_for_byte_gets_every_text_check
+  lookalike characters are not folded: FAIL test_disguised_marker_text_on_a_plain_line_is_refused (Cyrillic o, Greek o), test_scannable_undoes_each_disguise (lookalike)
+  NUL bytes are kept: FAIL test_disguised_marker_text_on_a_plain_line_is_refused (NUL byte), test_scannable_undoes_each_disguise (NUL)
+  default-ignorable characters are kept: FAIL test_disguised_marker_text_on_a_plain_line_is_refused (Hangul filler, choseong filler), test_scannable_undoes_each_disguise (ignorable x2)
+  compatibility forms not decomposed: FAIL test_disguised_marker_text_on_a_plain_line_is_refused (fullwidth letters, combining acute), test_scannable_undoes_each_disguise (Mn, fullwidth), test_a_bom_utf16_file_with_no_nul_bytes_is_still_read_as_utf16
+  format characters and marks are kept: FAIL test_disguised_marker_text_on_a_plain_line_is_refused (zero-width space, combining acute), test_scannable_undoes_each_disguise (Cf, Mn)
+  only format characters are stripped: FAIL test_disguised_marker_text_on_a_plain_line_is_refused (combining acute), test_scannable_undoes_each_disguise (Mn)
+  marker-like lines must use a hyphen separator: FAIL test_a_marker_like_line_may_use_any_separator (five separators: underscore, space, dot, doubled underscore, em dash)
+No mutant was equivalent. Two of the first-draft fixtures still survived (the NUL and latin-1 mutants) because the marker text stayed readable in ASCII beside the disguise; the final fixtures put the disguise inside "drop" itself.
+
+2026-10-28, the Opus review of the refs check (fix round 1): private repo references could still reach the public tree. The findings: a number after a paren, a slash or a letter passed; the text path read the raw text only (a zero-width character, a Cyrillic letter, a fullwidth number sign or a non-breaking hyphen hid a reference); the bare dev repo name was never refused (two RED records still carried it); other private repos were not covered at all, nor the private denylist; the link check was case-sensitive, covered pull and issue pages only, and read no percent-decoded copy; prose files were a short list; an apostrophe could close a code span and a backtick fence opener hid prose; file names and symlink targets were not checked. RED, the new tests (made-up repo and denylist names only) against the tool at f48932e, python3 -m unittest tests.test_export:
+  17 of the 75 tests FAIL (50 failures with their subtests); the other new tests guard against over-refusing and pass either way:
+   test_a_number_after_a_paren_a_slash_or_a_letter_is_a_ref_but_an_anchor_is_not (4 subtests)
+   test_the_text_path_reads_the_folded_copy_too (9 subtests)
+   test_scannable_folds_every_dash_lookalike
+   test_the_bare_dev_repo_name_is_refused_everywhere_outside_drop_regions (5 subtests, and the byte path)
+   test_a_repo_not_on_the_public_list_is_refused_as_a_short_ref_and_in_any_url (8 subtests)
+   test_the_public_repos_short_form_is_fine_but_crewkit_itself_is_not_yet
+   test_a_ref_in_a_file_name_or_a_symlink_target_is_refused
+   test_every_prose_file_counts_as_history_except_test_data (7 subtests)
+   test_code_spans_close_only_on_a_backtick_but_a_bats_failure_quote_may_close_on_an_apostrophe
+   test_a_fence_opener_with_a_backtick_in_its_info_string_is_not_a_fence
+   test_a_link_with_a_dev_repo_is_found_after_percent_decoding_too
+   test_a_denylist_match_is_refused_without_printing_the_match (4 subtests)
+   test_a_denylist_match_in_a_path_a_symlink_target_or_bytes_is_refused_and_not_printed
+   test_a_denylist_it_cannot_read_refuses_without_printing_the_line
+   test_a_denylist_line_may_use_posix_classes
+   test_numbers_and_labels_in_test_data_and_placeholders_are_fine
+   test_this_tool_describes_its_limits
+After the fix the suite passes, and the export of the tree exports cleanly. Rulings applied: crewkit is left off the public list (its number and its URLs are refused until public URLs are handled); the optional denylist is read from tools/scrub.sh's path and never printed; the dev SHAs and compressed binaries are accepted gaps (the tool's header).
+
+2026-10-28, the re-review of the refs check (fix round 2). Findings: the suite was RED at the previous commit, because the made-up default denylist word was written whole in the tests file, so the export of this tree matched itself; a repo's home page and slug forms passed (a fragment, a query, .git, doubled slashes, the raw host, the ssh form, a bare owner/repo slug, a clone command); owner and repo were checked apart (another owner's repo of a public name passed); the test-data exemption for repo numbers was wide and matched at any depth; entities, backslashes, emphasis, tags and comments hid a name or a number; a hyphen before a number sheltered it. RED, the new tests (made-up repo names only) against the previous commit's tool, python3 -m unittest tests.test_export:
+  5 of the 81 tests FAIL, 37 failures with their subtests (the other new tests guard against over-refusing and pass either way):
+   test_a_repos_home_and_slug_forms_are_refused_however_they_end (16 subtests)
+   test_markup_does_not_hide_a_name_or_a_number (11 subtests)
+   test_only_exact_owner_and_repo_pairs_are_public (6 subtests)
+   test_every_prose_file_counts_as_history_except_test_data (3 subtests)
+   test_numbers_and_labels_in_test_data_and_placeholders_are_fine
+After the fix the suite passes, and the export of the tree exports cleanly. Rulings applied: owner/repo pairs are exact (third-party, public and placeholder); the test-data exemption is the label "public:crewkit#N" in the top-level tests/ and evals/ only; the bare owner/repo slug is refused for the known owners unless the pair is public.
+
+2026-10-28, round 3 of the refs check: the crewkit repo's own home and clone URL (an optional .git, then nothing) is the one allowed link to it, for the README's clone command; numbers and every other page under it stay refused. RED, the new test against the previous commit's tool, python3 -m unittest tests.test_export:
+   1 FAIL: test_crewkits_own_home_and_clone_url_pass_and_nothing_under_it_does
+After the change the suite passes, and the export of the tree keeps the README's clone line.

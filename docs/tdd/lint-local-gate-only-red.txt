@@ -1,0 +1,220 @@
+# The local_gate_only lint tests against the unchanged check_mutant_matrix (no tag, no local-gate.txt).
+
+FFFF..FF.F..FFFFFFFF....FF.
+======================================================================
+FAIL: test_a_blank_reason_fails (tests.test_lint_mutants.CheckMutantMatrix.test_a_blank_reason_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 105, in test_a_blank_reason_fails
+    self.assertTrue(any("h.json" in e and "local_gate_only" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+======================================================================
+FAIL: test_a_gate_file_does_not_count_as_a_spec (tests.test_lint_mutants.CheckMutantMatrix.test_a_gate_file_does_not_count_as_a_spec)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 165, in test_a_gate_file_does_not_count_as_a_spec
+    self.assertEqual(self.check({"h.json": self.tagged()}, [], gate="h.json\n"), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [".github/workflows/ci.yml: tests/mutants/[66 chars] it"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"
+
++ []
+- [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's "
+-  'spec matrix, so CI never runs it']
+
+======================================================================
+FAIL: test_a_gate_token_naming_an_untagged_spec_fails (tests.test_lint_mutants.CheckMutantMatrix.test_a_gate_token_naming_an_untagged_spec_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 153, in test_a_gate_token_naming_an_untagged_spec_fails
+    self.assertTrue(any("a.json" in e and "local_gate_only" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+======================================================================
+FAIL: test_a_gate_token_naming_no_spec_fails (tests.test_lint_mutants.CheckMutantMatrix.test_a_gate_token_naming_no_spec_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 149, in test_a_gate_token_naming_no_spec_fails
+    self.assertTrue(any("nope.json" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+======================================================================
+FAIL: test_a_non_string_reason_fails (tests.test_lint_mutants.CheckMutantMatrix.test_a_non_string_reason_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 110, in test_a_non_string_reason_fails
+    self.assertTrue(any("h.json" in e and "local_gate_only" in e for e in errs), (bad, errs))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : (True, [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"])
+
+======================================================================
+FAIL: test_a_partial_set_of_slices_fails_naming_the_missing_ones (tests.test_lint_mutants.CheckMutantMatrix.test_a_partial_set_of_slices_fails_naming_the_missing_ones)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 123, in test_a_partial_set_of_slices_fails_naming_the_missing_ones
+    self.assertTrue(any("h.json" in e and "2of3" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+======================================================================
+FAIL: test_a_spec_listed_plain_twice_fails (tests.test_lint_mutants.CheckMutantMatrix.test_a_spec_listed_plain_twice_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 135, in test_a_spec_listed_plain_twice_fails
+    self.assertTrue(any("h.json" in e and "twice" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+======================================================================
+FAIL: test_a_tagged_spec_held_by_the_local_gate_passes (tests.test_lint_mutants.CheckMutantMatrix.test_a_tagged_spec_held_by_the_local_gate_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 77, in test_a_tagged_spec_held_by_the_local_gate_passes
+    self.assertEqual(self.check({"a.json": {}, "h.json": self.tagged()}, ["a.json"], gate="h.json\n"), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [".github/workflows/ci.yml: tests/mutants/[66 chars] it"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"
+
++ []
+- [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's "
+-  'spec matrix, so CI never runs it']
+
+======================================================================
+FAIL: test_a_tagged_spec_in_the_ci_matrix_fails (tests.test_lint_mutants.CheckMutantMatrix.test_a_tagged_spec_in_the_ci_matrix_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 97, in test_a_tagged_spec_in_the_ci_matrix_fails
+    self.assertTrue(any("h.json" in e and "local_gate_only" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : []
+
+======================================================================
+FAIL: test_a_tagged_spec_not_in_the_gate_file_fails_naming_the_file (tests.test_lint_mutants.CheckMutantMatrix.test_a_tagged_spec_not_in_the_gate_file_fails_naming_the_file)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 81, in test_a_tagged_spec_not_in_the_gate_file_fails_naming_the_file
+    self.assertTrue(any("h.json" in e and "local-gate.txt" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+======================================================================
+FAIL: test_a_tagged_spec_with_no_gate_file_fails_as_not_covered (tests.test_lint_mutants.CheckMutantMatrix.test_a_tagged_spec_with_no_gate_file_fails_as_not_covered)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 85, in test_a_tagged_spec_with_no_gate_file_fails_as_not_covered
+    self.assertTrue(any("h.json" in e and "local-gate.txt" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+======================================================================
+FAIL: test_a_token_that_is_not_valid_syntax_fails (tests.test_lint_mutants.CheckMutantMatrix.test_a_token_that_is_not_valid_syntax_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 145, in test_a_token_that_is_not_valid_syntax_fails
+    self.assertTrue(any("local-gate.txt" in e and bad.split()[-1] in e for e in errs), (bad, errs))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : ('h', [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"])
+
+======================================================================
+FAIL: test_all_slices_of_one_n_cover_a_spec (tests.test_lint_mutants.CheckMutantMatrix.test_all_slices_of_one_n_cover_a_spec)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 114, in test_all_slices_of_one_n_cover_a_spec
+    self.assertEqual(self.check({"h.json": self.tagged()}, [], gate=gate), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [".github/workflows/ci.yml: tests/mutants/[66 chars] it"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"
+
++ []
+- [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's "
+-  'spec matrix, so CI never runs it']
+
+======================================================================
+FAIL: test_an_empty_reason_fails (tests.test_lint_mutants.CheckMutantMatrix.test_an_empty_reason_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 101, in test_an_empty_reason_fails
+    self.assertTrue(any("h.json" in e and "local_gate_only" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+======================================================================
+FAIL: test_an_unreadable_spec_is_reported_not_a_crash (tests.test_lint_mutants.CheckMutantMatrix.test_an_unreadable_spec_is_reported_not_a_crash)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 158, in test_an_unreadable_spec_is_reported_not_a_crash
+    self.assertTrue(any("a.json" in e and "not a readable mutation spec" in e for e in errs), (raw, errs))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : ('not json', [])
+
+======================================================================
+FAIL: test_slices_may_sit_among_other_tokens_and_comments (tests.test_lint_mutants.CheckMutantMatrix.test_slices_may_sit_among_other_tokens_and_comments)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 119, in test_slices_may_sit_among_other_tokens_and_comments
+    self.assertEqual(self.check(specs, [], gate=gate), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [".github/workflows/ci.yml: tests/mutants/[179 chars] it"] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+".github/workflows/ci.yml: tests/mutants/g.json is not in the `mutants` job's spec matrix, so CI never runs it"
+
++ []
+- [".github/workflows/ci.yml: tests/mutants/g.json is not in the `mutants` job's "
+-  'spec matrix, so CI never runs it',
+-  ".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's "
+-  'spec matrix, so CI never runs it']
+
+======================================================================
+FAIL: test_the_same_slice_twice_fails (tests.test_lint_mutants.CheckMutantMatrix.test_the_same_slice_twice_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 139, in test_the_same_slice_twice_fails
+    self.assertTrue(any("h.json@2of2" in e and "twice" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : [".github/workflows/ci.yml: tests/mutants/h.json is not in the `mutants` job's spec matrix, so CI never runs it"]
+
+----------------------------------------------------------------------
+Ran 27 tests in 0.248s
+
+FAILED (failures=17)
+
+# Fix round 1 (cap and truncation), before the code (lines over 300 characters cut: the old code printed megabytes for the huge-N case):
+
+.........................FF......
+======================================================================
+FAIL: test_many_missing_slices_are_truncated (tests.test_lint_mutants.CheckMutantMatrix.test_many_missing_slices_are_truncated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 155, in test_many_missing_slices_are_truncated
+    self.assertNotIn("@12of100", e)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: '@12of100' unexpectedly found in 'tests/mutants/local-gate.txt: h.json is sliced into 100 but slices @2of100, @3of100, @4of100, @5of100, @6of100, @7of100, @8of100, @9of100, @10of100, @11of100, @12of100, @13of100, @14of100, @15of100, @16of100, @17of100, @18of100, @19of100, @20of100, @
+
+======================================================================
+FAIL: test_n_above_the_cap_is_rejected_quickly (tests.test_lint_mutants.CheckMutantMatrix.test_n_above_the_cap_is_rejected_quickly)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_lint_mutants.py", line 143, in test_n_above_the_cap_is_rejected_quickly
+    self.assertTrue(any("h.json@1of30000000" in e and "100" in e for e in errs), errs)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : ['tests/mutants/local-gate.txt: h.json is sliced into 30000000 but slices @2of30000000, @3of30000000, @4of30000000, @5of30000000, @6of30000000, @7of30000000, @8of30000000, @9of30000000, @10of30000000, @11of30000000, @12of30000000, @13of30000000, @14of30000000, @15
+
+----------------------------------------------------------------------
+Ran 33 tests in 7.997s
+
+FAILED (failures=2)

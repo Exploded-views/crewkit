@@ -1,0 +1,205 @@
+{
+  "target": "tools/scrub.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/scrub-private-infra.bats"
+  ],
+  "mutants": [
+    {
+      "name": "every class is skipped",
+      "old": "[[ -n $skip && $tag_cls == \"$skip\" ]] && continue",
+      "new": "[[ -n $skip ]] && continue"
+    },
+    {
+      "name": "a class other than client is skipped, unknown ones too",
+      "old": "[[ -n $skip && $tag_cls == \"$skip\" ]] && continue",
+      "new": "[[ -n $skip && $tag_cls != client ]] && continue"
+    },
+    {
+      "name": "untagged lines are skipped",
+      "old": "[[ -n $skip && $tag_cls == \"$skip\" ]] && continue",
+      "new": "[[ -n $skip && ( $tag_cls == \"$skip\" || -z $tag_cls ) ]] && continue"
+    },
+    {
+      "name": "the public-remote check is ignored",
+      "old": "      [[ -n $key && -n ${listed_remotes[\"$key\"]:-} ]] || refuse_infra",
+      "new": "      true"
+    },
+    {
+      "name": "no remote at all is allowed without @no-remote",
+      "old": "    [[ -n ${listed_remotes[@no-remote]:-} ]] || refuse_infra",
+      "new": "    true"
+    },
+    {
+      "name": "a missing private-remote list is allowed",
+      "old": "  [[ -r $private_remotes ]] || refuse_infra\n  if inside_repo \"$private_remotes\"; then\n    echo \"scrub: --private-infra refused: the private-remote list is inside the repository being scanned\"; exit 2\n  fi\n  # The list is a trust root that weakens the scan: a regular file (not a link), ours, that no one else can write.\n  if [[ -L $private_remotes || ! -f $private_remotes || ! -O $private_remotes ]]",
+      "new": "  [[ -r $private_remotes ]] || : >/dev/null\n  if inside_repo \"$private_remotes\"; then\n    echo \"scrub: --private-infra refused: the private-remote list is inside the repository being scanned\"; exit 2\n  fi\n  # The list is a trust root that weakens the scan: a regular file (not a link), ours, that no one else can write.\n  if [[ -L $private_remotes ]]"
+    },
+    {
+      "name": "the remote's .git suffix is not normalised",
+      "old": "remote_url_norm() { local u=$1; while [[ $u == */ ]]; do u=${u%/}; done; printf '%s\\n' \"${u%.git}\"; }",
+      "new": "remote_url_norm() { printf '%s\\n' \"$1\"; }"
+    },
+    {
+      "name": "a malformed class tag is accepted",
+      "old": "    if strip_tag \"$line\"; then line=$tag_pat; else",
+      "new": "    if strip_tag \"$line\" || true; then line=$tag_pat; else"
+    },
+    {
+      "name": "a path holding a crew-host term is labelled from the active patterns",
+      "old": "&& { printf '%s\\n' \"$1\" | grep -aEiq -f <(deny_patterns all) \\\n        || printf '%s\\n' \"$1\" | LC_ALL=C grep -aEiq -f <(deny_patterns all)",
+      "new": "&& { printf '%s\\n' \"$1\" | grep -aEiq -f <(deny_patterns) \\\n        || printf '%s\\n' \"$1\" | LC_ALL=C grep -aEiq -f <(deny_patterns)"
+    },
+    {
+      "name": "--private-infra combines with --self-test",
+      "old": "(( private_infra && self_test )) &&",
+      "new": "(( 0 )) &&"
+    },
+    {
+      "name": "the push URLs are not checked",
+      "old": "    push_urls=$(git remote get-url --push --all -- \"$r\") || refuse_infra\n",
+      "new": "    push_urls=\"\"\n"
+    },
+    {
+      "name": "the tag separator may be empty",
+      "old": "class_strip_re=$'([^ \\t])[ \\t]+#class=",
+      "new": "class_strip_re=$'([^ \\t])[ \\t]*#class="
+    },
+    {
+      "name": "legacy remotes and branches are not checked",
+      "old": "    if [[ -n $entry ]]; then\n",
+      "new": "    if [[ -n \"\" ]]; then\n"
+    },
+    {
+      "name": "the remote loop is an unquoted for",
+      "old": "  while IFS= read -r r; do\n    [[ -n $r ]] || continue\n    fetch_urls=$(git remote get-url --all -- \"$r\") || refuse_infra\n    push_urls=$(git remote get-url --push --all -- \"$r\") || refuse_infra\n    while IFS= read -r u; do\n      key=$(remote_url_norm \"$u\")\n      [[ -n $key && -n ${listed_remotes[\"$key\"]:-} ]] || refuse_infra\n    done <<<\"$fetch_urls\"$'\\n'\"$push_urls\"\n  done <<<\"$remotes\"\n",
+      "new": "  for r in $remotes; do\n    fetch_urls=$(git remote get-url --all -- \"$r\") || refuse_infra\n    push_urls=$(git remote get-url --push --all -- \"$r\") || refuse_infra\n    while IFS= read -r u; do\n      key=$(remote_url_norm \"$u\")\n      [[ -n $key && -n ${listed_remotes[\"$key\"]:-} ]] || refuse_infra\n    done <<<\"$fetch_urls\"$'\\n'\"$push_urls\"\n  done\n"
+    },
+    {
+      "name": "a symlinked private-remote list is accepted",
+      "old": "  if [[ -L $private_remotes || ! -f",
+      "new": "  if [[ ! -f"
+    },
+    {
+      "name": "a group- or world-writable private-remote list is accepted",
+      "old": "    || [[ -n $(find -H \"$private_remotes\" -prune \\( -perm -020 -o -perm -002 \\) -print 2>/dev/null) ]]; then",
+      "new": "    || false; then"
+    },
+    {
+      "name": "an empty active set is accepted under --require-denylist",
+      "old": "    if (( require_denylist )); then\n      echo \"scrub: --private-infra leaves",
+      "new": "    if (( 0 )); then\n      echo \"scrub: --private-infra leaves"
+    },
+    {
+      "name": "an empty list entry is accepted",
+      "old": "    [[ -n $key ]] || { echo \"scrub: --private-infra refused: an entry",
+      "new": "    [[ -n $key ]] || true || { echo \"scrub: --private-infra refused: an entry"
+    },
+    {
+      "name": "--private-infra also skips firm",
+      "old": "[[ -n $skip && $tag_cls == \"$skip\" ]] && continue",
+      "new": "[[ -n $skip && ( $tag_cls == \"$skip\" || $tag_cls == firm ) ]] && continue"
+    },
+    {
+      "name": "pin-file branch runs in the user's locale",
+      "old": "      LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\" | LC_ALL=C grep -aEv \"$pin_line\"",
+      "new": "      tr '\\0' '\\n' < \"$f\" | sed -E \"$marked\" | grep -aEv \"$pin_line\""
+    },
+    {
+      "name": "known-versions branch runs in the user's locale",
+      "old": "      LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\" | LC_ALL=C grep -aEv '^[0-9a-f]{40}$'",
+      "new": "      tr '\\0' '\\n' < \"$f\" | sed -E \"$marked\" | grep -aEv '^[0-9a-f]{40}$'"
+    },
+    {
+      "name": "Cargo.lock branch runs in the user's locale",
+      "old": "      LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\" | LC_ALL=C grep -aEv '^checksum = \"[0-9a-f]{64}\"$'",
+      "new": "      tr '\\0' '\\n' < \"$f\" | sed -E \"$marked\" | grep -aEv '^checksum = \"[0-9a-f]{64}\"$'"
+    },
+    {
+      "name": "generic long-hex branch runs in the user's locale",
+      "old": "    elif [[ $r == long-hex ]]; then LC_ALL=C tr '\\0' '\\n' < \"$f\" | LC_ALL=C sed -E \"$marked\"",
+      "new": "    elif [[ $r == long-hex ]]; then tr '\\0' '\\n' < \"$f\" | sed -E \"$marked\""
+    },
+    {
+      "name": "count_rule's grep runs in the user's locale",
+      "old": "    | LC_ALL=C grep -aEio -- \"$re\" \\",
+      "new": "    | grep -aEio -- \"$re\" \\"
+    },
+    {
+      "name": "denylist C-locale run runs in the user's locale",
+      "old": "  n2=$(LC_ALL=C grep -aEic -f <(deny_patterns) -- \"$f\" 2>/dev/null) || { rc=$?; (( rc == 1 )) || return 1; }",
+      "new": "  n2=$(grep -aEic -f <(deny_patterns) -- \"$f\" 2>/dev/null) || { rc=$?; (( rc == 1 )) || return 1; }"
+    },
+    {
+      "name": "the denylist count drops the user-locale view",
+      "old": "  n1=$(grep -aEic -f <(deny_patterns) -- \"$f\" 2>/dev/null) || { rc=$?; (( rc == 1 )) || return 1; }",
+      "new": "  n1=0"
+    },
+    {
+      "name": "the denylist count drops the C view",
+      "old": "  n2=$(LC_ALL=C grep -aEic -f <(deny_patterns) -- \"$f\" 2>/dev/null) || { rc=$?; (( rc == 1 )) || return 1; }",
+      "new": "  n2=0"
+    },
+    {
+      "name": "label_for drops the C view",
+      "old": "&& { printf '%s\\n' \"$1\" | grep -aEiq -f <(deny_patterns all) \\\n        || printf '%s\\n' \"$1\" | LC_ALL=C grep -aEiq -f <(deny_patterns all)",
+      "new": "&& { printf '%s\\n' \"$1\" | grep -aEiq -f <(deny_patterns all)"
+    },
+    {
+      "name": "label_for drops the user-locale view",
+      "old": "&& { printf '%s\\n' \"$1\" | grep -aEiq -f <(deny_patterns all) \\\n        || printf '%s\\n' \"$1\" | LC_ALL=C grep -aEiq -f <(deny_patterns all)",
+      "new": "&& { printf '%s\\n' \"$1\" | LC_ALL=C grep -aEiq -f <(deny_patterns all)"
+    },
+    {
+      "name": "a trailing CR on a denylist line is accepted",
+      "old": "if [[ $line == *$'\\r' ]]; then echo \"scrub: denylist line",
+      "new": "if false; then echo \"scrub: denylist line"
+    },
+    {
+      "name": "any Unicode or VT space before # makes a comment",
+      "old": "comment_re=$'^[ \\t]*(#|$)'",
+      "new": "comment_re='^[[:space:]]*(#|$)'"
+    },
+    {
+      "name": "a denylist inside the repository is accepted",
+      "old": "if (( ! secrets_only )) && [[ -r $denylist ]] && inside_repo \"$denylist\"; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "a private-remote list inside the repository is accepted",
+      "old": "  if inside_repo \"$private_remotes\"; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "tag prefilter needs the literal #class=",
+      "old": "[[ $line == *\"#\"* ]] || return 0",
+      "new": "[[ $line == *\"#class=\"* ]] || return 0"
+    },
+    {
+      "name": "tag keyword matched in lowercase only",
+      "old": "class_trigger_re=$'#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*='",
+      "new": "class_trigger_re=$'#([ \\t]|[^ -~])*class([ \\t]|[^ -~])*='"
+    },
+    {
+      "name": "no spaces allowed between # and class",
+      "old": "class_trigger_re=$'#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*='",
+      "new": "class_trigger_re=$'#[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*='"
+    },
+    {
+      "name": "no spaces allowed between class and =",
+      "old": "class_trigger_re=$'#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*='",
+      "new": "class_trigger_re=$'#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]='"
+    },
+    {
+      "name": "non-ASCII characters inside the keyword are not skipped",
+      "old": "class_trigger_re=$'#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*='",
+      "new": "class_trigger_re=$'#[ \\t]*[cC][lL][aA][sS][sS][ \\t]*='"
+    },
+    {
+      "name": "a keyword with nothing before it is no tag",
+      "old": "class_trigger_re=$'#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*='",
+      "new": "class_trigger_re=$'(^|[ \\t]|[^ -~])#([ \\t]|[^ -~])*[cC][lL][aA][sS][sS]([ \\t]|[^ -~])*='"
+    }
+  ]
+}

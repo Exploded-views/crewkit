@@ -249,6 +249,118 @@ verdict_line() { printf '%s\n' "$output" | tail -1; }
   [ "$status" -eq 0 ]
 }
 
+# jq16: put a jq first on PATH that behaves like jq 1.6 for `-e` on empty input (exit 0, no
+# output, whitespace-only counts as empty; 1.7+ exits 4) and otherwise runs the real jq. Without it the host's jq hides the bug.
+jq16() {
+  local real
+  real=$(command -v jq)
+  printf '%s\n' '#!/bin/sh' \
+    'case " $* " in *" -e "*) ;; *) exec '"$real"' "$@" ;; esac' \
+    'in=$(mktemp); cat > "$in"' \
+    'if [ -z "$(tr -d " \t\r\n" < "$in")" ]; then rm -f "$in"; exit 0; fi' \
+    "$real \"\$@\" < \"\$in\"; rc=\$?; rm -f \"\$in\"; exit \$rc" > "$BATS_TEST_TMPDIR/stubbin/jq"
+  chmod +x "$BATS_TEST_TMPDIR/stubbin/jq"
+}
+
+# fake_get KEY RC OUT: a copy of the plugin whose lane-state answers `get KEY` with OUT and exit
+# status RC (OUT is stdout, as the real one prints it); everything else is the real lane-state.
+# Sets LAND to the copy's lane-land. Gate 1 can't see a bad value through the real state: set
+# and validate refuse it, so only a stub can feed it a null, a string or a failed read.
+fake_get() {
+  cp -R "$BIN/.." "$BATS_TEST_TMPDIR/plug"
+  printf '%s\n' '#!/usr/bin/env bash' \
+    "if [[ \$1 == get && \$2 == $1 ]]; then printf '%s' '$3'; exit $2; fi" \
+    "exec \"$BIN/lane-state\" \"\$@\"" > "$BATS_TEST_TMPDIR/plug/bin/lane-state"
+  chmod +x "$BATS_TEST_TMPDIR/plug/bin/lane-state"
+  LAND="$BATS_TEST_TMPDIR/plug/bin/lane-land"
+}
+
+# held_when_exempt_reads KEY RC OUT: paused, and the exemption read gives OUT (exit RC): held.
+held_when_exempt_reads() {
+  approve
+  "$BIN/lane-state" set mergePaused true
+  fake_get mergePauseExempt "$1" "$2"
+  run "$LAND" x
+  [ "$status" -eq 35 ]
+  [[ $output == *"mergePauseExempt unreadable or not a list; not exempt"* ]]
+  none -q '^pr merge' "$STUB/calls.log"
+}
+
+@test "paused, mergePauseExempt reads empty (jq 1.6 shim): MERGE-PAUSED (35) and a note" {
+  jq16
+  held_when_exempt_reads 0 ''
+}
+
+@test "paused, mergePauseExempt reads empty (the host's jq): MERGE-PAUSED (35) and a note" {
+  held_when_exempt_reads 0 ''
+}
+
+@test "paused, mergePauseExempt reads null: MERGE-PAUSED (35)" {
+  jq16
+  held_when_exempt_reads 0 null
+}
+
+@test "paused, mergePauseExempt reads a string: MERGE-PAUSED (35)" {
+  jq16
+  held_when_exempt_reads 0 '"12"'
+}
+
+@test "paused, mergePauseExempt reads an object: MERGE-PAUSED (35)" {
+  jq16
+  held_when_exempt_reads 0 '{"a": 12}'
+}
+
+@test "paused, mergePauseExempt reads unparseable text: MERGE-PAUSED (35)" {
+  jq16
+  held_when_exempt_reads 0 'not json ['
+}
+
+@test "paused, the mergePauseExempt read fails: MERGE-PAUSED (35)" {
+  jq16
+  held_when_exempt_reads 1 ''
+}
+
+@test "paused, a failed mergePauseExempt read that still printed a list holding the PR: MERGE-PAUSED (35)" {
+  held_when_exempt_reads 1 '[12]'
+}
+
+@test "paused, a real list holding the PR still exempts it (host jq)" {
+  approve
+  "$BIN/lane-state" set mergePaused true
+  "$BIN/lane-state" set mergePauseExempt '[12]'
+  run "$BIN/lane-land" x
+  [ "$status" -eq 0 ]
+  [[ $(verdict_line) == MERGED* ]]
+}
+
+@test "paused, a real list holding the PR still exempts it (jq 1.6 shim)" {
+  approve
+  jq16
+  "$BIN/lane-state" set mergePaused true
+  "$BIN/lane-state" set mergePauseExempt '[12]'
+  run "$BIN/lane-land" x
+  [ "$status" -eq 0 ]
+  [[ $(verdict_line) == MERGED* ]]
+}
+
+@test "paused, a real list without the PR holds it (jq 1.6 shim)" {
+  approve
+  jq16
+  "$BIN/lane-state" set mergePaused true
+  "$BIN/lane-state" set mergePauseExempt '[13]'
+  run "$BIN/lane-land" x
+  [ "$status" -eq 35 ]
+}
+
+@test "the mergePaused read fails: STATE-UNREADABLE (39), nothing merged" {
+  approve
+  fake_get mergePaused 1 ''
+  run "$LAND" x
+  [ "$status" -eq 39 ]
+  [[ $output == *"can't read mergePaused"* ]]
+  none -q '^pr merge' "$STUB/calls.log"
+}
+
 @test "an owner-gated PR or lane needs the owner present" {
   approve
   "$BIN/lane-state" set ownerGatedPrs '["12"]'

@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""public-watch: content-free lines about new activity on public repositories, for a watcher.
+
+Usage:
+  public-watch --since YYYY-MM-DDTHH:MM:SSZ OWNER/REPO...   one line per new issue, PR, comment
+  public-watch --settings OWNER/REPO...                      a read-only watcher settings.json
+
+Anyone on the internet can write an issue, so nothing a stranger wrote reaches the output:
+  public:<repo>#<n> <issue|pr|comment> author=<ASSOCIATION> https://github.com/<owner>/<repo>/...
+Reads are `gh api` GETs whose --jq selects only number, kind, association and comment id; the
+URL is built here from the repository and those numbers, never taken from the data. Only for
+an OWNER, MEMBER or COLLABORATOR issue or PR is its title fetched (that item alone) and
+appended, sanitized: escapes and control characters removed, URLs replaced by [link], @
+dropped, field-like text (author=, public:) defused, at most 15 words; a title that addresses
+agents is withheld. An association outside
+GitHub's set prints as UNKNOWN; an item whose number or id isn't a number is skipped and
+counted on stderr. The watcher's settings allow this command and nothing that writes
+(tools/check-watcher-settings.py checks them).
+
+Exit 0 = done (no lines: nothing new), 1 = a gh call failed (never read as "nothing new"),
+64 = usage.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "lib"))
+import watchline  # noqa: E402  (the one grammar: lines, sanitizer, check)
+
+SINCE_RE = re.compile(r"\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
+ISSUES_JQ = '.[] | [.number, (if .pull_request then "pr" else "issue" end), .author_association] | @tsv'
+COMMENTS_JQ = '.[] | [(.issue_url | split("/") | last), .id, .author_association] | @tsv'
+MAX_WORDS = 15
+
+
+def usage():
+    print(__doc__.split("\n\n")[1], file=sys.stderr)
+    sys.exit(64)
+
+
+def gh_get(path, jq):
+    """One GET; any failure exits 1, so an error is never read as "nothing new"."""
+    try:
+        r = subprocess.run(["gh", "api", path, "--jq", jq], capture_output=True, text=True)
+    except OSError as e:
+        print(f"public-watch: gh can't run ({e.__class__.__name__})", file=sys.stderr)
+        sys.exit(1)
+    if r.returncode != 0:
+        print(f"public-watch: gh api {path.split('?')[0]} failed (exit {r.returncode})", file=sys.stderr)
+        sys.exit(1)
+    return r.stdout
+
+
+def watch(repo, since):
+    lines, skipped = [], 0
+    for row in gh_get(f"repos/{repo}/issues?state=all&since={since}&per_page=50", ISSUES_JQ).splitlines():
+        parts = row.split("\t")
+        if len(parts) != 3 or not watchline.NUM_RE.match(parts[0]) or parts[1] not in ("issue", "pr"):
+            skipped += 1
+            continue
+        n, kind, a = parts
+        title = None
+        if watchline.association(a) in watchline.TRUSTED:
+            title = gh_get(f"repos/{repo}/issues/{n}", ".title").rstrip("\n")
+        lines.append(watchline.issue_line(repo, n, kind, a, title))
+    for row in gh_get(f"repos/{repo}/issues/comments?since={since}&per_page=50", COMMENTS_JQ).splitlines():
+        parts = row.split("\t")
+        if len(parts) != 3 or not watchline.NUM_RE.match(parts[0]) or not watchline.NUM_RE.match(parts[1]):
+            skipped += 1
+            continue
+        lines.append(watchline.comment_line(repo, *parts))
+    return lines, skipped
+
+
+def settings(repos):
+    me = os.path.realpath(__file__)
+    deny = ["Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch",
+            "Bash(gh api -X*)", "Bash(gh api * -X*)", "Bash(gh api --method*)", "Bash(gh api * --method*)",
+            "Bash(gh api * -f*)", "Bash(gh api * -F*)", "Bash(gh api * --field*)", "Bash(gh api * --raw-field*)",
+            "Bash(gh api * --input*)", "Bash(gh api * -H*)", "Bash(gh api * --header*)",
+            "Bash(gh issue*)", "Bash(gh pr*)", "Bash(gh workflow*)", "Bash(gh run*)", "Bash(gh release*)",
+            "Bash(gh label*)", "Bash(gh repo*)", "Bash(gh secret*)", "Bash(gh auth*)", "Bash(git*)",
+            "Bash(curl*)", "Bash(wget*)", "Bash(rm*)", "Bash(mv*)", "Bash(cp*)", "Bash(*>*)", "Bash(tee*)",
+            "Bash(herdr*)", "Bash(ssh*)"]
+    allow = [f"Bash({me} --since *)", "Bash(date*)", "Skill(loop)", "CronCreate", "CronList", "CronDelete",
+             "ScheduleWakeup", "SendMessage", "ListAgents"]
+    return {"permissions": {"allow": allow, "deny": deny}}
+
+
+def main(argv):
+    if len(argv) >= 2 and argv[0] == "--settings":
+        repos = argv[1:]
+        if not all(watchline.REPO_RE.match(r) and ".." not in r for r in repos):
+            usage()
+        print(json.dumps(settings(repos), indent=2))
+        return 0
+    if len(argv) < 3 or argv[0] != "--since" or not SINCE_RE.match(argv[1]):
+        usage()
+    repos = argv[2:]
+    if not all(watchline.REPO_RE.match(r) and ".." not in r for r in repos):
+        usage()
+    skipped = 0
+    for repo in repos:
+        lines, s = watch(repo, argv[1])
+        skipped += s
+        for line in lines:
+            print(line)
+    if skipped:
+        print(f"public-watch: skipped {skipped} malformed item(s)", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

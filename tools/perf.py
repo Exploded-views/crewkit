@@ -21,6 +21,15 @@ shared runners are noisier than a workstation. Scenarios:
   land-batch-checks-one-pr     land-batch's dry run over one PR with the stub gh: settings, the
                                clone, and every eligibility check (labels, gates, high-risk
                                paths, the PR's own CI) that runs again before each merge
+  pane-ask-read                crew-nodes' pane-ask --read with the stub ssh and herdr:
+                               settings, one ssh call, the remote sh and herdr (each of its
+                               herdr calls costs about the same, plus the network)
+  changes-hook-present-fast    memory-notices' bin/changes-hook around a stub claude-memsync that
+                               returns at once (what the wrapper adds to every prompt)
+  changes-hook-timeout         the same around a stub that never returns: the wall time is the
+                               wrapper's timeout (500 ms here) plus the kill, under timeout + 300 ms
+  crewkit-node-report          crewkit node report with the stub herdr, three agents and a node
+                               state: settings, sourcing the libraries, the herdr calls, one jq
 
 Usage: tools/perf.py [--runs N]
 Exit 0 = every p95 within budget, 1 = over budget or budgets out of sync, 2 = usage.
@@ -36,7 +45,9 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCENARIOS = ["shared-index-150-notes", "changes-hook-absent-overhead", "install-dry-run",
              "install-plugins-rerun", "settings-lookup", "settings-lookup-10", "lane-hygiene-clean",
-             "land-batch-checks-one-pr"]
+             "land-batch-checks-one-pr", "pane-ask-read",
+             "changes-hook-present-fast", "changes-hook-timeout",
+             "crewkit-node-report"]
 
 
 def p95(samples):
@@ -59,14 +70,15 @@ def headroom(cfg, env):
 
 
 def over_budget(measured, budgets, factor):
-    """Failure lines: a p95 over budget x factor, or measured/budgeted scenarios out of sync."""
+    """Failure lines: a p95 over budget x factor, or measured/budgeted scenarios out of sync. A budget
+    with its own "ci_headroom" uses that instead of the factor (1.0: a hard limit, CI or not)."""
     fails = []
     for name, ms in sorted(measured.items()):
         if name not in budgets:
             fails.append(f"{name}: measured but has no budget in perf-budgets.json")
-        elif ms > budgets[name]["p95_ms"] * factor:
+        elif ms > budgets[name]["p95_ms"] * (f := budgets[name].get("ci_headroom", factor) if factor != 1.0 else factor):
             fails.append(f"{name}: p95 {ms:.1f} ms is over its {budgets[name]['p95_ms']} ms budget"
-                         + (f" (x{factor} in CI)" if factor != 1.0 else ""))
+                         + (f" (x{f} in CI)" if f != 1.0 else ""))
     for name in sorted(set(budgets) - set(measured)):
         fails.append(f"{name}: has a budget but no scenario measures it")
     return fails
@@ -147,7 +159,76 @@ def measure(runs, n_trials=3):
 
     cmd, kw = land_batch_dry_run(tmp)
     out["land-batch-checks-one-pr"] = bp(cmd, **kw)
+
+    cmd, kw = pane_ask_read(tmp)
+    out["pane-ask-read"] = bp(cmd, **kw)
+
+    cmd, kw = changes_hook(tmp, hangs=False)
+    out["changes-hook-present-fast"] = bp(cmd, **kw)
+    cmd, kw = changes_hook(tmp, hangs=True)
+    # The cost is a fixed sleep, so 5 runs of one trial say all there is to say (more would only add
+    # 0.5 s each). Its limit, timeout + 300 ms, is a hard one (ci_headroom 1.0 in perf-budgets.json).
+    out["changes-hook-timeout"] = best_p95([timed(cmd, 5, **kw)])
+    cmd, kw = node_report(tmp)
+    out["crewkit-node-report"] = bp(cmd, **kw)
     return out
+
+
+def changes_hook(tmp, hangs):
+    """memory-notices' changes-hook with a stub claude-memsync (never the real one) first on PATH,
+    in a state dir of its own. hangs: the stub never returns, and the wrapper's timeout is 500 ms."""
+    root = tmp / ("ch-hang" if hangs else "ch-fast")
+    bindir = root / "bin"
+    bindir.mkdir(parents=True)
+    body = "sleep 5 &\nwait\n" if hangs else "echo notice\n"
+    (bindir / "claude-memsync").write_text("#!/bin/sh\n" + body)
+    (bindir / "claude-memsync").chmod(0o755)
+    env = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", XDG_STATE_HOME=str(root / "state"),
+               CREWKIT_CHANGES_HOOK_TIMEOUT_MS="500")
+    return [str(ROOT / "plugins/memory-notices/bin/changes-hook")], {"input": b"{}", "env": env}
+
+
+def node_report(tmp):
+    """crewkit node report on a node with the stub herdr (three agents) and a node state."""
+    root = tmp / "nr"
+    pstub, bindir, home = root / "pstub", root / "bin", root / "home"
+    sess = pstub / "herdr" / "local" / "default"
+    for d in (sess, bindir, home / ".local" / "state" / "crewkit" / "node"):
+        d.mkdir(parents=True)
+    (sess / "default").touch()
+    (bindir / "herdr").symlink_to(ROOT / "tests" / "stubs" / "herdr")
+    panes = [{"pane_id": f"w1:p{i}", "workspace_id": "w1", "tab_id": "w1:t1", "agent": "claude", "name": n,
+              "agent_status": "idle", "tokens": {"role": r}, "cwd": "/work/project"}
+             for i, (n, r) in enumerate((("lead", "lead"), ("bridge", "bridge"), ("worker", "worker")), 1)]
+    (sess / "panes.json").write_text(json.dumps(panes))
+    (pstub / "herdr.log").touch()
+    state = {"schema": 1, "node_id": "n-abcdefg234", "name": "lab", "session": "default", "registry_id": "r-abcdefg234",
+             "join_token_sha256": "a" * 64, "lead": "lead", "bridge": "bridge", "joined_at": "2026-10-27T00:00:00Z"}
+    (home / ".local" / "state" / "crewkit" / "node" / "default.json").write_text(json.dumps(state))
+    env = dict(os.environ, HOME=str(home), PSTUB=str(pstub), PATH=f"{bindir}:{os.environ['PATH']}")
+    cmd = [str(ROOT / "bin" / "crewkit"), "node", "report", "--session", "default"]
+    # Once before timing: a fast failure must not be measured as a fast report.
+    r = subprocess.run(cmd, cwd=root, env=env, capture_output=True, text=True)
+    if r.returncode != 0 or json.loads(r.stdout)["schema"] != 1:
+        raise SystemExit(f"crewkit-node-report scenario: the command fails: {r.stderr.strip()}")
+    return cmd, {"cwd": root, "env": env}
+
+
+def pane_ask_read(tmp):
+    """The stub ssh and herdr from tests/stubs (herdr in a fake remote home), and pane-ask --read."""
+    root = tmp / "pa"
+    pstub, bindir = root / "pstub", root / "bin"
+    for d in (pstub / "remote" / ".local" / "bin", bindir, root / "home"):
+        d.mkdir(parents=True)
+    (bindir / "ssh").symlink_to(ROOT / "tests" / "stubs" / "ssh")
+    (pstub / "remote" / ".local" / "bin" / "herdr").symlink_to(ROOT / "tests" / "stubs" / "herdr")
+    (pstub / "screen").write_text("".join(f"line {i}\n" for i in range(200)))
+    (pstub / "ssh.log").touch()
+    (pstub / "herdr.log").touch()
+    (root / "home" / ".claude").mkdir()
+    (root / "home" / ".claude" / "crewkit.md").write_text("---\nnodes.default: lab\nnodes.lab.host: agent-host\n---\n")
+    env = dict(os.environ, HOME=str(root / "home"), PSTUB=str(pstub), PATH=f"{bindir}:{os.environ['PATH']}")
+    return [str(ROOT / "plugins/crew-nodes/bin/pane-ask"), "--read", "wX:pY"], {"cwd": root, "env": env}
 
 
 def land_batch_dry_run(tmp):

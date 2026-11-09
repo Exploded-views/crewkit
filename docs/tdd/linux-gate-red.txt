@@ -1,0 +1,13 @@
+tools/linux-gate.sh: RED run, 2026-10-27, before it moved into the repo:
+
+1..10
+not ok 1 without the heavy lock it refuses and runs nothing
+not ok 2 the container: no network, the caller's uid, the lock token, the clone at /src, out at /out, the pinned image
+not ok 3 it gates the named branch from a fresh clone, with origin/main from the source
+not ok 4 FULL=1 adds kcov, coverage.py (amd64, the wheels read-only, no network) and the floors
+not ok 5 the native checks run on the clone: shellcheck, the scrub with the denylist, gitleaks
+not ok 6 a failing step makes the gate fail (exit 1), and the summary says which
+not ok 7 the in-container run checks the image's locale (en_US.UTF-8), so a locale test can't skip silently
+not ok 8 the image recipes pin their base by digest and generate en_US.UTF-8
+not ok 9 --build-images builds the three images from the repo's recipes
+not ok 10 usage: no branch or out dir is 64

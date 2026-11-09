@@ -1,0 +1,510 @@
+{
+  "target": "tools/linux-gate.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/linux-gate.bats"
+  ],
+  "mutants": [
+    {
+      "name": "no test time limit in the container",
+      "old": " -e BATS_TEST_TIMEOUT=\"$test_timeout\" -v",
+      "new": " -v"
+    },
+    {
+      "name": "no test time limit under kcov",
+      "old": "KCOV_NAME=\"$name-kcov\" BATS_TEST_TIMEOUT=\"$test_timeout\" \"$trusted/coverage.sh\"",
+      "new": "KCOV_NAME=\"$name-kcov\" \"$trusted/coverage.sh\""
+    },
+    {
+      "name": "a bad LINUX_GATE_TEST_TIMEOUT accepted",
+      "old": "[[ $test_timeout =~ ^[1-9][0-9]*$ ]] || {",
+      "new": "true || {"
+    },
+    {
+      "name": "no heavy-lock check",
+      "old": "fi\npython3 -I \"$here/heavy_lock.py\" linux-gate.sh || exit 1\n",
+      "new": "fi\n"
+    },
+    {
+      "name": "the network on",
+      "old": "--rm --network none --user \"$(id -u):$(id -g)\" -e BATS_TEST",
+      "new": "--rm --user \"$(id -u):$(id -g)\" -e BATS_TEST"
+    },
+    {
+      "name": "a failed step passes",
+      "old": "if [[ -n $failed ]]; then echo \"linux-gate: failed: $failed\"; exit 1; fi",
+      "new": ":"
+    },
+    {
+      "name": "a scrub with findings passes",
+      "old": " $1 == \"scrub\" && $3 == \"scrub:\" && $4 != \"clean\" { print \"scrub\" }",
+      "new": ""
+    },
+    {
+      "name": "no locale check",
+      "old": "step image-locale sh -c 'locale -a | grep -qix \"en_US.utf8\" && echo \"en_US.UTF-8 present\"'\n",
+      "new": ""
+    },
+    {
+      "name": "the wheels writable",
+      "old": "-v \"$wheels:/wheels:ro\"",
+      "new": "-v \"$wheels:/wheels\""
+    },
+    {
+      "name": "coverage.py with the network",
+      "old": "--rm --platform linux/amd64 --network none",
+      "new": "--rm --platform linux/amd64"
+    },
+    {
+      "name": "a step that never ran passes",
+      "old": "      awk -v s=\"$s\" '$1 == s { found = 1 } END { exit !found }' \"$file\" || echo \"$s(missing)\"",
+      "new": "      :"
+    },
+    {
+      "name": "a container that died passes",
+      "old": "((rc == 0)) || printf '%-28s rc=%s\\n' container \"$rc\" | tee -a \"$out/summary.txt\"",
+      "new": ":"
+    },
+    {
+      "name": "no mutants step expected per spec",
+      "old": "for s in ${specs[@]+\"${specs[@]}\"}; do cnames+=(\"$(step_name \"$s\")\"); done",
+      "new": ":"
+    },
+    {
+      "name": "install-mutants not expected under FULL=1",
+      "old": "[[ ${FULL:-} == 1 ]] && cnames+=(install-mutants)",
+      "new": ":"
+    },
+    {
+      "name": "head re-read from the branch",
+      "old": "head=$(git -C \"$work/repo\" rev-parse HEAD) || exit 1",
+      "new": "head=$(git -C \"$src\" rev-parse \"$branch\") || exit 1"
+    },
+    {
+      "name": "a relative OUTDIR kept relative",
+      "old": "out=$(cd \"$out\" && pwd) || exit 1",
+      "new": ":"
+    },
+    {
+      "name": "the scrub's rc ignored",
+      "old": "scrub \"$rc\"",
+      "new": "scrub 0"
+    },
+    {
+      "name": "a scrub with no verdict line passes",
+      "old": "$1 == \"scrub\" && $3 != \"scrub:\" { print \"scrub\" } ",
+      "new": ""
+    },
+    {
+      "name": "shellcheck's rc taken as 0",
+      "old": "shellcheck \"$rc\"",
+      "new": "shellcheck 0"
+    },
+    {
+      "name": "kcov's rc taken as 0",
+      "old": "kcov \"$rc\"",
+      "new": "kcov 0"
+    },
+    {
+      "name": "coverage.py's rc taken as 0",
+      "old": "coverage-py \"$rc\"",
+      "new": "coverage-py 0"
+    },
+    {
+      "name": "the floors' rc taken as 0",
+      "old": "floors \"$rc\"",
+      "new": "floors 0"
+    },
+    {
+      "name": "the native checks after the container",
+      "old": "run_native\n[[ ${FULL:-} == 1 ]] && run_kcov\nrun_container\n",
+      "new": "[[ ${FULL:-} == 1 ]] && run_kcov\nrun_container\nrun_native\n"
+    },
+    {
+      "name": "kcov after the container",
+      "old": "[[ ${FULL:-} == 1 ]] && run_kcov\nrun_container\n",
+      "new": "run_container\n[[ ${FULL:-} == 1 ]] && run_kcov\n"
+    },
+    {
+      "name": "the floors' tool from the clone after the container",
+      "old": "python3 -I \"$work/coverage-floors.py\"",
+      "new": "python3 tools/coverage-floors.py"
+    },
+    {
+      "name": "the floors' base taken after the container",
+      "old": "--base-floors \"$work/base-floors.json\" > \"$out/floors.log\"",
+      "new": "--base-floors <(git show \"$(git merge-base HEAD origin/main):coverage-floors.json\") > \"$out/floors.log\""
+    },
+    {
+      "name": "the container's lines taken unfiltered",
+      "old": "awk 'NR == FNR { want[$1]; next } $1 in want' <(printf '%s\\n' \"${cnames[@]}\") \"$cout/steps.txt\"",
+      "new": "cat \"$cout/steps.txt\""
+    },
+    {
+      "name": "the container's logs not copied out",
+      "old": "[[ -f $cout/$s.log && ! -L $cout/$s.log ]] && cp \"$cout/$s.log\" \"$out/$s.log\"",
+      "new": ":"
+    },
+    {
+      "name": "the head line not checked",
+      "old": "NR == 1 { if ($0 != headline) print \"head\"; next }",
+      "new": "NR == 1 { next }"
+    },
+    {
+      "name": "the container's /out is OUTDIR",
+      "old": "-v \"$cout:/out\"",
+      "new": "-v \"$out:/out\""
+    },
+    {
+      "name": "a bad LINUX_GATE_TIMEOUT accepted",
+      "old": "[[ $limit =~ ^[1-9][0-9]*$ ]] || {",
+      "new": "true || {"
+    },
+    {
+      "name": "the container not under the time limit",
+      "old": "if limited container docker run",
+      "new": "if docker run"
+    },
+    {
+      "name": "a timed-out container not killed",
+      "old": "elif (($? == 1)); then kill_container \"$name\"",
+      "new": "elif false; then :"
+    },
+    {
+      "name": "the container unnamed",
+      "old": "docker run --name \"$name\" --pull never --rm",
+      "new": "docker run --pull never --rm"
+    },
+    {
+      "name": "the native checks not under the time limit",
+      "old": "limited gitleaks \"$trusted/secrets-scan.sh\" > \"$out/gitleaks.log\" 2>&1 || return 0",
+      "new": "\"$trusted/secrets-scan.sh\" > \"$out/gitleaks.log\" 2>&1; rc=$?"
+    },
+    {
+      "name": "kcov not under the time limit",
+      "old": "limited kcov env KCOV_IMAGE",
+      "new": "env KCOV_IMAGE"
+    },
+    {
+      "name": "kcov's container unnamed",
+      "old": "KCOV_NAME=\"$name-kcov\" ",
+      "new": ""
+    },
+    {
+      "name": "a timed-out kcov container not killed",
+      "old": "kill_container \"$name-kcov\"",
+      "new": ":"
+    },
+    {
+      "name": "coverage.py not under the time limit",
+      "old": "limited coverage-py docker run",
+      "new": "docker run"
+    },
+    {
+      "name": "a timed-out coverage.py container not killed",
+      "old": "kill_container \"$name-covpy\"",
+      "new": ":"
+    },
+    {
+      "name": "the floors not under the time limit",
+      "old": "limited floors python3",
+      "new": "python3"
+    },
+    {
+      "name": "no timeout line",
+      "old": "printf '%-28s %s (LINUX_GATE_TIMEOUT=%ss)\\n' timeout \"$step\" \"$limit\" | tee -a \"$out/summary.txt\" >&2",
+      "new": ":"
+    },
+    {
+      "name": "a timeout line not a failure",
+      "old": "$1 == \"timeout\" { print \"timeout(\" $2 \")\"; next }",
+      "new": ""
+    },
+    {
+      "name": "steps still start after a timeout",
+      "old": "[[ -z $stopped ]] || return 2",
+      "new": ":"
+    },
+    {
+      "name": "the gate's image pulled when missing",
+      "old": "docker run --name \"$name\" --pull never --rm",
+      "new": "docker run --name \"$name\" --rm"
+    },
+    {
+      "name": "coverage.py's image pulled when missing",
+      "old": "docker run --name \"$name-covpy\" --pull never --rm",
+      "new": "docker run --name \"$name-covpy\" --rm"
+    },
+    {
+      "name": "the image overridable",
+      "old": "-e MUTANTS_ONLY=\"$mutants_only\" crewkit-ubuntu bash /run.sh",
+      "new": "-e MUTANTS_ONLY=\"$mutants_only\" \"${IMAGE:-crewkit-ubuntu}\" bash /run.sh"
+    },
+    {
+      "name": "kcov's image not checked",
+      "old": "if ! timeout 60 docker image inspect crewkit-kcov > \"$out/kcov.log\" 2>&1; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "kcov not expected under FULL=1",
+      "old": "[[ ${FULL:-} == 1 ]] && expected+=(kcov coverage-py floors)",
+      "new": "[[ ${FULL:-} == 1 ]] && expected+=(coverage-py floors)"
+    },
+    {
+      "name": "coverage-py not expected under FULL=1",
+      "old": "[[ ${FULL:-} == 1 ]] && expected+=(kcov coverage-py floors)",
+      "new": "[[ ${FULL:-} == 1 ]] && expected+=(kcov floors)"
+    },
+    {
+      "name": "floors not expected under FULL=1",
+      "old": "[[ ${FULL:-} == 1 ]] && expected+=(kcov coverage-py floors)",
+      "new": "[[ ${FULL:-} == 1 ]] && expected+=(kcov coverage-py)"
+    },
+    {
+      "name": "mutants-only needs no SPEC",
+      "old": "  [[ -n $hold ]] || (($# >= 3)) || {",
+      "new": "  true || {"
+    },
+    {
+      "name": "mutants-only allowed with FULL=1",
+      "old": "  [[ ${FULL:-} != 1 ]] || {",
+      "new": "  true || {"
+    },
+    {
+      "name": "mutants-only: the other steps still expected",
+      "old": "[[ -n $mutants_only ]] && cnames=()",
+      "new": "true"
+    },
+    {
+      "name": "mutants-only: the container still runs the other steps",
+      "old": "if [[ -z ${MUTANTS_ONLY:-} ]]; then",
+      "new": "if true; then"
+    },
+    {
+      "name": "mutants-only: the container isn't told",
+      "old": " -e MUTANTS_ONLY=\"$mutants_only\"",
+      "new": ""
+    },
+    {
+      "name": "mutants-only: no base needed",
+      "old": "  [[ -n ${LINUX_GATE_BASE:-} ]] || {",
+      "new": "  true || {"
+    },
+    {
+      "name": "mutants-only: a missing base file accepted",
+      "old": "  [[ -f $base ]] || {",
+      "new": "  true || {"
+    },
+    {
+      "name": "mutants-only: the base's head line not compared",
+      "old": "  [[ $(head -n 1 \"$base\") == \"$headline\" ]] || {",
+      "new": "  true || {"
+    },
+    {
+      "name": "mutants-only: the base's head line compared as a prefix",
+      "old": "[[ $(head -n 1 \"$base\") == \"$headline\" ]]",
+      "new": "[[ $(head -n 1 \"$base\") == \"$headline\"* ]]"
+    },
+    {
+      "name": "mutants-only: the base's failures not checked",
+      "old": "  [[ -z $base_failed ]] || {",
+      "new": "  true || {"
+    },
+    {
+      "name": "mutants-only: the base's steps not required",
+      "old": "base_steps=(\"${full_steps[@]}\" shellcheck scrub gitleaks)",
+      "new": "base_steps=(bats)"
+    },
+    {
+      "name": "mutants-only: the summary written before the base is checked",
+      "old": "# MUTANTS_ONLY: the base run must be of this head and have passed, before anything runs.\n",
+      "new": "# MUTANTS_ONLY: the base run must be of this head and have passed, before anything runs.\nprintf '%s\\n' \"$headline\" > \"$out/summary.txt\"\n"
+    },
+    {
+      "name": "a verdict line in the summary passes",
+      "old": "    $1 == \"linux-gate:\" && $2 == \"failed:\" { print \"verdict\"; next }\n",
+      "new": ""
+    },
+    {
+      "name": "mutants-only: no mode line",
+      "old": "[[ -z $mutants_only ]] || printf '%-28s %s\\n' mode \"mutants-only base-sha256=$base_sha${hold:+ hold=$hold/${#hold_lines[@]}}\" >> \"$out/summary.txt\"",
+      "new": "true"
+    },
+    {
+      "name": "mutants-only: the mode line binds no hash",
+      "old": "base-sha256=$base_sha${hold",
+      "new": "base-sha256=${hold"
+    },
+    {
+      "name": "mutants-only: a mutants-only summary accepted as a base",
+      "old": "reject_mode=1 summary_failed",
+      "new": "summary_failed"
+    },
+    {
+      "name": "mutants-only: a mode line not counted as a failure",
+      "old": "    $1 == \"mode\" && reject { print \"mode(\" $2 \")\"; next }\n",
+      "new": ""
+    },
+    {
+      "name": "mutants-only: this run's own summary accepted as the base",
+      "old": "[[ $(realpath_of \"$base\") != \"$(realpath_of \"$out/summary.txt\")\" ]] || {",
+      "new": "true || {"
+    },
+    {
+      "name": "mutants-only: paths compared unresolved",
+      "old": "print(os.path.realpath(sys.argv[1]))' \"$1\"; }",
+      "new": "print(sys.argv[1])' \"$1\"; }"
+    },
+    {
+      "name": "mutants-only: a relative base not made ./-safe",
+      "old": "[[ $base == /* ]] || base=./$base",
+      "new": "true"
+    },
+    {
+      "name": "the container steps not derived from the full list",
+      "old": "cnames=(\"${full_steps[@]}\")",
+      "new": "cnames=(image-locale)"
+    },
+    {
+      "name": "the base's steps not derived from the full list",
+      "old": "base_steps=(\"${full_steps[@]}\" shellcheck scrub gitleaks)",
+      "new": "base_steps=(shellcheck scrub gitleaks)"
+    },
+    {
+      "name": "mutants-only: the head line read from the original, not the copy",
+      "old": "  [[ $(head -n 1 \"$base\") == \"$headline\" ]] || {",
+      "new": "  [[ $(head -n 1 \"$LINUX_GATE_BASE\") == \"$headline\" ]] || {"
+    },
+    {
+      "name": "mutants-only: the failure check reads the original, not the copy",
+      "old": "summary_failed \"$base\" \"${base_steps[@]}\"",
+      "new": "summary_failed \"$LINUX_GATE_BASE\" \"${base_steps[@]}\""
+    },
+    {
+      "name": "mutants-only: the hash is of the original, not the copy",
+      "old": ".hexdigest())' \"$base\")",
+      "new": ".hexdigest())' \"$LINUX_GATE_BASE\")"
+    },
+    {
+      "name": "mutants-only: the base is not copied",
+      "old": "  cp -- \"$base\" \"$work/base.txt\" || exit 1\n  base=$work/base.txt\n",
+      "new": ""
+    },
+    {
+      "name": "the guard call without -I",
+      "old": "fi\npython3 -I \"$here/heavy_lock.py\" linux-gate.sh || exit 1\n",
+      "new": "fi\npython3 \"$here/heavy_lock.py\" linux-gate.sh || exit 1\n"
+    },
+    {
+      "name": "the --build-images guard call without -I",
+      "old": "  python3 -I \"$here/heavy_lock.py\" linux-gate.sh || exit 1\n  ubuntu=",
+      "new": "  python3 \"$here/heavy_lock.py\" linux-gate.sh || exit 1\n  ubuntu="
+    },
+    {
+      "name": "no --build-images heavy-lock check",
+      "old": "  python3 -I \"$here/heavy_lock.py\" linux-gate.sh || exit 1\n  ubuntu=",
+      "new": "  ubuntu="
+    },
+    {
+      "name": "clone config honoured (a bare gitleaks, not the gate's scan)",
+      "old": "limited gitleaks \"$trusted/secrets-scan.sh\" > \"$out/gitleaks.log\" 2>&1 || return 0",
+      "new": "limited gitleaks gitleaks git --no-banner --redact --log-level error . > \"$out/gitleaks.log\" 2>&1 || return 0"
+    },
+    {
+      "name": "the clone's own scrub run",
+      "old": "limited scrub \"$trusted/scrub.sh\" --require-denylist",
+      "new": "limited scrub tools/scrub.sh --require-denylist"
+    },
+    {
+      "name": "the floors tool copied from the clone",
+      "old": "cp \"$trusted/coverage-floors.py\"",
+      "new": "cp \"$work/repo/tools/coverage-floors.py\""
+    },
+    {
+      "name": "containers not killed on exit or interrupt (docker_used ignored)",
+      "old": "  if [[ -n $docker_used ]]; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "the work directory removed before the containers are killed",
+      "old": "  [[ -z $child ]] || kill \"$child\" 2>/dev/null\n",
+      "new": "  rm -rf \"$work\"\n  [[ -z $child ]] || kill \"$child\" 2>/dev/null\n"
+    },
+    {
+      "name": "a relative LINUX_GATE_TOOLS accepted",
+      "old": "if [[ $trusted != /* ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "shellcheck reads the clone's rc file",
+      "old": "shellcheck --norc -x install.sh",
+      "new": "shellcheck -x install.sh"
+    },
+    {
+      "name": "cache check skipped",
+      "old": "if [[ -n $(git -C \"$work/repo\" ls-files -- .cache) || -e $work/repo/.cache || -L $work/repo/.cache ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "the gate container without its passwd mount (ssh-keygen: no user for the uid)",
+      "old": " -v \"$work/passwd:/etc/passwd:ro\" -e FULL",
+      "new": " -e FULL"
+    },
+    {
+      "name": "the coverage.py container without its passwd mount",
+      "old": " -v \"$work/passwd:/etc/passwd:ro\" crewkit-ubuntu-amd64",
+      "new": " crewkit-ubuntu-amd64"
+    },
+    {
+      "name": "the gate's passwd entry written with the wrong uid",
+      "old": "printf 't:x:%s:%s:gate:/home/t:/bin/sh\\n' \"$(id -u)\"",
+      "new": "printf 't:x:%s:%s:gate:/home/t:/bin/sh\\n' 4242424"
+    },
+    {
+      "name": "libexec/crewkit-* left out of the main shellcheck command",
+      "old": "mapfile -t libexec_sh < <(compgen -G \"libexec/crewkit-*\" || true)",
+      "new": "libexec_sh=()"
+    },
+    {
+      "name": "the sh shim's shellcheck command dropped",
+      "old": "shellcheck --norc -s sh push-gate/shim.sh || rc=1",
+      "new": ":"
+    },
+    {
+      "name": "the sh shim's shellcheck failure ignored",
+      "old": "shellcheck --norc -s sh push-gate/shim.sh || rc=1",
+      "new": "shellcheck --norc -s sh push-gate/shim.sh || true"
+    },
+    {
+      "name": "libexec/ck/*.sh left out of the bash shellcheck command",
+      "old": " lib/settings.sh libexec/ck/*.sh || rc=1",
+      "new": " lib/settings.sh || rc=1"
+    },
+    {
+      "name": "push-gate/push-gate.sh left out of the main shellcheck command",
+      "old": " push-gate/push-gate.sh push-gate/hooks/_dispatch || rc=1",
+      "new": " push-gate/hooks/_dispatch || rc=1"
+    },
+    {
+      "name": "bin/crewkit left out of the main shellcheck command",
+      "old": "install.sh bin/crewkit tools/*.sh",
+      "new": "install.sh tools/*.sh"
+    },
+    {
+      "name": "the shellcheck step exits 0 whatever its commands returned",
+      "old": "    exit $rc' > \"$out/shellcheck.log\"",
+      "new": "    exit 0' > \"$out/shellcheck.log\""
+    },
+    {
+      "name": "the first shellcheck command's failure stops the step",
+      "old": "push-gate/hooks/_dispatch || rc=1",
+      "new": "push-gate/hooks/_dispatch || exit 1"
+    },
+    {
+      "name": "the sh shim command's failure stops the step",
+      "old": "push-gate/shim.sh || rc=1",
+      "new": "push-gate/shim.sh || exit 1"
+    }
+  ]
+}

@@ -1,0 +1,227 @@
+RED: the Opus review of tools/linux-gate.sh, the heavy lock and mutate.py (part 3, @d9834b4)
+
+Each section is the new test (or tests) before the change, on macOS with the docker stub.
+
+1. A relative OUTDIR (MED 1). Docker took it for a volume name, and the native checks wrote
+from inside the clone, which is then deleted; the gate failed closed but named the wrong cause.
+
+  1..1
+  not ok 1 a relative OUTDIR is taken from the caller's directory: every line lands there, and the gate passes
+  # (in test file tests/linux-gate.bats, line 84)
+  #   `[ "$status" -eq 0 ]' failed
+
+After: OUTDIR is made absolute right after its mkdir. tests/linux-gate.bats 17/17 ok.
+
+9 and 5. The test gaps (MED 9) and the scrub's rc (LOW 5). The FULL=1 test never checked the
+gate's exit status (its scratch source had no tools/coverage.sh, so kcov failed rc=127 there),
+and nothing tested a failing kcov, coverage.py, floors or shellcheck, or a scrub with no verdict
+line. With a fixture for FULL=1's host tools, those tests passed at once: the code was right,
+and the tests were missing; their mutants (rc taken as 0, the verdict rule dropped) are the
+proof they bite. The scrub's rc was the one real gap: a scrub that failed but printed a clean
+last line passed. The new tests before the change:
+
+  1..19
+  not ok 14 the native checks fail the gate on their own: shellcheck's rc, the scrub's rc, a scrub with no verdict
+  # (in test file tests/linux-gate.bats, line 201)
+  #   `[ "$status" -eq 1 ]' failed
+
+After: the scrub's line records its rc (`scrub rc=N <last line>`), and a scrub that fails twice
+over is named once. tests/linux-gate.bats 19/19 ok.
+
+3 and 4. Branch code in the container could rewrite the clone before the host ran its own checks
+from it (MED 3): the scrub (the clone's tools/scrub.sh), kcov's tools/coverage.sh and the floors'
+tool and base (from HEAD and origin/main, read after the container). And /out was OUTDIR, so the
+container could write summary.txt itself (LOW 4). Three new tests; the docker stub now writes
+the container's lines to its own /out/steps.txt, as run.sh does after the change, so every test
+that needs the container's lines failed too until the host copied them:
+
+  1..22
+  not ok 2 the container: no network, the caller's uid, the lock token, the clone at /src, out at /out, the pinned image
+  # (in test file tests/linux-gate.bats, line 91)
+  #   `[ "$status" -eq 0 ]' failed
+  not ok 3 a relative OUTDIR is taken from the caller's directory: every line lands there, and the gate passes
+  # (in test file tests/linux-gate.bats, line 105)
+  #   `[ "$status" -eq 0 ]' failed
+  not ok 4 it gates the named branch from a fresh clone, with origin/main from the source
+  # (in test file tests/linux-gate.bats, line 116)
+  #   `[ "$status" -eq 0 ]' failed
+  not ok 5 head is the full SHA the gate cloned, even if the branch moves during the run
+  # (in test file tests/linux-gate.bats, line 124)
+  #   `[ "$status" -eq 0 ]' failed
+  not ok 6 head is the clone's, even when a tag shares the branch's name (rev-parse would take the tag)
+  # (in test file tests/linux-gate.bats, line 135)
+  #   `[ "$status" -eq 0 ]' failed
+  not ok 7 FULL=1 adds kcov, coverage.py (amd64, the wheels read-only, no network) and the floors
+  # (in test file tests/linux-gate.bats, line 142)
+  #   `[ "$status" -eq 0 ]' failed
+  not ok 8 FULL=1: a failing kcov, coverage.py or floors fails the gate, and is named
+  # (in test file tests/linux-gate.bats, line 153)
+  #   `grep -qx "linux-gate: failed: ${s#*:}" "$BATS_TEST_TMPDIR/o" || { cat "$BATS_TEST_TMPDIR/o" >&2; return 1; }' failed
+  # kcov                         rc=1    0s  3 tests passed under kcov
+  # coverage-py                  rc=0    0s  coverage-py: done
+  # floors                       rc=0  coverage floors: ok
+  # shellcheck                   rc=0
+  # scrub                        rc=0  scrub: clean (1 files, 2 denylist patterns)
+  # gitleaks                     rc=0
+  # 20:03  up 4 days, 23:41, 1 user, load averages: 15.95 15.15 43.56
+  # linux-gate: failed: kcov image-locale(missing) python(missing) lint-skills(missing) check-workflows(missing) bats(missing) perf-strict(missing) perf-ci-headroom(missing) install-mutants(missing)
+  not ok 13 the native checks run first, on the clone as cloned: the container can't rewrite the scrub the gate runs
+  # (in test file tests/linux-gate.bats, line 191)
+  #   `[[ ${lines[-1]} == "linux-gate: failed: scrub" ]]' failed
+  not ok 14 FULL=1: kcov runs before the container, and the floors' tool and base are the clone's as cloned, at head
+  # (in test file tests/linux-gate.bats, line 206)
+  #   `[[ ${lines[-1]} == "linux-gate: failed: kcov floors" ]]' failed
+  not ok 15 the container writes only its own steps' lines: the host writes summary.txt and keeps the head line
+  # (in test file tests/linux-gate.bats, line 213)
+  #   `[ "$status" -eq 0 ]' failed
+  not ok 16 a failing step makes the gate fail (exit 1), and the summary says which
+  # (in test file tests/linux-gate.bats, line 227)
+  #   `[[ $output == *"failed: bats"* ]]' failed
+  not ok 17 the native checks fail the gate on their own: shellcheck's rc, the scrub's rc, a scrub with no verdict
+  # (in test file tests/linux-gate.bats, line 238)
+  #   `[[ ${lines[-1]} == "linux-gate: failed: shellcheck" ]]' failed
+  not ok 22 every bats test in the container has a time limit (300s; LINUX_GATE_TEST_TIMEOUT), so a hang can't hold the lock
+  # (in test file tests/linux-gate.bats, line 275)
+  #   `[ "$status" -eq 0 ]' failed
+
+After: the native checks run first, then (FULL=1) kcov, both on the clone as cloned; the floors'
+base (merge base of head, not HEAD, with origin/main) and their tool are taken before any
+container. The container mounts its own out directory; the host copies only the container's
+steps' lines (and logs) into summary.txt, and the end check confirms the head line is the first
+line, as written. The kcov step is one && chain in a subshell (NIT 11). tests/linux-gate.bats
+22/22 ok.
+
+2. The overall time limit (MED 2). A hang outside a bats test (the Python tests, perf, the
+mutants, coverage.py, the native checks, a bats setup_file) could hold the heavy lock with no
+limit: a hung job could hold the lock for hours. Four new tests in
+tests/linux-gate.bats (hung container, native check, kcov, coverage.py; the docker, gitleaks,
+coverage.sh stubs exec a sleep) and one in tests/coverage-sh.bats, before the change. Each hang
+test waited out its 60-second sleep and then passed the gate:
+
+  1..6
+  ok 1 FULL=1: kcov's suites get the same time limit (BATS_TEST_TIMEOUT to tools/coverage.sh)
+  ok 2 every bats test in the container has a time limit (300s; LINUX_GATE_TEST_TIMEOUT), so a hang can't hold the lock
+  not ok 3 an overall time limit (LINUX_GATE_TIMEOUT): a hung container is killed by its name, a timeout line, the gate fails
+  # (in test file tests/linux-gate.bats, line 296)
+  #   `[ "$status" -eq 1 ]' failed
+  not ok 4 the time limit covers the native checks: a hung gitleaks stops the gate, and nothing after it starts
+  # (in test file tests/linux-gate.bats, line 308)
+  #   `[ "$status" -eq 1 ]' failed
+  not ok 5 FULL=1: the time limit covers kcov (its container named and killed) and coverage.py (killed)
+  # (in test file tests/linux-gate.bats, line 319)
+  #   `[ "$status" -eq 1 ]' failed
+  not ok 6 LINUX_GATE_TIMEOUT must be a whole number of seconds, at least 1 (64, nothing runs)
+  # (in test file tests/linux-gate.bats, line 338)
+  #   `[ "$status" -eq 64 ] || { echo "accepted: '$bad'" >&2; return 1; }' failed
+  # accepted: '0'
+  1..1
+  not ok 1 KCOV_NAME, when set, names the kcov container (so tools/linux-gate.sh can kill it); unset, no name
+  # (in test file tests/coverage-sh.bats, line 74)
+  #   `grep -A1 -x -- '--name' "$DOCKER_ARGS" | grep -qx gate-kcov' failed
+
+After: LINUX_GATE_TIMEOUT (seconds, default 7200; a bad value is 64) bounds the whole run: every
+step after the clone runs under `timeout` with what is left. The gate's containers are named
+(crewkit-linux-gate-<run>, -kcov through coverage.sh's new KCOV_NAME, -covpy) and killed by
+name at the limit; a `timeout STEP` line goes to summary.txt, no further step starts (so each
+shows as missing), and the gate fails with timeout(STEP). The floors got a hang test too.
+tests/linux-gate.bats 26/26 ok, tests/coverage-sh.bats 7/7 ok.
+
+6. The images (LOW 6). The gate ran an undocumented `${IMAGE:-crewkit-ubuntu}` with docker's
+default pull policy, so a missing local image would be pulled from a public registry by its
+bare name. The new test before the change:
+
+  1..1
+  not ok 1 the images are the local builds: --pull never, no IMAGE override, kcov's image checked before coverage.sh
+  # (in test file tests/linux-gate.bats, line 113)
+  #   `[[ $(first_run) == *" --pull never "*" crewkit-ubuntu bash /run.sh" ]]' failed
+
+After: --pull never on the gate's two docker runs, no IMAGE override, and `docker image inspect
+crewkit-kcov` before tools/coverage.sh (a missing image fails the kcov step, nothing pulled).
+Deferred: a dated apt snapshot for the ubuntu images and a recipe-hash label checked before a
+run; both need the images rebuilt. tests/linux-gate.bats 27/27 ok.
+
+8. mutate.py and links (LOW 8). Links were copied verbatim. With a target that is an absolute
+link into the repo, each mutant was written through the link into the REAL file (and restored
+after); an absolute link into the repo made the suite run the real, unmutated file; a link out
+of the tree was accepted. The four new tests in tests/test_mutate.py before the change
+(tracebacks trimmed):
+
+  ...FF...FF......
+  ======================================================================
+  FAIL: test_a_link_that_leaves_the_tree_is_refused (tests.test_mutate.Mutate.test_a_link_that_leaves_the_tree_is_refused) (dest='../outside.sh')
+  ----------------------------------------------------------------------
+  Traceback (most recent call last):
+  AssertionError: 0 != 1 : t.sh:
+    killed       bound removed
+    all 1 mutants killed
+
+
+  ======================================================================
+  FAIL: test_a_link_that_leaves_the_tree_is_refused (tests.test_mutate.Mutate.test_a_link_that_leaves_the_tree_is_refused) (dest='/etc/hosts')
+  ----------------------------------------------------------------------
+  Traceback (most recent call last):
+  AssertionError: 0 != 1 : t.sh:
+    killed       bound removed
+    all 1 mutants killed
+
+
+  ======================================================================
+  FAIL: test_a_target_that_is_a_symlink_is_refused (tests.test_mutate.Mutate.test_a_target_that_is_a_symlink_is_refused)
+  ----------------------------------------------------------------------
+  Traceback (most recent call last):
+  AssertionError: 'symlink' not found in 'link.sh:\n  SURVIVED     bound removed\n  a mutant survived, did not apply or was invalid\n'
+
+  ======================================================================
+  FAIL: test_an_absolute_link_into_the_repo_points_into_the_copy (tests.test_mutate.Mutate.test_an_absolute_link_into_the_repo_points_into_the_copy)
+  ----------------------------------------------------------------------
+  Traceback (most recent call last):
+  AssertionError: 1 != 0 : t.sh:
+    SURVIVED     bound removed
+    a mutant survived, did not apply or was invalid
+
+
+  ----------------------------------------------------------------------
+  Ran 15 tests in 2.993s
+
+  FAILED (failures=4)
+
+After: a target that is a link is refused; a relative link stays as it is when it stays in the
+tree; an absolute link into the repo points at the same file in the copy; a link that leaves the
+tree (either kind) refuses the run. tests.test_mutate 15/15 ok.
+
+7 and 10. The heavy lock (LOW 7) and its untested lines (LOW 10). The default lock came from
+$HOME, so HOME= pointed the check at any lock the process held. Five new tests in
+tests/test_heavy_lock.py before the change; four passed at once (the code was right and the
+tests were missing: another file's descriptor, the gate token with /.dockerenv faked either way,
+in-process so it also runs inside the gate's container, and mutate.sh refusing before it touches
+git); their mutants are the proof they bite:
+
+  test_a_descriptor_on_another_file_isnt_the_lock (tests.test_heavy_lock.HeavyLock.test_a_descriptor_on_another_file_isnt_the_lock) ... ok
+  test_mutate_check_workflows_refuses_without_the_lock_and_runs_nothing (tests.test_heavy_lock.HeavyLock.test_mutate_check_workflows_refuses_without_the_lock_and_runs_nothing) ... ok
+  test_mutate_sh_refuses_before_anything_else (tests.test_heavy_lock.HeavyLock.test_mutate_sh_refuses_before_anything_else) ... ok
+  test_mutate_sh_refuses_without_the_lock_and_runs_nothing (tests.test_heavy_lock.HeavyLock.test_mutate_sh_refuses_without_the_lock_and_runs_nothing) ... ok
+  test_no_lock_file_at_all_is_refused (tests.test_heavy_lock.HeavyLock.test_no_lock_file_at_all_is_refused) ... ok
+  test_the_check_passes_with_the_lock_and_refuses_without (tests.test_heavy_lock.HeavyLock.test_the_check_passes_with_the_lock_and_refuses_without) ... ok
+  test_the_default_lock_is_in_the_users_home_from_the_password_database_not_HOME (tests.test_heavy_lock.HeavyLock.test_the_default_lock_is_in_the_users_home_from_the_password_database_not_HOME) ... FAIL
+  test_the_gate_token_counts_only_inside_a_container (tests.test_heavy_lock.HeavyLock.test_the_gate_token_counts_only_inside_a_container) ... ok
+
+  ======================================================================
+  FAIL: test_the_default_lock_is_in_the_users_home_from_the_password_database_not_HOME (tests.test_heavy_lock.HeavyLock.test_the_default_lock_is_in_the_users_home_from_the_password_database_not_HOME)
+  ----------------------------------------------------------------------
+  Traceback (most recent call last):
+      self.assertEqual(r.returncode, 1, r.stderr)
+  AssertionError: 0 != 1 :
+
+  ----------------------------------------------------------------------
+  Ran 8 tests in 0.347s
+
+  FAILED (failures=1)
+
+After: the default lock's home comes from pwd.getpwuid (no entry for the uid: no default, so
+refused); the docstring and docs/testing.md say plainly that the check is advisory (the
+environment can forge CREWKIT_HEAVY_LOCK, the CI pair and the gate's token, and a lock file
+recreated after the check isn't noticed). tests.test_heavy_lock 8/8 and tests.test_mutate 15/15 ok.
+
+9, continued. The likely survivors the review listed, kcov, coverage-py or floors dropped from
+the expected steps, are killed by the time-limit tests: after a timeout no further step starts,
+so each later step must be named missing.

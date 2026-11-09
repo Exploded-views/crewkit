@@ -122,6 +122,69 @@ file() { # file PATH KEY: VALUE lines...
   [ "$(printf '%s\n' "$output" | sort | tr '\n' ' ')" = "high_risk_areas.auth.paths high_risk_areas.billing.paths high_risk_areas.billing.why " ]
 }
 
+@test "nodes.* is user-only: read from ~/.claude/crewkit.md, never from the project's files" {
+  file "$HOME/.claude/crewkit.md" "nodes.lab.lead_pane: w1:p1" "nodes.lab.host: agent-host"
+  file "$PROJ/.claude/crewkit.md" "nodes.lab.lead_pane: " "nodes.lab.host: evil-host" "nodes.evil.host: evil"
+  lookup crew_setting nodes.lab.lead_pane none; [ "$output" = w1:p1 ]
+  lookup crew_setting nodes.lab.host none; [ "$output" = agent-host ]
+  lookup crew_setting nodes.evil.host none; [ "$output" = none ]
+  file "$PROJ/.claude/crewkit.local.md" "nodes.lab.lead_pane: " "nodes.lab.bridge: lead"
+  lookup crew_setting nodes.lab.lead_pane none; [ "$output" = w1:p1 ]
+  lookup crew_setting nodes.lab.bridge none; [ "$output" = none ]
+  CREWKIT_NODES_LAB_HOST=env-host lookup crew_setting nodes.lab.host none; [ "$output" = agent-host ]
+  # With no user file, the project's last file isn't taken for it.
+  rm "$HOME/.claude/crewkit.md"
+  lookup crew_setting nodes.lab.host none; [ "$output" = none ]
+  lookup crew_setting nodes.lab.bridge none; [ "$output" = none ]
+  # Other keys still come from the project first.
+  file "$HOME/.claude/crewkit.md" "repo: user/r" "nodes.lab.host: agent-host"
+  file "$PROJ/.claude/crewkit.md" "repo: shared/r"
+  lookup crew_setting repo none; [ "$output" = shared/r ]
+}
+
+@test "crew_keys lists a user-only key only from ~/.claude/crewkit.md" {
+  file "$HOME/.claude/crewkit.md" "nodes.lab.lead_pane: w1:p1"
+  file "$PROJ/.claude/crewkit.md" "nodes.evil.lead_pane: x" "nodes.lab.host: h" "repo: x/y"
+  file "$PROJ/.claude/crewkit.local.md" "nodes.other.lead_pane: y"
+  lookup crew_keys nodes.
+  [ "$status" -eq 0 ]
+  [ "$output" = nodes.lab.lead_pane ]
+  lookup crew_keys repo
+  [ "$output" = repo ]
+}
+
+@test "registry.* is read only from the user file" {
+  file "$HOME/.claude/crewkit.md" "registry.remote: good" "registry.ssh_key: ~/.ssh/deploy"
+  file "$PROJ/.claude/crewkit.md" "registry.remote: evil" "registry.dir: /evil"
+  file "$PROJ/.claude/crewkit.local.md" "registry.ssh_key: /evil"
+  CREWKIT_REGISTRY_REMOTE=env lookup crew_setting registry.remote none; [ "$output" = good ]
+  lookup crew_setting registry.dir none; [ "$output" = none ]
+  lookup crew_setting registry.ssh_key none; [ "$output" = "~/.ssh/deploy" ]
+  rm "$HOME/.claude/crewkit.md"
+  lookup crew_setting registry.remote none; [ "$output" = none ]
+}
+
+@test "limits.* is read only from the user file" {
+  file "$HOME/.claude/crewkit.md" "limits.max_sessions: 6" "limits.reserve_mem_mb: 2048"
+  file "$PROJ/.claude/crewkit.md" "limits.max_sessions: 99" "limits.reserve_cpu_pct: 1"
+  file "$PROJ/.claude/crewkit.local.md" "limits.reserve_disk_gb: 0"
+  CREWKIT_LIMITS_MAX_SESSIONS=env lookup crew_setting limits.max_sessions none; [ "$output" = 6 ]
+  lookup crew_setting limits.reserve_mem_mb none; [ "$output" = 2048 ]
+  lookup crew_setting limits.reserve_cpu_pct none; [ "$output" = none ]
+  lookup crew_setting limits.reserve_disk_gb none; [ "$output" = none ]
+  rm "$HOME/.claude/crewkit.md"
+  lookup crew_setting limits.max_sessions none; [ "$output" = none ]
+}
+
+@test "crew_keys lists registry.* and limits.* only from the user file" {
+  file "$HOME/.claude/crewkit.md" "registry.remote: r" "limits.max_sessions: 4"
+  file "$PROJ/.claude/crewkit.md" "registry.dir: /evil" "limits.reserve_mem_mb: 1" "repo: x/y"
+  lookup crew_keys registry.
+  [ "$output" = registry.remote ]
+  lookup crew_keys limits.
+  [ "$output" = limits.max_sessions ]
+}
+
 @test "a settings file is never sourced or executed" {
   file "$PROJ/.claude/crewkit.md" 'repo: $(touch '"$BATS_TEST_TMPDIR"'/pwned)' "x: \`touch $BATS_TEST_TMPDIR/pwned2\`"
   lookup crew_setting repo
@@ -312,4 +375,25 @@ file() { # file PATH KEY: VALUE lines...
   [ "$output" = "file
 file
 file" ]
+}
+
+@test "every user-only family from both sides of a merge is read only from the user file" {
+  # nodes.*, registry.* and limits.* (main) and push_gate.* (this branch): a list conflict resolved
+  # as the union must keep each one; and the four copies of settings.sh stay identical.
+  for k in nodes.lab.host registry.remote limits.max_sessions push_gate.root heavy_lock; do
+    env=CREWKIT_$(tr '[:lower:].' '[:upper:]_' <<<"$k")
+    file "$HOME/.claude/crewkit.md" "$k: good"
+    file "$PROJ/.claude/crewkit.md" "$k: evil"
+    file "$PROJ/.claude/crewkit.local.md" "$k: evil"
+    export "$env=evil"
+    lookup crew_setting "$k" none
+    unset "$env"
+    [ "$output" = good ] || { echo "$k: $output" >&2; return 1; }
+    rm "$HOME/.claude/crewkit.md"
+    lookup crew_setting "$k" none
+    [ "$output" = none ] || { echo "$k without the user file: $output" >&2; return 1; }
+  done
+  for c in crew-lanes crew-nodes crew-orchestrator; do
+    cmp "$REPO/lib/settings.sh" "$REPO/plugins/$c/lib/settings.sh"
+  done
 }

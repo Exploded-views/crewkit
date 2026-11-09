@@ -1,0 +1,15 @@
+{
+  "target": "tools/coverage-py.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/coverage-py-sh.bats"
+  ],
+  "mutants": [
+    {
+      "name": "coverage-py doesn't export the scale",
+      "old": "export CREWKIT_TEST_TIME_SCALE=${CREWKIT_TEST_TIME_SCALE:-10}\n",
+      "new": ""
+    }
+  ]
+}
