@@ -50,6 +50,18 @@ class CheckSettings(unittest.TestCase):
         errs = self.check({"plugins/p/bin/x": 'v=$(crew_setting reqired_check ci-ok)\n'})
         self.assertTrue(any("reqired_check" in e for e in errs), errs)
 
+    def test_an_undocumented_key_in_libexec_fails(self):
+        errs = self.check({"libexec/crewkit-x": 'v=$(crew_setting registry.nope)\n'})
+        self.assertTrue(any("registry.nope" in e for e in errs), errs)
+
+    def test_an_undocumented_key_in_bin_crewkit_fails(self):
+        errs = self.check({"bin/crewkit": 'v=$(crew_setting registry.nope)\n'})
+        self.assertTrue(any("registry.nope" in e for e in errs), errs)
+
+    def test_documented_keys_in_libexec_and_bin_pass(self):
+        self.assertEqual(self.check({"libexec/crewkit-x": 'v=$(crew_setting repo)\n',
+                                     "bin/crewkit": 'v=$(crew_setting repo)\n'}), [])
+
     def test_a_key_outside_a_documented_prefix_shape_fails(self):
         errs = self.check({"plugins/p/bin/x": 'v=$(crew_setting high_risk_areas.billing.colour)\n'})
         self.assertTrue(any("high_risk_areas.billing.colour" in e for e in errs), errs)
@@ -198,3 +210,24 @@ class CheckCodeKeysUnderEnvOkPrefixes(unittest.TestCase):
 
     def test_a_code_key_under_a_file_only_prefix_needs_no_row(self):
         self.assertEqual(self.check('v=$(crew_setting high_risk_areas.billing.paths "")\n'), [])
+
+
+class CheckUserOnly(unittest.TestCase):
+    """CREW_USER_ONLY (optional) names keys read only from ~/.claude/crewkit.md. Each entry must name
+    a documented key and be file-only too: a user-only key that took CREWKIT_* would let any session
+    redirect it."""
+
+    def check(self, lists):
+        return CheckSettingsClassified().check(lists)
+
+    def test_a_file_only_user_only_entry_passes(self):
+        self.assertEqual(self.check("CREW_FILE_ONLY='repo high_risk_areas.*'\nCREW_ENV_OK='gates.*'\n"
+                                    "CREW_USER_ONLY='high_risk_areas.*'\n"), [])
+
+    def test_a_user_only_entry_that_takes_the_environment_fails(self):
+        errs = self.check("CREW_FILE_ONLY='repo high_risk_areas.*'\nCREW_ENV_OK='gates.*'\nCREW_USER_ONLY='gates.*'\n")
+        self.assertTrue(any("gates.*" in e and "file-only" in e for e in errs), errs)
+
+    def test_a_user_only_entry_matching_no_documented_key_fails(self):
+        errs = self.check("CREW_FILE_ONLY='repo high_risk_areas.*'\nCREW_ENV_OK='gates.*'\nCREW_USER_ONLY='nodes.*'\n")
+        self.assertTrue(any("CREW_USER_ONLY" in e and "nodes.*" in e for e in errs), errs)

@@ -1,0 +1,165 @@
+{
+  "target": "libexec/crewkit-doctor",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-doctor.bats"
+  ],
+  "mutants": [
+    {
+      "name": "FAIL does not set exit 1",
+      "old": "  [[ $1 != FAIL ]] || bad=1\n",
+      "new": "  true\n"
+    },
+    {
+      "name": "a missing required tool is a warn",
+      "old": "  say FAIL tools \"missing:$missing\"",
+      "new": "  say warn tools \"missing:$missing\""
+    },
+    {
+      "name": "a link to another tree is accepted",
+      "old": "[[ -L $link && $(readlink \"$link\") == \"$root/bin/crewkit\" ]]",
+      "new": "[[ -L $link ]]"
+    },
+    {
+      "name": "a pin mismatch is ok",
+      "old": "  if [[ $3 == \"$2\" ]]; then say ok",
+      "new": "  if true; then say ok"
+    },
+    {
+      "name": "a missing plugin is ignored",
+      "old": "    grep -Eq \"\\\"id\\\": *\\\"$p@crewkit\\\"\" <<<\"$listed\" || absent+=\" $p\"\n",
+      "new": "    true\n"
+    },
+    {
+      "name": "the rtk hook is not required",
+      "old": "elif [[ $has == true ]]; then\n  say ok hooks",
+      "new": "elif true; then\n  say ok hooks"
+    },
+    {
+      "name": "a missing SendMessage allow is ok",
+      "old": "  missing) say FAIL sendmessage-allow",
+      "new": "  missing) say ok sendmessage-allow"
+    },
+    {
+      "name": "an unreadable settings file is ok for the allow",
+      "old": "  *) say FAIL sendmessage-allow",
+      "new": "  *) say ok sendmessage-allow"
+    },
+    {
+      "name": "the gate's FAIL lines are ignored",
+      "old": "    [[ $res == FAIL ]] && fails+=",
+      "new": "    false && fails+="
+    },
+    {
+      "name": "the gate's own error is ignored",
+      "old": "  if ((grc > 1)); then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "bad-role is ignored",
+      "old": "    *) badrole+=\" $n\" ;;",
+      "new": "    *) ;;"
+    },
+    {
+      "name": "any this_host node is a hub",
+      "old": "    spoke | '') ;;",
+      "new": "    spoke) ;;\n    '') hubs+=(\"$n\") ;;"
+    },
+    {
+      "name": "no allowlist passes",
+      "old": "  if ((nkeys > 0)) && [[ $allow == '  ' ]]; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "a key outside the allowlist passes",
+      "old": "      [[ $allow == *\" $fpr \"* ]] || findings+=",
+      "new": "      true || findings+="
+    },
+    {
+      "name": "a crewkit marker passes",
+      "old": "      if [[ $lc == *crewkit-* || $lc == *command=*crewkit* ]]; then",
+      "new": "      if false; then"
+    },
+    {
+      "name": "an unreadable key line passes",
+      "old": "      if ! fpr=$(ssh-keygen -lf - <<<\"$line\" 2>/dev/null | awk '{print $2}') || [[ $fpr != SHA256:* ]]; then",
+      "new": "      fpr=$(ssh-keygen -lf - <<<\"$line\" 2>/dev/null | awk '{print $2}')\n      if false; then"
+    },
+    {
+      "name": "authorized_keys2 is not read",
+      "old": "  for f in \"$HOME/.ssh/authorized_keys\" \"$HOME/.ssh/authorized_keys2\"; do",
+      "new": "  for f in \"$HOME/.ssh/authorized_keys\"; do"
+    },
+    {
+      "name": "a running sshd is not noticed",
+      "old": "  elif command -v pgrep >/dev/null && pgrep -x sshd >/dev/null 2>&1; then",
+      "new": "  elif false; then"
+    },
+    {
+      "name": "arguments are accepted",
+      "old": "(($# == 0)) || ck_die 64",
+      "new": "true || ck_die 64"
+    },
+    {
+      "name": "a cert-authority line passes",
+      "old": "      if [[ $lc == *cert-authority* ]]; then",
+      "new": "      if false; then"
+    },
+    {
+      "name": "an unreadable authorized_keys is skipped",
+      "old": "    if [[ ! -f $f || ! -r $f ]]; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "an unsearchable ~/.ssh is skipped",
+      "old": "  if [[ -e $HOME/.ssh || -L $HOME/.ssh ]] && ! [[ -d $HOME/.ssh && -x $HOME/.ssh ]]; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "comment lines are read as keys",
+      "old": "      [[ -n ${line//[[:space:]]/} && ${line#\"${line%%[![:space:]]*}\"} != '#'* ]] || continue",
+      "new": "      [[ -n ${line//[[:space:]]/} ]] || continue"
+    },
+    {
+      "name": "a gate with no output is ok",
+      "old": "  elif [[ -z $gout ]]; then",
+      "new": "  elif false; then"
+    },
+    {
+      "name": "only the first hub's owner keys count",
+      "old": "  for h in \"${hubs[@]}\"; do",
+      "new": "  for h in \"${hubs[0]}\"; do"
+    },
+    {
+      "name": "$HOME is not hidden in a tool's text",
+      "old": "${1//\"$HOME\"/'~'}",
+      "new": "$1"
+    },
+    {
+      "name": "other absolute paths are not hidden in a tool's text",
+      "old": "sed -E 's|(^\\|[[:space:]])/[^[:space:]]*|\\1<path>|g'",
+      "new": "cat"
+    },
+    {
+      "name": "option names are matched case-sensitively",
+      "old": "      lc=${line,,}",
+      "new": "      lc=$line"
+    },
+    {
+      "name": "a ~/.ssh link is not noticed",
+      "old": "  if [[ -e $HOME/.ssh || -L $HOME/.ssh ]] && ! [[ -d $HOME/.ssh && -x $HOME/.ssh ]]; then",
+      "new": "  if [[ -d $HOME/.ssh && ! -x $HOME/.ssh ]]; then"
+    },
+    {
+      "name": "herdr HERDR_VERSION ignored",
+      "old": "    want=${pv:-$want}\n",
+      "new": "    want=$want\n"
+    },
+    {
+      "name": "herdr HERDR_VERSION format unchecked",
+      "old": "  if [[ $v =~ ^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then",
+      "new": "  if true; then"
+    }
+  ]
+}

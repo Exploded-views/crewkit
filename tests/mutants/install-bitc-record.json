@@ -1,0 +1,42 @@
+{
+  "target": "install.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "--filter",
+    "bitc: (the installed binary.s sha256 is recorded|a re-install records|a failed version check leaves|the record and a new)",
+    "tests/install.bats"
+  ],
+  "mutants": [
+    {
+      "name": "the bitc record is not written (an empty file)",
+      "old": "  sha256 \"$bin/.bitc.new\" > \"$share/.bitc.sha256.new\"",
+      "new": "  : > \"$share/.bitc.sha256.new\""
+    },
+    {
+      "name": "the bitc record is never moved into place",
+      "old": "  mv -f \"$share/.bitc.sha256.new\" \"$share/bitc.sha256\"\n",
+      "new": ""
+    },
+    {
+      "name": "the bitc record hashes the old binary, not the new one",
+      "old": "sha256 \"$bin/.bitc.new\" > \"$share/.bitc.sha256.new\"",
+      "new": "sha256 \"$bin/bitc\" > \"$share/.bitc.sha256.new\""
+    },
+    {
+      "name": "the bitc record is written before the version check",
+      "old": "  local reported\n  reported=$(\"$bin/.bitc.new\" version --json 2>&1) || reported=\"\"\n",
+      "new": "  mkdir -p \"$HOME/.local/share/crewkit\"; sha256 \"$bin/.bitc.new\" > \"$HOME/.local/share/crewkit/bitc.sha256\"\n  local reported\n  reported=$(\"$bin/.bitc.new\" version --json 2>&1) || reported=\"\"\n"
+    },
+    {
+      "name": "the bitc record's mode is left to the umask",
+      "old": "  chmod 0644 \"$share/.bitc.sha256.new\"\n",
+      "new": ""
+    },
+    {
+      "name": "a new ~/.local/bin gets the umask's mode",
+      "old": "  (umask 022; mkdir -p \"$bin\")",
+      "new": "  mkdir -p \"$bin\""
+    }
+  ]
+}

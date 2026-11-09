@@ -1,0 +1,20 @@
+{
+  "target": "tests/memory-notices-helpers.bash",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/memory-notices.bats"
+  ],
+  "mutants": [
+    {
+      "name": "scale ignored in group_empty",
+      "old": "  for _ in $(seq 1 \"$(polls)\"); do\n    n=$(ps",
+      "new": "  for _ in $(seq 1 15); do\n    n=$(ps"
+    },
+    {
+      "name": "scale ignored in the speed bound",
+      "old": "ms_bound() { echo $(($1 * ${TS:-1})); }",
+      "new": "ms_bound() { echo \"$1\"; }"
+    }
+  ]
+}

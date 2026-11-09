@@ -1,0 +1,5 @@
+# The push gate's own gitleaks config: push-gate.sh hook passes it with --config, so a
+# repository's .gitleaks.toml, $GITLEAKS_CONFIG or $GITLEAKS_CONFIG_TOML never apply. It is
+# gitleaks's default rules and nothing else. Installed with the gate.
+[extend]
+useDefault = true

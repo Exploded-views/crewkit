@@ -1,0 +1,23 @@
+# RED: fix round 2 tests before install.sh changed (bats tests/install.bats --filter on the new tests).
+1..7
+not ok 1 guard: a restore that fails keeps the backup, names it, and does not claim a restore
+# (in test file tests/install.bats, line 563)
+#   `[[ $output == *"$HOME/.claude/settings.json.crewkit-before"* ]]' failed
+not ok 2 guard: a backup that can't be made stops the step before the command runs
+# (in test file tests/install.bats, line 575)
+#   `[ "$status" -eq 1 ]' failed
+not ok 3 guard: a backup left by an earlier run is never overwritten or deleted (herdr)
+# (in test file tests/install.bats, line 587)
+#   `[ "$status" -eq 1 ]' failed
+not ok 4 guard: a backup left by an earlier run is never deleted when settings.json is missing (rtk)
+# (in test file tests/install.bats, line 598)
+#   `[ "$status" -eq 1 ]' failed
+not ok 5 herdr: a 'directory not found' without the 'at <path>' is not the benign case
+# (in test file tests/install.bats, line 606)
+#   `[ "$status" -eq 1 ]' failed
+not ok 6 guard: the dropped-hook message names the command, not a shell function
+# (in test file tests/install.bats, line 614)
+#   `[[ $output == *"herdr integration install claude dropped"* ]]' failed
+not ok 7 herdr: a failed version check names herdr, not the asset file
+# (in test file tests/install.bats, line 620)
+#   `[[ $output == *"downloaded herdr reports '0.9.4'"* || $output == *"downloaded herdr reports 'herdr 0.9.4' to herdr --version"* ]]' failed

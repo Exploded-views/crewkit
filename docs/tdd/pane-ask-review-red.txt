@@ -1,0 +1,53 @@
+# The pane-ask PR's review fixes: the new tests, run against ca54304 (pane-ask and lib/settings.sh unchanged;
+# tests/stubs/herdr extended so `agent get` can resolve a name to another pane, via $PSTUB/agents).
+# Paths are replaced with <repo>. bats in a debian:bookworm-slim container (bats 1.8.2).
+# All 12 new bats tests fail. In "a bridge that is itself a lead pane", the first case (the bridge
+# typed as a lead) already passed; it fails on the second, resolved case (line 219). Finding 1: tests 14-18, finding 3: tests 19 and 49, finding 2: tests 20, 74, 75,
+# finding 5: test 40, finding 6: test 56.
+
+1..97
+not ok 14 a lead pane reached by its agent name is refused (65): the pane herdr resolves is checked
+# (in test file tests/pane-ask.bats, line 177)
+#   `[ "$status" -eq 65 ]' failed
+not ok 15 a lead listed by agent name, reached by its pane id, is refused (65)
+# (in test file tests/pane-ask.bats, line 187)
+#   `[ "$status" -eq 65 ]' failed
+not ok 16 the lead-pane check ignores case, typed or resolved
+# (in test file tests/pane-ask.bats, line 195)
+#   `[ "$status" -eq 65 ]' failed
+not ok 17 with --host, a target that resolves to any node's lead pane is refused (65)
+# (in test file tests/pane-ask.bats, line 208)
+#   `[ "$status" -eq 65 ]' failed
+not ok 18 a bridge that is itself a lead pane is refused (65), typed or resolved
+# (in test file tests/pane-ask.bats, line 219)
+#   `[ "$status" -eq 65 ]' failed
+not ok 19 a space-separated lead list is several entries, not one
+# (in test file tests/pane-ask.bats, line 226)
+#   `[ "$status" -eq 65 ]' failed
+not ok 20 a project's settings can't change nodes.*: its lead list, host and bridge are ignored
+# (in test file tests/pane-ask.bats, line 240)
+#   `[ "$status" -eq 65 ]' failed
+not ok 40 noise on stderr before herdr's error JSON keeps exit 40 and 75
+# (in test file tests/pane-ask.bats, line 423)
+#   `[ "$status" -eq 40 ]' failed
+not ok 49 a space-separated nodes.idle_statuses is several statuses
+# (in test file tests/pane-ask.bats, line 508)
+#   `[ "$status" -eq 0 ]' failed
+not ok 56 a backslash in nodes.<name>.herdr is a config error (78), before anything runs
+# (in test file tests/pane-ask.bats, line 567)
+#   `[ "$status" -eq 78 ]' failed
+not ok 74 nodes.* is user-only: read from ~/.claude/crewkit.md, never from the project's files
+# (in test file tests/settings.bats, line 128)
+#   `lookup crew_setting nodes.lab.lead_pane none; [ "$output" = w1:p1 ]' failed
+not ok 75 crew_keys lists a user-only key only from ~/.claude/crewkit.md
+# (in test file tests/settings.bats, line 147)
+#   `[ "$output" = nodes.lab.lead_pane ]' failed
+
+# tools/lint-skills.py, CREW_USER_ONLY: 2 of the 3 new unit tests fail (the lint ignores the list).
+
+FAIL: test_a_user_only_entry_matching_no_documented_key_fails (tests.test_lint_settings.CheckUserOnly.test_a_user_only_entry_matching_no_documented_key_fails)
+AssertionError: False is not true : []
+FAIL: test_a_user_only_entry_that_takes_the_environment_fails (tests.test_lint_settings.CheckUserOnly.test_a_user_only_entry_that_takes_the_environment_fails)
+AssertionError: False is not true : []
+Ran 31 tests in 0.264s
+FAILED (failures=2)

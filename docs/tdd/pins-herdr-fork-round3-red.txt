@@ -1,0 +1,45 @@
+# RED, round 3: tests/crewkit-doctor.bats against the unchanged libexec/crewkit-doctor, with the
+# herdr stubs printing what the fork binary prints (`herdr 0.9.5`, the pin's HERDR_VERSION) and
+# four new pin-herdr tests (fork pin ok; tag line under the fork pin FAIL; no HERDR_VERSION keeps
+# the tag rule; malformed HERDR_VERSION FAIL naming the pin file).
+# Run: .cache/bats-v1.14.0/bin/bats tests/crewkit-doctor.bats
+# (macOS with GNU sed/grep/cut/mktemp/install first on PATH.)
+1..38
+not ok 1 a fully installed node is all ok (exit 0), in the fixed order
+not ok 2 each fault is FAIL on its own check and sets exit 1
+ok 3 a missing tool is FAIL tools and names the tool
+not ok 4 a missing claude is a warn on tools and on plugins, not a FAIL
+ok 5 a cli link to another tree is FAIL cli
+ok 6 a pin mismatch names the tool, the wanted and the found version, no path
+not ok 7 pin-herdr: the fork pin (tag v0.9.5-ev.2, HERDR_VERSION=0.9.5) is ok for the line the fork binary prints
+not ok 8 pin-herdr: under the fork pin the tag as a version line is a FAIL
+ok 9 pin-herdr: a pin without HERDR_VERSION wants the tag without its v
+not ok 10 pin-herdr: a malformed HERDR_VERSION is a FAIL naming the pin file, not a crash
+ok 11 a broken settings.json is FAIL hooks and FAIL sendmessage-allow, never a crash
+not ok 12 doctor writes nothing: settings.json is byte for byte as it was
+ok 13 the push gate's lines are folded in, and its FAIL is ours
+ok 14 a push gate that errors (exit 2) is FAIL push-gate
+ok 15 a gate that prints nothing and exits 0 is FAIL, not zero checks ok
+ok 16 a path in a gate's detail is shown under ~, and no other absolute path survives
+not ok 17 no push gate in the tree is a warn, not a FAIL
+ok 18 arguments are refused: --json and NODE are not in this cut (64, nothing on stdout)
+not ok 19 hub-inbound is ok (not a hub) with no this_host node, a spoke, or no role
+ok 20 any other role value is FAIL hub-inbound bad-role
+not ok 21 a hub with no authorized_keys file, or an empty one, is ok
+not ok 22 a hub whose only keys are the owner's pinned ones is ok
+ok 23 keys present with no allowlist is FAIL hub-inbound no-allowlist
+ok 24 a plain key that is not in the allowlist is FAIL, naming file, line and fingerprint, never the key
+not ok 25 the allowlist may hold several fingerprints, comma separated
+ok 26 a crewkit marker or a command naming crewkit fails whatever the fingerprint
+ok 27 option names are matched whatever their case, as sshd does
+ok 28 a ~/.ssh that is a link to a directory doctor cannot search is FAIL
+ok 29 a line that cannot be read as a key fails closed
+not ok 30 comments and blank lines are skipped, even a comment holding a key
+ok 31 authorized_keys2 is read too
+ok 32 a cert-authority line is FAIL: it admits any certificate its key signs
+ok 33 an authorized_keys doctor cannot read is FAIL, not a clean hub
+ok 34 a ~/.ssh doctor cannot search is FAIL, not a clean hub
+not ok 35 with two hub nodes the allowlist is the union of both
+not ok 36 a hub that is ok says sshd's state is unknown, never that it is off
+not ok 37 a running sshd on a hub is a warn, not a FAIL
+not ok 38 owner_keys and role are read from the user file only

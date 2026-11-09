@@ -13,10 +13,16 @@
   killed       ERR trap removed
   killed       earlier backup overwritten
   killed       bootstrap flags echoed
-  killed       bitc fetched on macOS
+  killed       bitc checksums.txt cross-check skipped
+  killed       bitc version not checked
+  killed       bitc version prefix accepted
+  killed       bitc release flag not checked
+  killed       bitc replaced before the version check
   killed       bootstrap pause becomes a failure
-  killed       bootstrap failure ignored
   killed       edited rules not backed up
+  killed       pre-release suffix allows any character
+  killed       pin checks follow the locale
+  killed       version check reads every line
   killed       SHA256SUMS cross-check skipped
   killed       bootstrap not given --prebuilt-dir
   killed       release layout unchecked
@@ -25,5 +31,43 @@
   killed       current rules fragment rewritten
   killed       dry run queries claude
   killed       usage errors exit 0
+  killed       bootstrap failure ignored
+  killed       memsync version not checked
+  killed       version prefix accepted
+  killed       herdr sha compare skipped
+  killed       herdr version not checked
+  killed       herdr replaced before the version check
+  killed       herdr .sha256 cross-check skipped
+  killed       herdr archive unpacked without safe_extract
+  killed       herdr binary presence unchecked
+  killed       herdr HERDR_VERSION ignored
+  killed       herdr HERDR_VERSION not read
+  killed       herdr HERDR_VERSION format unchecked
+  killed       herdr claude integration not installed
+  killed       herdr other integrations not installed
+  killed       herdr integration failure always a note
+  killed       herdr integration hooks unguarded
+  killed       hook backup failure unchecked
+  killed       hook restore failure unchecked
+  killed       stale hook backup overwritten
+  killed       hook backup left behind
+  killed       rtk version not checked
+  killed       rtk init without --auto-patch
+  killed       cursor-agent integration named after the command
+  killed       rtk checksums.txt cross-check skipped
+  killed       rtk binary presence unchecked
+  killed       rtk hooks not compared after init
+  killed       rtk backup not restored
+  killed       rtk init failure ignored
+  killed       rtk init re-run guard removed
+  killed       rtk invalid settings.json not refused
+  killed       rtk jq presence unchecked
+  killed       crew-nodes not installed
+  killed       plugins step fails without claude
+  killed       memsync pause skipped (bootstrap runs anyway)
+  killed       paused exit 3 dropped (exits 0)
+  killed       dry-run pause note missing
+  killed       bare script name left unrunnable
+  killed       later steps not run after a pause
   killed       pin file sourced
-mutate: all 28 mutants killed
+mutate: all 66 mutants killed

@@ -1,0 +1,16 @@
+Mutant results for the registry holder (tests/mutants/crewkit-holder.json, 43 mutants, and
+crewkit-holder-ntfy.json, 3 mutants), run under the heavy lock on the final head.
+
+The 43-mutant file does not fit one heavy-lock slot (a mutant costs about 7 minutes on a loaded
+host), so it ran in chunks of the same spec. Two mutants survived the first pass and each was
+fixed test-first (a bats test, then a manual check that the test fails against the mutant):
+  secrets path not validated       -> f2809e9 (a secrets dir with a metacharacter, all secrets present)
+  nodes secret lines not validated -> 16823c3 (bad lines whose report key exists)
+Nine mutants hung the suite when mutated (a daemon left running, a TERM-ignoring daemon); those
+ran with the suite wrapped in `timeout 600`, where a hang counts as a kill.
+
+crewkit-holder.json: all 43 killed (chunks: 8 + 9 + 6 + 3 + 5 + 6 + 3 + 3; the two
+survivors above are among them, after their fixes).
+crewkit-holder-ntfy.json: all 3 killed (deny-all dropped, listens on every address, no auth
+database).
+holder-image-test.sh: "holder-image-test: all passed" on 13168b1 (build, layer scan, smoke run).

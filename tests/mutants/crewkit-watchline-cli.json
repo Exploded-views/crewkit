@@ -1,0 +1,55 @@
+{
+  "target": "libexec/crewkit-watchline",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-watchline.bats"
+  ],
+  "mutants": [
+    {
+      "name": "repo takes any number of fields",
+      "old": "((${#pos[@]} == 5)) || usage",
+      "new": "true"
+    },
+    {
+      "name": "an author without text is fine",
+      "old": "[[ -z $login ]] || usage",
+      "new": "true"
+    },
+    {
+      "name": "dropped lines are not counted",
+      "old": "dropped=$((dropped + 1))",
+      "new": "dropped=0"
+    },
+    {
+      "name": "the last line without a newline is lost",
+      "old": " || [[ -n $line ]]",
+      "new": ""
+    },
+    {
+      "name": "the text option is ignored",
+      "old": "have_text=1; shift 2",
+      "new": "shift 2"
+    },
+    {
+      "name": "an unknown option is a field",
+      "old": "--*) usage ;;",
+      "new": "--*) pos+=(\"$1\"); shift ;;"
+    },
+    {
+      "name": "check ignores the repositories",
+      "old": "ck_wl_line_ok \"$line\" \"$@\"",
+      "new": "ck_wl_line_ok \"$line\""
+    },
+    {
+      "name": "check without a repository is allowed",
+      "old": "(($# >= 1)) || usage",
+      "new": "true"
+    },
+    {
+      "name": "repository argument not checked",
+      "old": "ck_wl_repo_arg_ok \"$repo\" || usage",
+      "new": "true"
+    }
+  ]
+}

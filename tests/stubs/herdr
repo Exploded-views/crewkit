@@ -1,0 +1,297 @@
+#!/usr/bin/env bash
+# Stub herdr for the pane-ask tests: the agent commands pane-ask uses, with herdr's JSON on
+# stdout (in herdr 0.9.5's shape: tests/fixtures/herdr/agent-schema.json, checked by
+# tests/herdr-stub.bats), its errors as JSON on stderr with exit 1, and exit 2 for a syntax error. State lives
+# in $PSTUB; every call is appended to $PSTUB/herdr.log (one line per call, a leading
+# `--machine LABEL` included).
+#
+#   agent get T        agent_status from $PSTUB/status: each call takes the first line, and the
+#                      last line repeats once it is the only one
+#   agent wait T ...   takes lines from $PSTUB/status until a settled one (idle, done,
+#                      blocked) and returns it; none left but busy ones: a timeout error
+#   agent prompt T TEXT --wait --timeout MS
+#                      saves TEXT byte for byte in $PSTUB/sent.<n>, appends "> TEXT" and then
+#                      $PSTUB/reply (if any) to the screen ($PSTUB/screen), and returns the
+#                      agent settled at $PSTUB/prompt_status (default idle)
+#   agent read T [--source S] [--lines N]
+#                      the last N lines of the screen, as text
+#   agent list         every agent in $PSTUB/agents, idle
+#
+# $PSTUB/agents maps a target to what herdr resolves it to, one "TARGET PANE_ID NAME" line each
+# (NAME is the agent's name, or - for none). As in herdr, "agent" is the agent's kind (always
+# claude here) and "name" its name, null until it is named. A target not listed resolves to
+# pane TARGET with no name.
+#
+# Toggles (files in $PSTUB): prompt_error holds an error code for agent prompt (timeout,
+# agent_prompt_stalled: sent, then the error; agent_blocked: nothing sent); get_fail (agent get
+# fails); old (agent prompt rejects --wait as an unknown argument, exit 2).
+# Portable to bash 3.2: the fake remote's PATH may find macOS's stock bash.
+#
+# Hosts and sessions (crewkit front door): when $PSTUB/herdr/ exists the stub is a per-host,
+# per-session herdr instead, and the pane-ask behaviour above is not used. State lives in
+# $PSTUB/herdr/<host>/<session>/ with <host> = ${CK_HOST:-local}: panes.json (an array of
+# panes: pane_id, workspace_id, tab_id, agent = kind or null, name, agent_status, tokens, cwd),
+# and the marker files default (the host's default session), stopped (server not running),
+# start_not_ready (agent start fails with agent_not_ready), list_fail (agent list and pane list fail
+# with an internal error although the server runs; a non-empty list_fail is the stderr instead); $PSTUB/herdr/<host>/session_list_fail makes
+# session list fail (its content, if any, is the stderr). Panes carry their tokens in pane list too (PaneInfo has tokens in herdr 0.9.5). Test helpers: herdr_session and
+# herdr_agent (tests/crewkit-helpers.bash). The global `--session S` may stand anywhere in argv;
+# without it the host's default session answers. Every call is logged to $PSTUB/herdr.log as
+# "[host/session] ARGS". The commands:
+#   session list --json     {"sessions":[{name,default,running,socket_path,session_dir}]}
+#   session attach S        prints "attached S"
+#   status --json           {"client":{version,protocol},"server":{running,version,protocol}}
+#   agent list              as above, with each agent's tokens (like herdr, no --json)
+#   pane list               every pane, agent = its kind or null
+#   pane report-metadata P --source S --token K=V ... [--clear-token K]
+#                           at most 16 tokens a request and 32 a pane, values at most 80 characters
+#   workspace create --label L --cwd D --no-focus
+#   agent start NAME --kind K --pane P [-- ARGS]    agent focus T
+#   integration install claude | integration status
+# Shapes checked against herdr 0.9.5 (field names and types, read-only): status --json, session
+# list --json, agent list and pane list. The replies to report-metadata, workspace create, agent
+# start, agent focus and integration are the stub's own best guess, not checked against herdr.
+
+if [ -d "$PSTUB/herdr" ]; then
+  host=${CK_HOST:-local}
+  session=""
+  args=()
+  while [ $# -gt 0 ]; do
+    if [ "$1" = --session ]; then session=${2:-}; shift 2 || shift; else args+=("$1"); shift; fi
+  done
+  set -- ${args[@]+"${args[@]}"}
+  hroot=$PSTUB/herdr/$host
+  if [ -z "$session" ]; then
+    for d in "$hroot"/*/; do
+      [ -e "${d}default" ] && session=$(basename "$d") && break
+    done
+    session=${session:-default}
+  fi
+  sdir=$hroot/$session
+  echo "[$host/$session] $*" >> "$PSTUB/herdr.log"
+  herr() { # herr CODE
+    printf '{"id":"cli:herdr","error":{"code":"%s","message":"stub %s"}}\n' "$1" "$1" >&2
+    exit 1
+  }
+  running() { [ -d "$sdir" ] && [ ! -e "$sdir/stopped" ]; }
+  panes() { cat "$sdir/panes.json" 2>/dev/null || echo '[]'; }
+  save() { printf '%s\n' "$1" > "$sdir/panes.json.new" && mv "$sdir/panes.json.new" "$sdir/panes.json"; }
+  INFO='{terminal_id: ("term-" + .pane_id), workspace_id, tab_id, pane_id, focused: false, revision: 1, agent, name, agent_status, cwd, tokens}
+        | if (.tokens | length) == 0 then del(.tokens) else . end'
+  case ${1:-} in
+    session)
+      case ${2:-} in
+        list)
+          [ ! -s "$hroot/session_list_fail" ] || { cat "$hroot/session_list_fail" >&2; exit 1; }
+          [ ! -e "$hroot/session_list_fail" ] || { echo '{"error":{"code":"internal","message":"stub session list failed"}}' >&2; exit 1; }
+          out=""
+          for d in "$hroot"/*/; do
+            [ -d "$d" ] || continue
+            n=$(basename "$d")
+            out="$out$(jq -cn --arg n "$n" --argjson d "$([ -e "${d}default" ] && echo true || echo false)" \
+              --argjson r "$([ -e "${d}stopped" ] && echo false || echo true)" \
+              '{name: $n, default: $d, running: $r, socket_path: ("/run/herdr/" + $n + ".sock"), session_dir: ("/var/lib/herdr/sessions/" + $n)}'),"
+          done
+          printf '{"sessions":[%s]}\n' "${out%,}"
+          ;;
+        attach) echo "attached ${3:-}" ;;
+        *) echo "herdr stub: unexpected call: $*" >&2; exit 2 ;;
+      esac
+      exit 0
+      ;;
+    status)
+      if running; then
+        printf '{"client":{"version":"0.9.5","protocol":22},"server":{"running":true,"version":"0.9.5","protocol":22}}\n'
+      else
+        printf '{"client":{"version":"0.9.5","protocol":22},"server":{"running":false,"version":null,"protocol":null}}\n'
+      fi
+      exit 0
+      ;;
+    integration)
+      case ${2:-} in
+        install) touch "$hroot/integration_${3:-}"; printf '{"id":"cli:integration","result":{"type":"integration_installed","integration":"%s"}}\n' "${3:-}" ;;
+        status) printf '{"id":"cli:integration","result":{"type":"integration_status","integrations":[{"name":"claude","installed":%s}]}}\n' \
+          "$([ -e "$hroot/integration_claude" ] && echo true || echo false)" ;;
+        *) echo "herdr stub: unexpected call: $*" >&2; exit 2 ;;
+      esac
+      exit 0
+      ;;
+  esac
+  running || herr server_not_running
+  case "${1:-} ${2:-}" in "agent list" | "pane list") [ ! -e "$sdir/list_fail" ] || { [ ! -s "$sdir/list_fail" ] || { cat "$sdir/list_fail" >&2; exit 1; }; herr internal; } ;; esac
+  case ${1:-} in
+    agent)
+      case ${2:-} in
+        list)
+          [ $# -eq 2 ] || { echo "usage: herdr agent list" >&2; exit 2; }
+          printf '{"id":"cli:agent","result":{"type":"agent_list","agents":%s}}\n' \
+            "$(panes | jq -c "[.[] | select(.agent != null) | $INFO]")"
+          ;;
+        start)
+          name=${3:-} kind="" pane=""
+          shift 3
+          while [ $# -gt 0 ]; do
+            case $1 in
+              --kind) kind=$2; shift ;;
+              --pane) pane=$2; shift ;;
+              --timeout) shift ;;
+              --) break ;;
+            esac
+            shift
+          done
+          [ -n "$name" ] && [ -n "$kind" ] && [ -n "$pane" ] || { echo "usage: herdr agent start NAME --kind K --pane P" >&2; exit 2; }
+          panes | jq -e --arg p "$pane" 'any(.[]; .pane_id == $p)' > /dev/null || herr pane_not_found
+          [ ! -e "$sdir/start_not_ready" ] || herr agent_not_ready
+          save "$(panes | jq -c --arg p "$pane" --arg n "$name" --arg k "$kind" \
+            'map(if .pane_id == $p then .agent = $k | .name = $n | .agent_status = "idle" else . end)')"
+          printf '{"id":"cli:agent","result":{"type":"agent_info","agent":%s}}\n' \
+            "$(panes | jq -c --arg p "$pane" "first(.[] | select(.pane_id == \$p)) | $INFO")"
+          ;;
+        focus)
+          one=$(panes | jq -c --arg t "${3:-}" "first(.[] | select(.agent != null and (.pane_id == \$t or .name == \$t))) | $INFO")
+          [ -n "$one" ] || herr agent_not_found
+          printf '{"id":"cli:agent","result":{"type":"agent_info","agent":%s}}\n' "$one"
+          ;;
+        *) echo "herdr stub: unexpected call: $*" >&2; exit 2 ;;
+      esac
+      ;;
+    pane)
+      case ${2:-} in
+        list)
+          printf '{"id":"cli:pane","result":{"type":"pane_list","panes":%s}}\n' \
+            "$(panes | jq -c '[.[] | {terminal_id: ("term-" + .pane_id), workspace_id, tab_id, pane_id, focused: false, revision: 1, agent, agent_status, cwd, tokens} | if (.tokens | length) == 0 then del(.tokens) else . end]')"
+          ;;
+        report-metadata)
+          shift 2
+          pane="" source="" sets=() clears=()
+          while [ $# -gt 0 ]; do
+            case $1 in
+              --source) source=$2; shift ;;
+              --token) sets+=("$2"); shift ;;
+              --clear-token) clears+=("$2"); shift ;;
+              -*) echo "herdr stub: unexpected option $1" >&2; exit 2 ;;
+              *) pane=$1 ;;
+            esac
+            shift
+          done
+          [ -n "$pane" ] && [ -n "$source" ] || { echo "usage: herdr pane report-metadata --source ID PANE" >&2; exit 2; }
+          [ "${#sets[@]}" -le 16 ] || herr invalid_metadata
+          panes | jq -e --arg p "$pane" 'any(.[]; .pane_id == $p)' > /dev/null || herr pane_not_found
+          upd="{}"
+          for kv in ${sets[@]+"${sets[@]}"}; do
+            case $kv in *=*) ;; *) herr invalid_metadata ;; esac
+            k=${kv%%=*} v=${kv#*=}
+            case $k in ''|*[!A-Za-z0-9_-]*) herr invalid_metadata ;; esac
+            [ -n "$v" ] && [ "${#v}" -le 80 ] || herr invalid_metadata
+            upd=$(jq -cn --argjson u "$upd" --arg k "$k" --arg v "$v" '$u + {($k): $v}')
+          done
+          clr=$(jq -cn '$ARGS.positional' --args ${clears[@]+"${clears[@]}"})
+          new=$(panes | jq -c --arg p "$pane" --argjson u "$upd" --argjson c "$clr" \
+            'map(if .pane_id == $p then .tokens = ((.tokens // {}) + $u | delpaths($c | map([.]))) else . end)')
+          echo "$new" | jq -e --arg p "$pane" 'all(.[]; (.tokens // {} | length) <= 32)' > /dev/null || herr invalid_metadata
+          save "$new"
+          printf '{"id":"cli:pane","result":{"type":"ok"}}\n'
+          ;;
+        *) echo "herdr stub: unexpected call: $*" >&2; exit 2 ;;
+      esac
+      ;;
+    workspace)
+      [ "${2:-}" = create ] || { echo "herdr stub: unexpected call: $*" >&2; exit 2; }
+      shift 2
+      label="" cwd=""
+      while [ $# -gt 0 ]; do
+        case $1 in
+          --label) label=$2; shift ;;
+          --cwd) cwd=$2; shift ;;
+        esac
+        shift
+      done
+      n=$(panes | jq -r '([.[].workspace_id | ltrimstr("w") | tonumber] | max // 0) + 1')
+      save "$(panes | jq -c --arg w "w$n" --arg c "$cwd" \
+        '. + [{pane_id: ($w + ":p1"), workspace_id: $w, tab_id: ($w + ":t1"), agent: null, name: null, agent_status: "unknown", tokens: {}, cwd: $c}]')"
+      printf '{"id":"cli:workspace","result":{"type":"workspace_created","workspace":{"workspace_id":"w%s","label":%s},"root_pane":{"pane_id":"w%s:p1"}}}\n' \
+        "$n" "$(jq -cn --arg l "$label" '$l')" "$n"
+      ;;
+    *) echo "herdr stub: unexpected call: $*" >&2; exit 2 ;;
+  esac
+  exit 0
+fi
+echo "$*" >> "$PSTUB/herdr.log"
+if [ "${1:-}" = --machine ]; then shift 2; fi
+if [ "${1:-}" = --session ]; then shift 2; fi
+[ "${1:-}" = agent ] || { echo "herdr stub: unexpected call: $*" >&2; exit 2; }
+target=${3:-}
+pane=$target name=-
+if [ -e "$PSTUB/agents" ]; then
+  while read -r t p n; do
+    if [ "$t" = "$target" ]; then pane=$p name=$n; fi
+  done < "$PSTUB/agents"
+fi
+
+info() { # info PANE NAME STATUS: one AgentInfo object
+  local nm=null
+  [ "$2" = - ] || nm="\"$2\""
+  printf '{"terminal_id":"term-%s","workspace_id":"%s","tab_id":"%s:t1","pane_id":"%s","focused":false,"revision":1,"agent":"claude","name":%s,"agent_status":"%s"}' \
+    "$1" "${1%%:*}" "${1%%:*}" "$1" "$nm" "$3"
+}
+agent_json() { # agent_json TYPE STATUS
+  printf '{"id":"cli:agent","result":{"type":"%s","agent":%s}}\n' "$1" "$(info "$pane" "$name" "$2")"
+}
+error() { # error CODE
+  printf '{"id":"cli:agent","error":{"code":"%s","message":"stub %s"}}\n' "$1" "$1" >&2
+  exit 1
+}
+pop() { # the first status line; it is kept once it is the only one
+  head -1 "$PSTUB/status"
+  if [ "$(wc -l < "$PSTUB/status")" -gt 1 ]; then
+    tail -n +2 "$PSTUB/status" > "$PSTUB/status.new" && mv "$PSTUB/status.new" "$PSTUB/status"
+  fi
+}
+
+case ${2:-} in
+  get)
+    [ ! -e "$PSTUB/get_fail" ] || error agent_not_found
+    agent_json agent_info "$(pop)"
+    ;;
+  wait)
+    while :; do
+      last=$(wc -l < "$PSTUB/status")
+      st=$(pop)
+      case $st in idle|done|blocked) agent_json agent_info "$st"; exit 0 ;; esac
+      [ "$last" -gt 1 ] || error timeout
+    done
+    ;;
+  prompt)
+    if [ -e "$PSTUB/old" ]; then echo "error: unexpected argument '--wait' found" >&2; exit 2; fi
+    code=$(cat "$PSTUB/prompt_error" 2>/dev/null)
+    [ "$code" != agent_blocked ] || error agent_blocked
+    n=1
+    while [ -e "$PSTUB/sent.$n" ]; do n=$((n + 1)); done
+    printf '%s' "$4" > "$PSTUB/sent.$n"
+    printf '> %s\n' "$4" >> "$PSTUB/screen"
+    if [ -e "$PSTUB/reply" ]; then cat "$PSTUB/reply" >> "$PSTUB/screen"; fi
+    [ -z "$code" ] || error "$code"
+    agent_json agent_prompted "$(cat "$PSTUB/prompt_status" 2>/dev/null || echo idle)"
+    ;;
+  list)
+    sep="" all=""
+    if [ -e "$PSTUB/agents" ]; then
+      while read -r t p n; do all="$all$sep$(info "$p" "$n" idle)"; sep=,; done < "$PSTUB/agents"
+    fi
+    printf '{"id":"cli:agent","result":{"type":"agent_list","agents":[%s]}}\n' "$all"
+    ;;
+  read)
+    lines=1000
+    shift 3
+    while [ $# -gt 0 ]; do
+      case $1 in
+        --lines) lines=$2; shift ;;
+        --source) shift ;;
+      esac
+      shift
+    done
+    touch "$PSTUB/screen"
+    tail -n "$lines" "$PSTUB/screen"
+    ;;
+  *) echo "herdr stub: unexpected call: $*" >&2; exit 2 ;;
+esac

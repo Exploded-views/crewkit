@@ -28,7 +28,7 @@
     },
     {
       "name": "tree paths not read",
-      "old": "    tr '\\0' '\\n' < \"$tmp/tree\" | sed 's/^[0-9]* [a-z]* [0-9a-f]*\\t//' >> \"$tmp/streams/paths\"",
+      "old": "    paths_of \"$tmp/tree\" >> \"$tmp/streams/paths\"",
       "new": "    :"
     },
     {
@@ -38,8 +38,8 @@
     },
     {
       "name": "committer identity not read",
-      "old": "s/^\\(author\\|committer\\) \\(.*\\)",
-      "new": "s/^\\(author\\) \\(.*\\)"
+      "old": "sed -En 's/^(author|committer) (.*)",
+      "new": "sed -En 's/^(author) (.*)"
     },
     {
       "name": "ref names not read",
@@ -120,6 +120,91 @@
       "name": "tag header filter drops a header with a NUL byte",
       "old": "{ grep -aEv \"$known_tag\" || nomatch_ok; }",
       "new": "{ grep -Ev \"$known_tag\" || nomatch_ok; }"
+    },
+    {
+      "name": "BRE alternation back (GNU-only; BSD sed matches no identity)",
+      "old": "identities_of() { sed -En 's/^(author|committer) (.*) [0-9]+ [-+][0-9]{4}$/\\2/p' \"$1\"; }",
+      "new": "identities_of() { sed -n 's/^\\(author\\|committer\\) \\(.*\\) [0-9][0-9]* [-+][0-9]\\{4\\}$/\\2/p' \"$1\"; }"
+    },
+    {
+      "name": "probe failure doesn't stop the scan",
+      "old": "    echo \"scrub: this system's sed or tr can't extract the history's${probe_bad}; refusing to scan (is a GNU-only form in tools/scrub.sh?)\"\n    exit 1",
+      "new": "    echo \"scrub: this system's sed or tr can't extract the history's${probe_bad}; refusing to scan (is a GNU-only form in tools/scrub.sh?)\""
+    },
+    {
+      "name": "identities probe skipped",
+      "old": "|| probe_bad+=\" identities\"",
+      "new": "|| true"
+    },
+    {
+      "name": "tagger probe skipped",
+      "old": "|| probe_bad+=\" tagger\"",
+      "new": "|| true"
+    },
+    {
+      "name": "tagger not read",
+      "old": "      tagger_of \"$tmp/tag\" >> \"$tmp/streams/identities\"",
+      "new": "      :"
+    },
+    {
+      "name": "re-encoded message not read (#28)",
+      "old": "      git show -s --encoding=UTF-8 --format='%B' \"$c\" >> \"$tmp/streams/messages\"",
+      "new": "      :"
+    },
+    {
+      "name": "re-encoded identities not read (#28)",
+      "old": "      git show -s --encoding=UTF-8 --format='%an <%ae>%n%cn <%ce>' \"$c\" >> \"$tmp/streams/identities\"",
+      "new": "      :"
+    },
+    {
+      "name": "self-test history canary always ok",
+      "old": "  if (( rc == 1 )) && [[ ${n:-0} == 2 ]]; then echo \"  ok    history identities\"",
+      "new": "  if true; then echo \"  ok    history identities\""
+    },
+    {
+      "name": "blob-paths probe skipped",
+      "old": "|| probe_bad+=\" blob-paths\"",
+      "new": "|| true"
+    },
+    {
+      "name": "paths probe skipped",
+      "old": "|| probe_bad+=\" paths\"",
+      "new": "|| true"
+    },
+    {
+      "name": "encoding header never detected (#28)",
+      "old": "if [[ -n $(sed -n '1,/^$/s/^encoding //p' \"$tmp/commit\") ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "self-test keeps the caller's GIT_DIR",
+      "old": "  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES \\\n    GIT_COMMON_DIR GIT_NAMESPACE\n",
+      "new": ""
+    },
+    {
+      "name": "self-test history canary run as \"$self\" (exit 126 without the exec bit)",
+      "old": "  out=$(cd \"$tmp/history\" && SCRUB_DENYLIST=\"$tmp/history-denylist\" \"$BASH\" \"$self\" --history 2>&1) && rc=0 || rc=$?",
+      "new": "  out=$(cd \"$tmp/history\" && SCRUB_DENYLIST=\"$tmp/history-denylist\" \"$self\" --history 2>&1) && rc=0 || rc=$?"
+    },
+    {
+      "name": "blob paths split on NULs into lines first (a newline in a path forges or cuts an entry)",
+      "old": "  blob_paths_of() {\n",
+      "new": "  blob_paths_of() { tr '\\0' '\\n' < \"$1\" | sed -n 's/^[0-9]* [a-z]* \\([0-9a-f]*\\)\\t\\(.*\\)$/\\1 \\2/p'; return\n"
+    },
+    {
+      "name": "a path with a newline kept as itself in the blob paths",
+      "old": "      if [[ $path == *$'\\n'* ]]; then path='<path with a newline>'; fi\n",
+      "new": "      :\n"
+    },
+    {
+      "name": "paths split at the last tab (a term before a tab in a path goes unseen)",
+      "old": "printf '%s\\n' \"${rec#*$'\\t'}\"; done",
+      "new": "printf '%s\\n' \"${rec##*$'\\t'}\"; done"
+    },
+    {
+      "name": "blob paths: a non-blob entry (a submodule) listed as a blob",
+      "old": "      if [[ $meta != *' blob '* ]]; then continue; fi\n",
+      "new": "      :\n"
     }
   ]
 }

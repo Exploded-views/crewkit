@@ -1,0 +1,50 @@
+{
+  "target": "tools/check-watcher-settings.py",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/watcher-injection.bats"
+  ],
+  "mutants": [
+    {
+      "name": "any allow entry passes",
+      "old": "elif not (a in SAFE or",
+      "new": "elif False and not (a in SAFE or"
+    },
+    {
+      "name": "deny entries not required",
+      "old": "        if d not in deny:",
+      "new": "        if False:"
+    },
+    {
+      "name": "Read with a wildcard allowed",
+      "old": "READ_RE = re.compile(r\"\\ARead\\([^*?]+\\)\\Z\")",
+      "new": "READ_RE = re.compile(r\"\\ARead\\(.+\\)\\Z\")"
+    },
+    {
+      "name": "public-watch allow matched as a prefix",
+      "old": "public-watch --since \\*\\)\\Z\")",
+      "new": "public-watch --since \\*\")"
+    },
+    {
+      "name": "a raw gh allow passes",
+      "old": "        elif a.replace(\" \", \"\").startswith(\"Bash(gh\"):",
+      "new": "        elif False:"
+    },
+    {
+      "name": "defaultMode ignored",
+      "old": "        if mode not in (None, \"default\", \"plan\"):",
+      "new": "        if False:"
+    },
+    {
+      "name": "only the top-level defaultMode read",
+      "old": "(\"permissions.defaultMode\", perms.get(\"defaultMode\"))",
+      "new": "(\"permissions.defaultMode\", None)"
+    },
+    {
+      "name": "non-object settings accepted",
+      "old": "        return [\"the settings and their permissions must be JSON objects\"]",
+      "new": "        return []"
+    }
+  ]
+}

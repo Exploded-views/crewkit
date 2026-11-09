@@ -78,8 +78,9 @@ setup() {
 }
 
 @test "concurrent writers don't lose updates" {
-  for i in $(seq 1 20); do "$BIN/lane-state" set "lanes.l$i.status" open & done
-  wait
+  pids=()
+  for i in $(seq 1 20); do "$BIN/lane-state" set "lanes.l$i.status" open & pids+=($!); done
+  wait "${pids[@]}"
   run python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["lanes"]))' "$STATE"
   [ "$output" = 20 ]
 }

@@ -295,7 +295,7 @@ verdict() { # verdict PR SHA [AUTHOR]: an independent verdict comment on PR nami
   mkpr 11
   hold_lock 4
   CREWKIT_LOCK_WAIT_SECONDS=1 lb 11
-  wait
+  wait "$HOLD_PID"
   [ "$status" -eq 75 ]
   [ -z "$(merged)" ]
   [[ $output == *"landing lock busy"* ]]
@@ -745,7 +745,7 @@ campaign() { # campaign [JQ_FILTER]: the shared fixture (tests/fixtures/campaign
   mkpr 11
   hold_lock 4
   CREWKIT_LOCK_WAIT_SECONDS=60 run "$BIN/land-batch" --yes --lock-wait 1 11
-  wait
+  wait "$HOLD_PID"
   [ "$status" -eq 75 ]
 }
 
@@ -969,6 +969,25 @@ jobs_of() { # jobs_of RUN_ID ATTEMPT CONCLUSION: a unit job and the aggregate ch
   lb 12
   [ "$status" -eq 0 ]
   grep -q '^api repos/OWNER/REPO/issues/12/comments?per_page=100 --paginate' "$STUB/calls.log"
+}
+
+@test "review D: the stub's comment pages compile and join under the host jq" {
+  mkpr 12
+  for n in 0 1 2 3; do
+    echo '[]' > "$STUB/pr/12/comments.json"
+    for ((i = 1; i <= n; i++)); do comment 12 "user$i" 2026-01-01T00:00:00Z "body $i"; done
+    gh api "repos/OWNER/REPO/issues/12/comments?per_page=100" --paginate > "$BATS_TEST_TMPDIR/pages"
+    # An empty page list is the stub's `echo '[]'` fallback, which a filter that fails to compile also takes.
+    [ "$n" -eq 0 ] || [ "$(grep -cvx '\[\]' "$BATS_TEST_TMPDIR/pages")" -ge 1 ]
+    joined=$(jq -s 'add // []' "$BATS_TEST_TMPDIR/pages")
+    [ "$(jq length <<< "$joined")" -eq "$n" ]
+    [ "$(jq '[.[] | select(.user.login and .body)] | length' <<< "$joined")" -eq "$n" ]
+    [ "$n" -eq 0 ] || [ "$(jq -r '.[-1].user.login + ":" + .[-1].body' <<< "$joined")" = "user$n:body $n" ]
+    case $n in
+      0) [ "$(jq -c . <<< "$joined")" = "[]" ] ;;
+      3) [ "$(wc -l < "$BATS_TEST_TMPDIR/pages")" -eq 2 ] ;;
+    esac
+  done
 }
 
 @test "checks: a red commit status context on a PR's head holds it" {

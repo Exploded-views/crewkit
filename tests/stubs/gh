@@ -119,7 +119,7 @@ case "$1 $2" in
     # The REST shape (user.login, created_at), from the same comments.json as pr view; pages
     # of two, as --paginate would join them.
     n=${p#*/issues/}; n=${n%%/*}
-    jq -c '[.[] | {user: {login: .author.login}, created_at: .createdAt, body: .body}] | _nwise(2)' \
+    jq -c '[.[] | {user: {login: .author.login}, created_at: .createdAt, body: .body}] | range(0; length; 2) as $i | .[$i:$i+2]' \
       "$STUB/pr/$n/comments.json" 2>/dev/null || echo '[]' ;;
   *"/commits/"*"/status"*)
     # The combined commit status: $STUB/status/<sha>.json if a test set one, else no contexts.

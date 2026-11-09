@@ -1,0 +1,52 @@
+# ck_herdr_* (libexec/ck/herdr.sh) before any of that code. RED: the new suite with no herdr.sh (every call fails with status 127, command not found, or its assertion on the missing result). The herdr and ssh stub tests (tests/herdr-stub.bats, tests/ssh-stub.bats) were written with the stubs and pass; the stubs' backward compatibility is pane-ask.bats staying green.
+$ bats tests/crewkit-herdr.bats
+1..29
+not ok 1 the minimum herdr version and protocol are constants
+not ok 2 bin prefers ~/.local/bin/herdr, then PATH, then nothing
+not ok 3 sessions lists each herdr server with default and running
+not ok 4 sessions skips a name that is not a plain session name
+not ok 5 sessions is empty without a herdr and when herdr fails
+not ok 6 default_session names the default one
+not ok 7 versions reads client and server protocol
+not ok 8 versions of a stopped server has - for what it can't know; with no herdr, all -
+not ok 9 versions of another session; a bad session name is 65 and calls nothing
+not ok 10 agents keeps only pane_id, name, status, role and project
+not ok 11 agents of a session is read with that session
+not ok 12 agents of a stopped session is an empty list, not an error
+not ok 13 agents: a hostile name, role, project, status or pane id is null, built by jq and never run
+not ok 14 agents keeps only the statuses of herdr's schema
+not ok 15 a bad session name is 65 and calls nothing (agents, tag, retag)
+not ok 16 tag writes one report-metadata call and is idempotent
+not ok 17 tag refuses a bad pane, key or value (65) and makes no call
+not ok 18 tag takes a value of exactly 80 characters
+not ok 19 tag: a pane with 32 tokens takes no new key (65, no write) but a changed value
+not ok 20 tag on a pane in a stopped session fails (1) and says so
+not ok 21 retag in a session with no node state does nothing
+not ok 22 retag: node state that is not JSON, or whose tags is not an object, is 65 with no calls
+not ok 23 retag re-applies the recorded tokens to a pane that still runs the recorded agent
+not ok 24 retag skips a pane that is gone
+not ok 25 retag skips a pane whose agent changed
+ok 26 retag skips a pane that runs no agent at all when the state recorded one
+not ok 27 retag with the agent recorded as null tags the pane whatever runs there, agent or not
+not ok 28 retag makes no call for a token that is already set
+not ok 29 retag skips a bad entry with a stderr line and still applies the rest
+
+# Fix round 1: tests 30-38 (added then) against the adbb908 herdr.sh; 33 and 38 pass there, they pin behaviour that was already right:
+$ bats tests/crewkit-herdr.bats
+1..43
+not ok 30 sessions: a herdr whose session list fails is 1, with its words
+not ok 31 agents: a running session whose agent list fails is 1 with herdr's stderr, not []
+not ok 32 agents: when session list itself fails, it is 1 (can't tell stopped from broken)
+not ok 34 tag and retag with a failing read: 1 and no write
+not ok 35 tag on a pane with no agent is idempotent too
+not ok 36 tag on a pane with no agent: 32 tokens is the cap (65, no write), a present key may change
+not ok 37 retag under set -e: a malformed entry first is skipped with a stderr line and the rest apply
+
+# Fix round 2: tests 39-43 (added then) against the e5be06b herdr.sh:
+$ bats tests/crewkit-herdr.bats
+1..43
+not ok 39 herdr's stderr is shown as printable ASCII only, at most 300 bytes: no ESC, no OSC 52, no screen clear
+not ok 40 a session-list failure's stderr is sanitized the same way
+not ok 41 tag compares in jq: a token of "lead\n" is not "lead"
+not ok 42 retag: tokens that are not an object are skipped with a stderr line, the rest applied
+not ok 43 no herdr installed says so, apart from a failure

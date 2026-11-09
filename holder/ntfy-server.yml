@@ -1,0 +1,16 @@
+# ntfy's config for the registry holder. libexec/crewkit-holder-run fills the two @…@ values and
+# writes the result to its state directory; nothing here is a secret.
+#
+# Loopback only. The holder's tailscaled runs in userspace networking (the image is non-root),
+# which delivers connections to the node's tailnet address to 127.0.0.1 on the same port; no
+# interface carries the tailnet address, and nothing outside the container can reach loopback.
+# Closed by default: a node can post to its own topic and nothing else, the holder reads every
+# crewkit-* topic, and an anonymous caller gets nothing. The users and tokens live in the auth
+# database (the ntfy_auth secret).
+listen-http: "127.0.0.1:@PORT@"
+auth-file: "@STATE@/ntfy/auth.db"
+auth-default-access: "deny-all"
+cache-file: "@STATE@/ntfy/cache.db"
+cache-duration: "12h"
+# behind the tailnet, not a proxy: the peer address is the caller
+behind-proxy: false

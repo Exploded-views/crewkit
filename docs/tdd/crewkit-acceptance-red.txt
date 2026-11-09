@@ -1,0 +1,7 @@
+# RED: tests/crewkit-acceptance.bats (the v0.1.0 acceptance: one node, offline, stubs only)
+# Every verb it walks already existed on main when the suite was written (install.sh --only cli, --version, doctor, node report, the usage exit), so most of it passed at once. First run, 7 of 8 ok:
+not ok 1 phase 1, one node: install, version, doctor and node report on a fresh empty home
+# (the failing line was the suite's own list of doctor's checks: it left out the hub-inbound line, which doctor prints on every node; the suite was corrected, not the code)
+# The suite is held by mutants of the code it walks (tests/mutants/crewkit-acceptance-*.json), not by a failing run.
+# First mutant run: 8 of 10 killed; "an agent carries its cwd" and "an agent carries its title" SURVIVED, because a plain `! grep -q` line does not fail a bats test. The no-leak and no-FAIL checks now use [[ ]] and [ -z ] tests plus an exact key list for an agent; both mutants are then killed.
+# Review round 1 (approved with nits): the hostname check compared the report with the machine's real name, so a machine named like a report word would fail on correct code, and no mutant backed it. It now stubs the name to a unique one; a new mutant (tests/mutants/crewkit-acceptance-nodereport.json: the report reads the host name where it reads the architecture) is killed by it. Also fixed: a log check that nothing wrote, node report's exit 1 in docs/crewkit.md, and the ck_setup description in docs/testing.md.

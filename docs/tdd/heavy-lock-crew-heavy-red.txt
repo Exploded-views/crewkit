@@ -1,0 +1,241 @@
+tools/heavy_lock.py before it accepted a crew-heavy run hold: RED run at 2a272bc, 2026-10-29.
+
+Problem: `crew-heavy run` holds heavy.lock SHARED (one descriptor) and heavy.slot1 or
+heavy.slot2 EXCLUSIVE (another). The check only accepted a descriptor it could re-lock
+LOCK_EX|LOCK_NB, so with the other slot busy it refused a properly locked run (tools/linux-gate.sh
+and the mutation runners). On Linux a failed shared-to-exclusive conversion can also drop the lock.
+
+RED, python3 -m unittest tests.test_heavy_lock tests.test_mutate (49 tests, 14 failures, 2 errors):
+  FAIL: CrewHeavyRun.test_a_shared_lock_without_a_slot_is_refused_and_stays_held
+  FAIL: CrewHeavyRun.test_an_inherited_slot_fd_on_a_free_slot_is_no_hold
+  FAIL: CrewHeavyRun.test_a_slot_from_another_directory_is_refused
+  FAIL: CrewHeavyRun.test_either_slot_will_do_and_a_sibling_run_on_the_other_changes_nothing
+  FAIL: CrewHeavyRun.test_in_process_a_refused_shared_fd_is_never_converted_to_exclusive
+  FAIL: CrewHeavyRun.test_an_exclusive_probe_that_wins_is_let_go_and_refused
+  FAIL: CrewHeavyRun.test_a_free_lock_with_an_inherited_fd_is_refused_even_with_a_slot_held
+  FAIL: CrewHeavyRun.test_residual_an_unlocked_fd_passes_while_someone_else_holds_the_lock
+  FAIL: Scope.test_no_default_crew_state_dir_means_unguarded
+  FAIL: Scope.test_no_default_dir_also_when_ci_and_the_gate_token_are_set_or_not
+  FAIL: Scope.test_the_env_override_is_ignored_without_the_test_flag
+  FAIL: Scope.test_with_the_default_dir_ci_and_the_gate_token_are_no_way_round
+  FAIL: Scope.test_with_the_setting_the_default_lock_is_no_longer_the_one
+  FAIL: Mutate.test_ci_and_the_gate_token_are_no_way_round_a_guarded_host
+  ERROR: Scope.test_the_setting_moves_the_lock
+  ERROR: Scope.test_the_setting_takes_a_leading_tilde
+
+RED, tests/linux-gate.bats with the real crew-heavy script (CREW_HEAVY_BIN; the three tests that
+need it skip when it isn't installed):
+  not ok 37 under crew-heavy run, with the other slot held by a sibling, it passes the lock check and reaches docker
+  not ok 43 a shared heavy.lock fd with no slot fd is refused and docker is never called
+  not ok 45 a slot fd from another directory does not make a shared hold
+  not ok 46 after a refused check under a shared hold, the shared lock is still held
+
+The rule (GREEN b1c9bc7): never convert a held lock. proof() never calls flock on an inherited
+descriptor, not even in the same mode: a LOCK_SH probe on an exclusive holder's descriptor would
+downgrade it. It needs an inherited descriptor on the lock file, and the lock held right now,
+read with fresh descriptors it opens itself (a new open file description conflicts with every
+inherited lock) and releases at once. A fresh LOCK_EX|LOCK_NB must fail; if a fresh LOCK_SH|LOCK_NB
+then succeeds the holder is shared and an inherited, held heavy.slot1/2 in the lock's directory is
+also required; if it fails the holder is exclusive (bench, raw flock) and that is a hold.
+
+Documented residual (heavy_lock.py docstring; pinned by test_residual_an_unlocked_fd_passes_...):
+an inherited descriptor that is open but NOT locked passes while someone else holds the lock,
+because the probes see a held lock, not whose it is. The check is advisory.
+
+Scope: enforced where the default crew state dir exists, OR where a configured lock's directory
+does ("either dir", the agreed rule); elsewhere it passes as "no crew state dir: unguarded". The
+lock path is the user-only `heavy_lock` setting (a configured path moves the lock, and can't
+switch the check off while the default dir exists). CREWKIT_HEAVY_LOCK is honoured only with
+CREWKIT_HEAVY_LOCK_TEST=1.
+
+Tests removed or replaced, and why:
+- HeavyLock.test_the_default_lock_is_in_the_users_home_from_the_password_database_not_HOME:
+  it relied on the real default dir existing; on a host without one the check is now unguarded.
+  Replaced by Scope.test_the_default_lock_comes_from_the_password_database_not_HOME, which mocks
+  the password database.
+- HeavyLock.test_the_gate_token_counts_only_inside_a_container: the container token is no longer
+  an accepted reason (where the crew dir exists, an environment variable would switch the guard
+  off; a container has no crew dir). Replaced by the Scope tests for no default dir and for CI and
+  the token being no way round.
+- Mutate.test_ci_alone_isnt_a_lock_but_a_github_hosted_run_is and
+  test_the_gate_token_outside_a_container_isnt_a_lock: merged into
+  test_ci_and_the_gate_token_are_no_way_round_a_guarded_host.
+- Mutate.test_a_descriptor_to_the_lock_that_another_process_holds_isnt_enough: it is the
+  documented residual now (an open, unlocked descriptor passes while another process holds the
+  lock); the cases that must still refuse (no descriptor, a free lock) have their own tests.
+- Mutate.test_without_the_heavy_lock_it_refuses_and_runs_nothing now expects `crew-heavy` in the
+  refusal, which names crew-heavy instead of flock.
+- Every test that points the check at a scratch lock now also sets CREWKIT_HEAVY_LOCK_TEST=1.
+
+Mutants (tests/mutants/heavy-lock.json): the slot-from-another-directory mutant reads
+/proc/self/fd, so on macOS it breaks all slot detection and is "killed" for the wrong reason;
+it is exact only on Linux (the gate and CI). Obsolete mutants (CI alone, the gate token, any
+lockable descriptor, a lock someone else holds) were removed with the behaviour they covered.
+
+Not part of this change: tests/settings.bats test 29 ("a settings file you don't own is skipped,
+with a warning") fails the same way on the base (9a88c35); it is pre-existing and environmental.
+
+Round 2 (the Opus review of b1c9bc7: NOT-SAFE, one must-fix), RED 9fb254b:
+- M1: the settings lookup kept the caller's BASH_ENV, exported functions (BASH_FUNC_*%%) and PATH,
+  and found bash through PATH, so anyone could redirect the lock while the crew dir existed.
+  RED: test_BASH_ENV_cannot_redirect_the_lock, test_an_exported_function_cannot_redirect_the_lock,
+  test_a_bash_earlier_on_PATH_cannot_redirect_the_lock, test_only_the_last_line_of_the_output_is_the_setting.
+  Now: /bin/bash --noprofile --norc by absolute path, with only HOME (password database), PATH and
+  LC_ALL set, and only the last line of its output is read.
+- S1: a failed lookup (timeout, missing or failing bash, non-zero exit, a value that is not an
+  absolute, regular, non-symlink file in an existing directory, a FIFO) now refuses with a reason
+  naming it, whenever ~/.claude/crewkit.md exists; it never falls back to "unguarded".
+  RED: test_a_failed_lookup_refuses_and_says_why, test_a_slow_lookup_refuses_not_unguarded,
+  test_the_refusal_names_the_lock_that_was_checked, test_the_default_lock_is_named_when_it_was_checked.
+- S2 and nits: the docstring lists every residual (an unlocked heavy.lock descriptor while someone
+  holds it; an unlocked slot descriptor while a sibling holds that slot; the by-design test
+  override CREWKIT_HEAVY_LOCK with CREWKIT_HEAVY_LOCK_TEST=1, a bypass for tests only; a lock file
+  replaced after the check, now narrowed by checking the probes opened the same inode; the probes'
+  brief hold of a free lock or slot). Probes open without blocking and refuse anything but a
+  regular file (a FIFO is never opened blocking). The refusal names the lock actually checked. The
+  dead CREWKIT_HEAVY_LOCK_HELD token is no longer passed to the container, and its test and mutant
+  are gone.
+- One launcher test runs without the test override: it follows the password-database home, so it
+  expects a refusal where the crew state dir exists and a pass elsewhere (it cannot create that
+  directory, so it is host-dependent by design).
+- Mutants added: environment passed through, bash found on PATH, bash run with profile and rc
+  files, a failed lookup going unguarded, a timeout read as no setting, the last line not taken, a
+  non-absolute value accepted, a symlink or FIFO accepted, the refusal naming the default lock.
+
+Round 3 (the Opus delta review of c682aa2: SAFE-WITH-NITS, no must-fix), RED 3b81afb:
+- SF1: a user file that lib/settings.sh skips (writable by others, or not ours) read as "no
+  setting", so a host guarded only by its configured lock passed as unguarded. Now the check
+  refuses with a reason before any lookup. RED: test_a_user_file_settings_sh_would_skip_refuses_never_unguarded
+  (the same home refuses at 0600 and at 0666).
+- SF2: PYTHONPATH (a hostile subprocess.py) or a python3 on PATH could replace the check itself.
+  The shell callers (tools/linux-gate.sh twice, tools/mutate.sh) now run `python3 -I`. RED:
+  test_a_hostile_PYTHONPATH_cannot_make_the_shell_callers_guard_pass and the launcher bats test.
+  The docstring now separates the residuals within the check from the interpreter, and lists the
+  in-process callers (mutate.py, mutate-check-workflows.py) as exposed to their own environment.
+- SF3: a user file without a heavy_lock key no longer runs bash, so a host with no /bin/bash isn't
+  refused for nothing. A present key still fails closed. RED: test_a_user_file_with_no_heavy_lock_key_needs_no_bash.
+- Nits: the refusal after a failed lookup names "the configured lock (lookup failed: ...)" (N1); a
+  symlinked default lock is followed, a configured one refused, documented and tested (N2); the
+  configured lstat-then-reopen window is documented (N3); the host-dependent launcher test now
+  follows the guard's own verdict (N4); refusal() documents that it reads proof()'s globals (N6).
+- N5: the round-2 GREEN commit c682aa2 is titled only for its last change (the gate's container
+  mutant) but carries all of round 2's GREEN code; history is kept as is.
+- Mutants added: owner/mode check skipped, bash run without the key, and the guard call without
+  -I in the gate and in mutate.sh.
+
+Round 4 (the Opus delta review of 9e353c4: SAFE-WITH-NITS), RED de0232c:
+- SF-A: a symlinked ~/.claude/crewkit.md. lib/settings.sh tests ownership through the link but
+  world-writability on the link itself (every symlink is 0777 on Linux), so it skipped a file the
+  guard then passed as unguarded. Now the guard refuses when EITHER the link (lstat) or its target
+  (stat) is not ours or is world-writable. RED: test_a_symlinked_user_file_whose_link_is_world_writable_refuses.
+  Also pinned: a 0666 target behind a 0755 link refuses (macOS; skipped where a link's mode can't be
+  set), a group-writable file is allowed, a file not ours refuses. lib/settings.sh is unchanged: its
+  own gap (a world-writable target behind a plain link on macOS) is a separate follow-up.
+- N-b: the launcher test requires a refusal where the pw home's crew state dir exists, whatever the
+  guard says; the guard's verdict is the oracle only on hosts without that dir.
+- N-c: mutants for the --build-images guard call (without -I, and removed).
+- N-d: a user file that vanishes between the existence check and the stat refuses cleanly.
+- N-e: the user file is read as UTF-8, so the key scan doesn't depend on the locale.
+- N-a: the owner, group-writable and link cases above.
+- Mutants added: lstat view skipped; the --build-images guard call without -I; no --build-images check.
+
+Round 5 (crew-heavy grew a third slot, heavy.slot3), RED d48cac4:
+- The check knew only heavy.slot1 and heavy.slot2, so a run in slot 3 was refused. It now takes any
+  regular file in the lock's directory whose whole name matches heavy.slotN (N = 1-999, no leading
+  zero), found with os.listdir and a full-match regex, so a future slot count doesn't break it.
+  Every other rule is unchanged (inherited fd by device and inode, a fresh LOCK_EX|LOCK_NB must
+  fail, never flock an inherited descriptor); a symlink, directory or FIFO candidate is skipped
+  (lstat first, so it is never opened blocking).
+- RED: test_any_numbered_slot_is_a_slot (slot3, 7, 10, 999) and the real crew-heavy case with slots
+  1 and 2 held by sibling runs. Pinned (passing): slot0, slot01, slotX, slot1.bak, xheavy.slot1,
+  slot1000 and a bare heavy.slot are not slots; a symlink, FIFO or directory is not accepted.
+- Mutants added: only slot1/slot2 accepted; slot regex not anchored; slot0 accepted; a symlinked
+  slot accepted.
+
+Round 6 (the whole-branch Opus review of dfe13ef: NOT-SAFE, one must-fix), RED e17859d:
+- M1: the gate's secrets step ran a bare `gitleaks git ... .` from PATH, which took its config
+  from the branch under test (.gitleaks.toml, .gitleaksignore), GITLEAKS_* from the caller,
+  gitleaks:allow comments, skipped merges' changes and followed textconv. Now the gate runs its own
+  tools/secrets-scan.sh (pinned, sha256-checked binary; its own config; --ignore-gitleaks-allow;
+  --log-opts="--all -m --text --no-textconv --no-ext-diff"; a clone holding a gitleaks config
+  refused); secrets-scan.sh now unsets every GITLEAKS_* variable, not two. RED (linux-gate.bats,
+  with a pinned-path gitleaks stub that scans `git log -p <its --log-opts>`): the hardened flags and
+  no PATH gitleaks; a clone with a token and its own allowlisting .gitleaks.toml; a token in
+  history but gone from the tip; a token only in a merge's resolution. secrets-scan.bats: all
+  GITLEAKS_* stripped.
+- S1: the scrub, coverage.sh and coverage-floors.py are now the gate's copies (LINUX_GATE_TOOLS
+  names another directory, for the tests), run against the clone. RED: a clone whose scrub.sh says
+  "clean" still gets the real scrub result. Left trusted: the clone's tools/get-bats.sh, which
+  coverage.sh runs on the host to find bats (documented in the header and docs/testing.md, whose
+  overclaim is corrected).
+- S2: one trap for EXIT, INT, TERM and HUP; when interrupted it stops the running step, kills the
+  named containers (name, -kcov, -covpy), then removes the work directory. Steps now run in the
+  background and are waited for, because bash defers a trap until a foreground child ends. RED:
+  TERM to a running gate; the docker stub records whether the work directory still existed at
+  the kill.
+- S3 (CHANGELOG) and S4 (the owner's name in a tdd file, push-gate.bats aliases and repo names, the
+  per-user temp paths in two tdd files) are text edits. Commit 24a31f4's message can't be
+  rewritten; the lander squash-merges.
+- Nits done: N1 (python3 -I for the base hash and the floors), N3 (steps.txt symlink check), N5
+  (the header says what the limit covers), N6 (documented), N8 (the Dockerfile comment).
+  Not done: N2 (a previous summary.txt survives an early exit; the head line is what a reader
+  checks) and N4 (kill on rc 124/137; the deadline arithmetic can't produce it).
+- Mutants added: the gate's bare gitleaks (clone config honoured, allow comments honoured, merges
+  skipped, all at once), the clone's own scrub, the floors tool from the clone, no kill on
+  interrupt, work directory removed before the kill; secrets-scan.json: only two GITLEAKS_
+  variables stripped.
+
+Round 7 (the Opus delta review of 4200c58: SAFE-WITH-NITS, no must-fix), RED 162590e:
+- SF1: the gate's coverage.sh, run with the clone as the current directory, still ran the clone's
+  tools/get-bats.sh and, through a plain `python3 -`, imported a top-level json.py from the clone.
+  Now it uses the get-bats.sh beside itself (which finds the clone's staged .cache from the current
+  directory) and `python3 -I -`. RED (coverage-sh.bats): a clone whose get-bats.sh and json.py
+  each write a marker; neither runs. The "branch is trusted for get-bats.sh" caveat is gone from
+  the header, docs/testing.md and the CHANGELOG.
+- SF2: tree mode exempted tools/scrub.sh by path, whatever its content, and read the known-versions
+  list from the scanned tree. Now the exemption needs the file to be byte-identical to the running
+  script or its blob SHA to be in the running script's own tools/scrub-known-versions.txt. RED
+  (scrub-allow.bats): a home path, private IP and credentialed URL in a tree's tools/scrub.sh are
+  found; the real script copied in is still exempt; a list the tree vouches for itself is ignored.
+  This script's own blob is added to the known list, as the lint requires.
+- Nits done: LINUX_GATE_TOOLS must be absolute (a relative one is refused with a `tools rc=1`
+  summary line); the containers are docker-killed on any exit after a docker step started, so a
+  step killed from outside (rc 137) can't leave one running (a run that never reached docker
+  makes no docker call); the TERM test asserts a non-zero exit; shellcheck runs with --norc;
+  GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_COMMON_DIR, GIT_CONFIG_PARAMETERS and GIT_CONFIG_COUNT
+  are unset at the top; the interrupt sentence moved to the end of its paragraph in docs/testing.md.
+- Nits recorded, not done: a `tools <dir>` summary line that fails a run using LINUX_GATE_TOOLS
+  (the tests set it for every run); a signal between `&` and `child=$!` (the named-container kill
+  still runs; the window is tiny); N2 (a stale summary.txt after an early exit; its head line
+  names the run); commit messages and tag blobs are not scanned by gitleaks (inherited from
+  tools/secrets-scan.sh and CI, filed as a follow-up); in-file `# shellcheck disable=` directives
+  still apply (lint, not security).
+- Mutants added: the scanned repo's get-bats.sh run; the report snippet without -I; the scanned
+  tree's tools/scrub.sh exempt by path; the known list read from the scanned tree; a relative
+  LINUX_GATE_TOOLS accepted; containers not killed on exit; shellcheck reading the clone's rc file.
+
+Round 8 (the Opus delta review of f864948: SAFE-WITH-NITS, one host-escape fixed before the single
+gate run), RED c21a48f:
+- SF-A: .cache is gitignored but `git add -f` commits a symlink there, and git clone checks it out.
+  The gate then staged bats through it (mkdir, cp -R), and coverage.sh did `rm -rf
+  "$root/.cache/coverage"`, wrote the log and bind-mounted the coverage directory writable through
+  it: a relative link from the clone reaches the operator's home with no user name. Now the gate
+  refuses a clone that tracks anything under .cache, or has a .cache of any kind (a link included),
+  right after the clone, before any staging: a `cache rc=1` summary line, `linux-gate: failed:
+  cache`, exit 1. coverage.sh also refuses a .cache, .cache/coverage or log that is a symlink, or a
+  .cache that resolves outside the repository (defence in depth). RED: a committed .cache symlink
+  to an outside directory (the target untouched, no docker call) and a committed regular .cache
+  directory; coverage-sh.bats for the three symlink shapes.
+- N1: the known-version check hashes with `git hash-object --no-filters`, so the clone's
+  gitattributes can't turn the bytes into a known version's. RED: a clean filter mapping a tree's
+  tools/scrub.sh onto a fixture listed in a copy of the scrub's own known list.
+- N2: tools/scrub.sh resolves its own path before the cd to the toplevel, so a relative start from a
+  subdirectory still finds its list and its own bytes.
+- N3 (operator): run the gate from a clean checkout at the reviewed head (the trusted tools are that
+  checkout's working files). N4 (an informational `tools <dir>` line) stays optional.
+- SF-B (tree mode reads the checkout, not the blobs: working-tree-encoding and symlink text) is
+  shared with CI and the pre-push hook and is a separate follow-up.
+- This script's new blob is in tools/scrub-known-versions.txt, as the lint requires.
+- Mutants added: cache check skipped; a symlinked rm target allowed; .cache resolving outside the
+  repository allowed; the script path taken after the cd; the known-version hash with the clone's
+  filters.

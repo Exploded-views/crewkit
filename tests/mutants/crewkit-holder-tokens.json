@@ -1,0 +1,100 @@
+{
+  "target": "libexec/crewkit-holder-tokens",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-pointer.bats"
+  ],
+  "mutants": [
+    {
+      "name": "tokens access is read-write",
+      "old": "ntfy access \"$id\" \"$topic\" write-only",
+      "new": "ntfy access \"$id\" \"$topic\" read-write"
+    },
+    {
+      "name": "tokens topic not scoped to the node",
+      "old": "topic=crewkit-$id",
+      "new": "topic=crewkit-"
+    },
+    {
+      "name": "tokens old user kept",
+      "old": "ntfy user del \"$id\" >/dev/null 2>&1 || true",
+      "new": "true"
+    },
+    {
+      "name": "tokens existing database dropped",
+      "old": "[[ ! -s $dir/ntfy_auth ]] || cp \"$dir/ntfy_auth\" \"$work\"",
+      "new": "true"
+    },
+    {
+      "name": "tokens database not seeded",
+      "old": "if [[ ! -s $work ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "tokens default access not deny-all",
+      "old": "NTFY_AUTH_DEFAULT_ACCESS=deny-all",
+      "new": "NTFY_AUTH_DEFAULT_ACCESS=read-write"
+    },
+    {
+      "name": "tokens password in argv",
+      "old": "NTFY_PASSWORD=$password ntfy user add --role=user \"$id\" >/dev/null",
+      "new": "NTFY_PASSWORD=$password ntfy user add --role=user \"$id\" --password \"$password\" >/dev/null"
+    },
+    {
+      "name": "tokens database world-readable",
+      "old": "\nchmod 600 \"$work\"\n",
+      "new": "\n"
+    },
+    {
+      "name": "tokens database not written",
+      "old": "mv \"$work\" \"$dir/ntfy_auth\"",
+      "new": "true"
+    },
+    {
+      "name": "tokens dry run writes",
+      "old": "if [[ ${CK_YES:-0} != 1 ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "tokens takes no lock",
+      "old": "ck_lock holder-tokens\nwork",
+      "new": "true\nwork"
+    },
+    {
+      "name": "tokens node_id not required",
+      "old": "[[ $id =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]] || ck_die 78",
+      "new": "true || ck_die 78"
+    },
+    {
+      "name": "tokens ntfy not required",
+      "old": "command -v ntfy >/dev/null 2>&1 || ck_die 78",
+      "new": "true || ck_die 78"
+    },
+    {
+      "name": "tokens base url not checked",
+      "old": "[[ $base =~ ^https?://[A-Za-z0-9._:-]{1,200}(/[A-Za-z0-9._~/-]{0,200})?$ ]] || ck_die 64 \"--base-url must be a plain http(s) URL\"",
+      "new": "true"
+    },
+    {
+      "name": "tokens node name not checked",
+      "old": "ck_name_ok \"$node\" || ck_die 64 \"bad node name: $node\"",
+      "new": "true"
+    },
+    {
+      "name": "tokens url line wrong",
+      "old": "echo \"nodes.hub.pointer_url: $base/$topic\"",
+      "new": "echo \"nodes.hub.pointer_url: $base\""
+    },
+    {
+      "name": "tokens token line missing",
+      "old": "echo \"nodes.hub.pointer_token: $token\"",
+      "new": "true"
+    },
+    {
+      "name": "tokens token not read from ntfy",
+      "old": "token=${BASH_REMATCH[1]}",
+      "new": "token=tk_fixed"
+    }
+  ]
+}

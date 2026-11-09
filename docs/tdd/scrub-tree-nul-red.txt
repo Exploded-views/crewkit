@@ -1,0 +1,11 @@
+# tools/scrub.sh --history: a path holding a newline must not lend a blob a pins/ context. Run against origin/main's tools/scrub.sh before the fix. Both exploits fail there: the truncated path (the old parser kept only the first line, so a pin-shaped sha256 line in pins/x.env<newline>z was exempt) and the forged ls-tree entry (a blob reachable only through a tag, given a pins/x.env path by a fake entry inside another path's name). The tab test passes: it pins the first-tab split.
+
+1..4
+ok 1 a path with a newline in it is scanned whole
+not ok 2 a newline in a path can't give a blob a pins/ context (truncated path)
+# (in test file tests/scrub-history.bats, line 361)
+#   `[ "$status" -eq 1 ]' failed
+not ok 3 a newline in a path can't give a blob a pins/ context (forged tree entry, blob only under a tag)
+# (in test file tests/scrub-history.bats, line 378)
+#   `[ "$status" -eq 1 ]' failed
+ok 4 a tab in a path is kept whole: a term before the tab is found

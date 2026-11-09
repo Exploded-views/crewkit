@@ -1,0 +1,80 @@
+{
+  "target": "libexec/ck/herdr.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-herdr.bats"
+  ],
+  "mutants": [
+    {
+      "name": "agent fields not filtered",
+      "old": "[ .[] | {",
+      "new": "[ .[] | . + {"
+    },
+    {
+      "name": "tag not idempotent",
+      "old": "[[ $same == true ]] && return 0",
+      "new": ":"
+    },
+    {
+      "name": "stopped session treated as error",
+      "old": "line=$(awk -F'\\t' -v s=\"$1\" '$1 == s { print $3 }' <<< \"$sessions\")",
+      "new": "line=true"
+    },
+    {
+      "name": "session name not checked",
+      "old": "ck_herdr_session_ok \"${1-}\" || ck_die 65 \"bad herdr session name (want letters, digits, _ and -, at most 64)\"",
+      "new": ":"
+    },
+    {
+      "name": "tag value length unchecked",
+      "old": "[[ ${1-} =~ ^[A-Za-z0-9_.:-]{1,80}$ ]]",
+      "new": "[[ ${1-} =~ ^[A-Za-z0-9_.:-]{1,}$ ]]"
+    },
+    {
+      "name": "hostile token value kept in agents",
+      "old": "def pick: if ok then . else null end;",
+      "new": "def pick: .;"
+    },
+    {
+      "name": "retag ignores a changed agent",
+      "old": "[[ $have == \"$want\" ]] || continue",
+      "new": ":"
+    },
+    {
+      "name": "retag acts without node state",
+      "old": "[[ -f $file ]] || return 0",
+      "new": ":"
+    },
+    {
+      "name": "32-token limit not enforced",
+      "old": "if [[ $has != true ]] && ((${n:-0} >= 32)); then",
+      "new": "if false; then"
+    },
+    {
+      "name": "tag reads tokens from the agent list only",
+      "old": "raw=$(_ck_herdr_list \"$s\" pane) || return 1",
+      "new": "raw=$(_ck_herdr_list \"$s\" agent) || return 1"
+    },
+    {
+      "name": "a failing list of a running session read as empty",
+      "old": "if [[ $line != true ]]; then",
+      "new": "if true; then"
+    },
+    {
+      "name": "retag entry type unchecked",
+      "old": "if ! jq -e '.value | type == \"object\"' <<< \"$ent\" > /dev/null 2>&1; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "herdr stderr not sanitized",
+      "old": "LC_ALL=C tr '\\n' ' ' < \"$1\" | LC_ALL=C tr -cd ' -~' | head -c 300",
+      "new": "tr '\\n' ' ' < \"$1\""
+    },
+    {
+      "name": "herdr stderr cap too large",
+      "old": "LC_ALL=C tr -cd ' -~' | head -c 300",
+      "new": "LC_ALL=C tr -cd ' -~' | head -c 345"
+    }
+  ]
+}

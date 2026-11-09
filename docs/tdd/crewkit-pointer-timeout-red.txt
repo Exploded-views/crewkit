@@ -1,0 +1,5 @@
+# RED: tests/crewkit-pointer.bats had no time limit on its tests, run as `tests/run.sh` runs it (BATS_TEST_TIMEOUT unset)
+not ok 1 every test of this suite has a time limit: a listener that never stops is cut off
+#   `[[ ${BATS_TEST_TIMEOUT-} =~ ^[1-9][0-9]*$ ]]' failed
+# Why it matters: the listener loops until CK_POINTER_CONNECTS streams are done and `sleep` is a stub in this suite, so a listener test that loses its stop spins for ever. Six bats processes of an earlier mutation run were found stuck in this suite (at test 27) after two and a half days.
+# What a limit does, checked on a throwaway bats file: with BATS_TEST_TIMEOUT=3 set at the top of the file, a test that runs `while :; do :; done` under `run` is ended after 3 s ("failed due to timeout"), the next test runs, and no process of the loop is left. Set inside `setup` it did not take effect.

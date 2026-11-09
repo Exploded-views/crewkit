@@ -1,0 +1,35 @@
+# Fix round 2 (re-review of 65d2334): the new tests before the fixes. Paths are replaced with <repo> and <tmp>.
+
+1..28
+ok 1 every claude-memsync hook is a silent no-op when claude-memsync isn't installed
+ok 2 the hooks call claude-memsync changes --hook when it is installed
+ok 3 hooks.json: both memsync hooks go through changes-hook, still under the harness's 10 s
+ok 4 changes-hook: memsync absent is a silent exit 0, and leaves no state behind
+ok 5 changes-hook: a normal run passes stdout through exactly, and stdin reaches memsync
+ok 6 changes-hook: runs claude-memsync changes --hook
+ok 7 changes-hook: a failing memsync exits 0, its stdout is not injected, and the failure is logged
+ok 8 changes-hook: a normal run is fast, and leaves neither a timer nor anything else behind
+ok 9 changes-hook: a grandchild that outlives a normal exit is stopped with the rest of the group
+ok 10 changes-hook: a grandchild that ignores TERM is killed too after a normal exit
+ok 11 changes-hook: the timeout is read as decimal, clamped to 100..5000, and always fires
+ok 12 changes-hook: state dir is 0700, the lock 0600, and nothing is logged on a clean run
+ok 13 changes-hook: a child that never returns is stopped at the timeout, silently, and nothing is left behind
+ok 14 changes-hook: a child that ignores TERM is killed 200 ms later, and nothing is left behind
+ok 15 changes-hook: the timeout defaults to 2000 ms, and a bad value falls back to it
+ok 16 changes-hook: an overlapping run exits 0 at once and starts no second child (flock)
+ok 17 changes-hook: an overlapping run exits 0 at once and starts no second child (mkdir lock)
+ok 18 changes-hook: the lock is free again after a run (mkdir lock)
+ok 19 changes-hook: the lock is free again after a run (flock)
+ok 20 changes-hook: a mkdir lock left by a dead process is taken over
+ok 21 changes-hook: a mkdir lock held by a live process for too long is taken over
+ok 22 changes-hook: a run removes only a mkdir lock it still owns
+ok 23 changes-hook: a mkdir lock held by a live process is respected
+ok 24 changes-hook: a timeout logs one line, and at most one per minute
+not ok 25 changes-hook: memsync's detached helper does not hold the caller's output pipe open
+ok 26 changes-hook: two runs breaking the same stale mkdir lock leave exactly one holder
+not ok 27 changes-hook: a run keeps its output in files of its own, and removes them
+ok 28 changes-hook: after a wrapper is killed with -9, the next run's notice is its own
+ERROR: test_the_timeout_budget_is_fixed_in_ci (tests.test_perf.Perf.test_the_timeout_budget_is_fixed_in_ci)
+FAIL: test_a_budget_can_opt_out_of_the_ci_headroom (tests.test_perf.Perf.test_a_budget_can_opt_out_of_the_ci_headroom)
+Ran 13 tests in 0.046s
+FAILED (failures=1, errors=1)

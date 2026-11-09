@@ -1,0 +1,249 @@
+#!/usr/bin/env bash
+# crewkit owner send --notify-entry ID@REV:NONCE [--rule R --level L [--note W]]
+#
+# The delivery adapter for the owner-notify path: the sender that mc-notify runs (argv only, no
+# shell) to push one item to the owner. It delivers through `yo-human notify --json` and answers
+# with the ONE stdout line mc-notify reads. Two forms:
+#
+#   bark form   --notify-entry E --rule R --level L [--note W]    (any order, each at most once)
+#   ntfy form   --notify-entry E                                   (nothing else)
+#
+# E is <id>@<rev>:<nonce>: a lowercase id (prefix, hyphen, number), a revision of 1 to 6 digits and
+# a 16-digit lowercase hex nonce. R is a lowercase rule name (letters and hyphens, 30 at most). L is
+# passive, active or time-sensitive. W is one line of 200 characters at most, no control characters.
+# The dedup key is <id>-<rev>-<nonce>: one nonce per send, so yo-human never suppresses a deliberate
+# re-raise. The ntfy form sends the id and nonce only, never a rule or a note.
+#
+# The call, never through a shell:
+#   yo-human notify --level <mapped> --title "<id>@<rev> <R>" --dedup-key "<id>-<rev>-<nonce>" --json [--body "<W>"]
+# (the ntfy form: --title "<id>@<rev>", no body, no --ask). The Bark form always adds
+# --ask "<owner_send.ask>" (default "Open <id>@<rev> on the board", the one placeholder filled in
+# from the entry), because the owner's ask and urgent levels are ask: required; it goes before
+# --body. The level names are the owner's own yo-human levels, set in owner_send.levels.*; only
+# their defaults are written here. Only the result of the
+# channel named in owner_send.channels.bark (or .ntfy) decides the line: every other channel in the
+# result, the journal included, is ignored.
+#
+# Output: exactly one stdout line and exit 0 whenever yo-human was called (or its binary was found
+# missing), so mc-notify reads the line. Two buckets, because a duplicate ping is cheap and a silent
+# miss is not. AMBIGUOUS (a request may have left), "unknown -" so mc-notify never resends:
+#   yo-human exit 70 or 74, any exit code not listed here, a kill by a signal (above 128)
+#   yo-human exit 0 with JSON that does not parse, or without the read channel in it
+#   yo-human exit 0, the channel sent and unconfirmed, or any status but sent
+#   yo-human exit 75 (queued: yo-human retries it itself), whatever it prints
+#   yo-human exit 69 with JSON that does not parse, or the channel saying sent
+# PROVEN NOT SENT:
+#   yo-human exit 0, the read channel sent (not unconfirmed)        sent -
+#   yo-human exit 69, the channel dead, failed, skipped or absent    failed -
+#   yo-human exit 64, or the binary missing or not executable        refused config
+#     (stderr names yo-human's error, or the owner_send.yo_human setting)
+# EXIT 78 is its own case: yo-human exits 78 when ANY channel of the level could not be built,
+# even if the channel this tool reads did send, so a retry could page twice. The read channel
+# decides, and the " config" tag makes mc-notify raise one blocked item and never resend:
+#   yo-human exit 78, the read channel sent (not unconfirmed)        sent - config
+#   yo-human exit 78, anything else, absent, or JSON that won't parse unknown - config
+#     (stderr carries yo-human's error text)
+# The tool itself exits 70 with no line only for its own errors before it calls yo-human (no jq).
+# All diagnostics go to stderr. It sets no timeout of its own: mc-notify's and yo-human's own
+# deadlines bound it. It sends without --yes: it is a sender, not a setup step.
+#
+# Exit: 0 a line was printed, 64 usage (a flag given twice, a missing or unknown flag, the ntfy form
+# with a bark flag), 65 a bad entry, rule, level or note, 70 an internal error before the call,
+# 78 a bad setting.
+set -euo pipefail
+: "${CK_ROOT:?crewkit-owner-send is run by bin/crewkit}"
+# shellcheck source=/dev/null
+source "$CK_ROOT/lib/settings.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/common.sh"
+# settings-keys: owner_send.yo_human owner_send.ask owner_send.channels.bark owner_send.channels.ntfy owner_send.levels.passive owner_send.levels.active owner_send.levels.time_sensitive owner_send.levels.ntfy
+
+usage() { ck_die 64 "usage: crewkit owner send --notify-entry ID@REV:NONCE [--rule R --level L [--note W]]"; }
+note() { printf 'crewkit: owner send: %s\n' "$*" >&2; }
+# no_answer MSG: no stdout line, exit 70 (mc-notify counts it as "no usable answer").
+no_answer() { ck_die 70 "$*"; }
+
+have_entry=0 have_rule=0 have_level=0 have_note=0
+entry='' rule='' level='' wnote=''
+while (($#)); do
+  case $1 in
+    --notify-entry) (($# >= 2)) || usage; ((have_entry == 0)) || usage; have_entry=1 entry=$2; shift ;;
+    --rule) (($# >= 2)) || usage; ((have_rule == 0)) || usage; have_rule=1 rule=$2; shift ;;
+    --level) (($# >= 2)) || usage; ((have_level == 0)) || usage; have_level=1 level=$2; shift ;;
+    --note) (($# >= 2)) || usage; ((have_note == 0)) || usage; have_note=1 wnote=$2; shift ;;
+    *) usage ;;
+  esac
+  shift
+done
+((have_entry)) || usage
+form=ntfy
+if ((have_rule || have_level || have_note)); then
+  ((have_rule && have_level)) || usage   # a bark form carries a rule and a level
+  form=bark
+fi
+
+# ---- the data (65), checked before anything is read or run -------------------------------------
+# MC's id grammar, ported exactly from lib/crewpatterns.py: RE_RE (_ID@_REV) and SYNTH_ID_RES, the
+# union mc-notify's check_ref accepts. _NAME is [a-z][a-z0-9-]{0,39}, _STAMP is 20261103T1200Z, and
+# _STAMP_S also allows seconds (20261103T120059Z). Every pattern is plain ERE, so nothing is widened.
+ref_id='([a-z]{1,8}-[0-9]{1,6}|ruling-[0-9]{8}-[0-9]{1,4}|(ob|th)-[0-9]{1,5})'
+ref_stamp='[0-9]{8}T[0-9]{4}Z'
+ref_stamp_s='[0-9]{8}T[0-9]{4}([0-9]{2})?Z'
+ref_name='[a-z][a-z0-9-]{0,39}'
+ref_re="(${ref_id}@[0-9]{1,4}"
+ref_re+="|digest-${ref_stamp}@1|hub-blind-${ref_name}-${ref_stamp}@1|bark-fail-${ref_stamp_s}@1"
+ref_re+="|bridge-${ref_stamp}@1|baseline-${ref_stamp}@1|herdr-${ref_stamp}@1|wall-${ref_stamp}@1"
+ref_re+="|bark-orphan-${ref_stamp_s}@1)"
+# parse_entry E: sets ref (<id>@<rev>), nonce and dedup_key, or fails. ASCII only, whatever the locale.
+parse_entry() {
+  local LC_ALL=C re="^${ref_re}:([0-9a-f]{16})\$"
+  [[ $1 =~ $re ]] || return 1
+  ref=${1%:*} nonce=${1##*:}
+  dedup_key=${ref/@/-}-$nonce
+}
+ref='' nonce='' dedup_key=''
+parse_entry "$entry" || ck_die 65 "--notify-entry must be <id>@<rev>:<nonce> (an id as mc-notify sends it, such as ob-12@3, then 16 lowercase hex digits)"
+
+if [[ $form == bark ]]; then
+  (
+    LC_ALL=C
+    [[ $rule =~ ^[a-z][a-z-]{0,29}$ ]]
+  ) || ck_die 65 "--rule is lowercase letters and hyphens, 30 characters at most"
+  [[ $level == passive || $level == active || $level == time-sensitive ]] ||
+    ck_die 65 "--level is passive, active or time-sensitive"
+  if ((have_note)); then
+    [[ -n $wnote ]] || ck_die 65 "the note is empty"
+    [[ $wnote != *$'\n'* ]] || ck_die 65 "the note must be one line"
+    ((${#wnote} <= 200)) || ck_die 65 "the note is over 200 characters"   # characters, in the user's locale
+    (
+      LC_ALL=C
+      [[ ! $wnote =~ [[:cntrl:]] ]]
+    ) || ck_die 65 "the note has a control character"
+  fi
+fi
+
+# ---- the settings (78) --------------------------------------------------------------------------
+# A yo-human level or channel instance name: a plain word.
+word_ok() {
+  local LC_ALL=C
+  [[ ${1-} =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$ ]]
+}
+# setting_word KEY DEFAULT: the setting, which must be a plain word.
+setting_word() {
+  local v
+  v=$(crew_setting "$1" "$2")   # settings-keys: owner_send.levels.passive owner_send.levels.active owner_send.levels.time_sensitive owner_send.levels.ntfy owner_send.channels.bark owner_send.channels.ntfy
+  word_ok "$v" || ck_die 78 "$1 must be a plain name (letters, digits, _ and -)"
+  printf '%s\n' "$v"
+}
+if [[ $form == bark ]]; then
+  case $level in
+    passive) ylevel=$(setting_word owner_send.levels.passive fyi) ;;
+    active) ylevel=$(setting_word owner_send.levels.active ask) ;;
+    *) ylevel=$(setting_word owner_send.levels.time_sensitive urgent) ;;
+  esac
+  read_channel=$(setting_word owner_send.channels.bark iphone)
+  title="$ref $rule"
+  ask=$(crew_setting owner_send.ask 'Open <id>@<rev> on the board')
+  ask=${ask//'<id>@<rev>'/$ref}
+  [[ $ask != *$'\n'* ]] || ck_die 78 "owner_send.ask must be one line"
+  [[ -n $ask ]] || ck_die 78 "owner_send.ask is empty"
+  ((${#ask} <= 200)) || ck_die 78 "owner_send.ask is over 200 characters"
+  (
+    LC_ALL=C
+    [[ ! $ask =~ [[:cntrl:]] && ! $ask =~ \<[^\<\>]*\> ]]
+  ) || ck_die 78 "owner_send.ask has a control character or a placeholder other than <id>@<rev>"
+else
+  ylevel=$(setting_word owner_send.levels.ntfy wake)
+  read_channel=$(setting_word owner_send.channels.ntfy phone)
+  title="$ref"
+fi
+yh=$(crew_setting owner_send.yo_human yo-human)
+(
+  LC_ALL=C
+  [[ $yh =~ ^/[^[:cntrl:]]+$ || $yh =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]
+) || ck_die 78 "owner_send.yo_human must be an absolute path or a command name"
+
+type -P jq > /dev/null 2>&1 || no_answer "jq is required"
+# A yo-human that is not there is proven not sent: refused config, naming the setting.
+refuse_binary() {
+  note "owner_send.yo_human ($yh) is not an executable file${1:+ ($1)}"
+  echo "refused config"
+  exit 0
+}
+if [[ $yh == /* ]]; then
+  [[ -f $yh && -x $yh ]] || refuse_binary
+  yh_bin=$yh
+else
+  if ! yh_bin=$(type -P "$yh" 2> /dev/null) || [[ ! -f $yh_bin || ! -x $yh_bin ]]; then
+    refuse_binary "not on PATH"
+  fi
+fi
+
+# ---- the call: argv only, no shell, stdin closed, yo-human's stderr passed on --------------------
+args=(notify --level "$ylevel" --title "$title" --dedup-key "$dedup_key" --json)
+if [[ $form == bark ]]; then args+=(--ask "$ask"); fi
+if [[ $form == bark ]] && ((have_note)); then args+=(--body "$wnote"); fi
+rc=0
+out=$("$yh_bin" "${args[@]}" < /dev/null) || rc=$?
+
+# ---- the line -----------------------------------------------------------------------------------
+# error_text: yo-human's what (error{} from fail(), errors[0] from a result with problems, or a
+# plain string error), first line, control characters removed, 300 characters at most.
+error_text() {
+  jq -r '(.error.what? // ((.errors // [])[0]? | .what?) // (.error | strings) // empty)' <<< "$out" 2> /dev/null | head -n 1 | LC_ALL=C tr -d '[:cntrl:]' | head -c 300 || true
+}
+# channel_state: the read channel's state: "absent", its status word, then " unconfirmed" when it
+# says so. Fails when the output is not a JSON object, and when jq gives no answer at all: jq 1.6
+# (Debian 12, Ubuntu 22.04) exits 0 with no output for `jq -e` on empty input, where jq 1.7+ exits 4,
+# so the answer carries a "state=" prefix and anything without it is a failure, whatever the jq. One
+# JSON value is one answer: junk after it fails jq, and a second value gives a second line, which
+# fails here, so neither can borrow the first value's word.
+channel_state() {
+  local s
+  s=$(jq -er --arg c "$read_channel" '
+    if type != "object" then error("not an object") else . end
+    | ([.channels[]? | select(.channel == $c)] | first) as $x
+    | "state=" + (if $x == null then "absent"
+      else (($x.status // "") | tostring) + (if $x.unconfirmed == true then " unconfirmed" else "" end) end)' <<< "$out" 2> /dev/null) || return 1
+  [[ $s == state=* && $s != *$'\n'* ]] || return 1
+  printf '%s\n' "${s#state=}"
+}
+# 64 is refused before any send (usage), so it is proven not sent.
+if ((rc == 64)); then
+  msg=$(error_text)
+  note "yo-human refused the call (exit 64): ${msg:-no error text}"
+  echo "refused config"
+  exit 0
+fi
+# 78 is a config or secret problem on some channel of the level, which may not be the one read.
+if ((rc == 78)); then
+  msg=$(error_text)
+  note "yo-human reported a config problem (exit 78): ${msg:-no error text}"
+  state=$(channel_state) || state=''
+  if [[ $state == sent ]]; then echo "sent - config"; else echo "unknown - config"; fi
+  exit 0
+fi
+# ambiguous: say so on stderr, answer "unknown -" (mc-notify then never resends)
+ambiguous() {
+  note "yo-human exit $rc: $1; a request may have left, so the answer is unknown"
+  echo "unknown -"
+  exit 0
+}
+case $rc in 0 | 69 | 75) ;; *) ambiguous "unexpected exit code" ;; esac
+((rc != 75)) || ambiguous "queued, yo-human retries it"
+
+state=$(channel_state) || ambiguous "no usable JSON"
+
+case $rc in
+  0)
+    case $state in
+      absent) ambiguous "channel $read_channel is not in the result" ;;
+      sent) echo "sent -" ;;
+      *) echo "unknown -" ;;
+    esac ;;
+  69)
+    case $state in
+      sent | "sent unconfirmed") ambiguous "exit 69 but channel $read_channel says sent" ;;
+      *) echo "failed -" ;;
+    esac ;;
+esac

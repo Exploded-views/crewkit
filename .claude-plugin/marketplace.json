@@ -56,6 +56,18 @@
         "landing",
         "merge-queue"
       ]
+    },
+    {
+      "name": "crew-nodes",
+      "source": "./plugins/crew-nodes",
+      "description": "Cross-node tooling over herdr: pane-ask sends one message from this machine's bridge to a bridge on another machine, where SendMessage can't reach, and waits for its reply. In development.",
+      "version": "0.1.0",
+      "category": "development",
+      "tags": [
+        "multi-agent",
+        "herdr",
+        "cross-host"
+      ]
     }
   ]
 }

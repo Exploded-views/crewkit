@@ -1,0 +1,41 @@
+No-bypass hook, config read flags, and the gate's base copy: RED runs before the fixes (2026-10-28).
+
+1. Re-review of the hook: a read flag that is the value of an option the hook did not know still
+counted as a read. Run in a temp repository with its own HOME (bash, real git 2.56), the forms
+below set core.hooksPath (git-rc=0, set=local /x) while the hook allowed them (hook-rc=0):
+
+git config set --value --get core.hooksPath /x
+git config set --value --get-all core.hooksPath /x
+git config set --value -l core.hooksPath /x
+git config --comm --get core.hooksPath /x
+git config --comme --get core.hooksPath /x
+git config set --comm --get core.hooksPath /x
+git config set --val --get core.hooksPath /x
+
+--fil, --typ, --defa and --bl with --get did not set the key (git took --get as the file, type,
+default or blob), but the hook allowed them too. After the fix every form above is refused
+(hook-rc=2), the plain reads still pass (hook-rc=0, git-rc=1 for an unset key, 0 for a list):
+
+git config --get core.hooksPath          git config --global --get core.hooksPath
+git config get core.hooksPath            git config --local --show-origin --get core.hooksPath
+git config --system --includes --get-all core.hooksPath      git config list / -l / --null --list
+
+The new cases: 20 BLOCKED failed (python3 -m unittest tests.test_no_bypass_hook:
+FAILED (failures=21), with one ALLOWED case, git config get core.hooksPath /tmp, that was never a read
+(git: usage error, rc 129) and was dropped). A read flag now counts only when every word before
+it after `config` is a known no-argument option written in full, and never after set, add or
+replace-all (--add, --replace-all). The earlier --default/--file/--type reads are over-refused on
+purpose. First run of the new mutants left seven survivors: three redundant pieces of the first
+design (a separate write flag next to the clean flag; get and list as read words; resetting the
+clean flag at each git command) were removed, and the rest got cases (--value --get without set,
+--get set, a command with every known no-argument option and a value after the key).
+Spec: 93 of 93 killed.
+
+2. Gate script, the base read once. A cp stub changes the base after the copy; the test also
+requires that the stub ran, which failed before the gate copied the base:
+
+not ok 1 mutants-only: the base is read once, into a copy: a base changed after the copy can't split the checks
+
+3. Bare-wait scan: "wait-for-ready", "wait_x" and "wait-n" are not waits. The fixture negatives
+failed the scan (not ok 1 the bare-wait scan catches every form ...) before the option had to
+follow a space.

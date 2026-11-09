@@ -349,6 +349,45 @@ $CANARY"; git add -A; git commit -qm nl
   no_canary
 }
 
+# The long-hex rule exempts a pinned sha256 line only in a pins/*.env file. A path that holds a
+# newline must not lend a blob that context, by being cut at the newline or by faking an
+# ls-tree entry after it.
+@test "a newline in a path can't give a blob a pins/ context (truncated path)" {
+  pin=$(printf 'A_SHA256_linux_amd64=%s' "$(printf '0%.0s' {1..64})")
+  mkdir pins; printf '%s\n' "$pin" > "pins/x.env
+z"; git add -A; git commit -qm nlpin
+  sha=$(printf '%s\n' "$pin" | git hash-object --stdin)
+  scrub_history
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*"history:blob ${sha:0:12}"* ]]
+  no_canary
+}
+
+# The blob is reachable only through a tag, so a forged entry in a tree path would be its only
+# path context. The match is on the blob's own line: the forged name itself, sha included, also
+# lands in history:paths, so a bare long-hex match would pass even with the blob exempt.
+@test "a newline in a path can't give a blob a pins/ context (forged tree entry, blob only under a tag)" {
+  pin=$(printf 'A_SHA256_linux_amd64=%s' "$(printf '0%.0s' {1..64})")
+  sha=$(printf '%s\n' "$pin" | git hash-object -w --stdin)
+  git tag pinblob "$sha"
+  other=$(printf 'other\n' | git hash-object -w --stdin)
+  git update-index --add --cacheinfo "100644,$other,d/a
+100644 blob $sha	pins/x.env"
+  git commit -qm forge
+  scrub_history
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*"history:blob ${sha:0:12}"* ]]
+  no_canary
+}
+
+@test "a tab in a path is kept whole: a term before the tab is found" {
+  printf 'x\n' > "$CANARY"$'\tb'; git add -A; git commit -qm tab
+  scrub_history
+  [ "$status" -eq 1 ]
+  [[ $output == *history:paths* ]]
+  no_canary
+}
+
 @test "commit headers are scanned: a mergetag's tagger and message" {
   tree=$(git rev-parse HEAD^{tree}); parent=$(git rev-parse HEAD)
   obj=$(printf 'tree %s\nparent %s\nauthor dev <dev@example.com> 1700000000 +0000\ncommitter dev <dev@example.com> 1700000000 +0000\nmergetag object %s\n type commit\n tag v9\n tagger %s person <t@example.com> 1700000000 +0000\n \n note %s\n\nmerge\n' \
@@ -488,6 +527,26 @@ $CANARY"; git add -A; git commit -qm nl
   [[ $output == *denylist*history:commits* ]]
 }
 
+@test "an identity or tagger with bytes that aren't UTF-8, and no encoding header, is read under a UTF-8 locale" {
+  # No encoding header, so nothing re-encodes the bytes (#28): only LC_ALL=C lets GNU sed's "."
+  # match \351. (The test above carries ISO-8859-1, which git now shows as valid UTF-8.)
+  obj=$(printf 'tree %s\nauthor %s Ren\351 <a@example.com> 1700000000 +0000\ncommitter dev <dev@example.com> 1700000000 +0000\n\nm\n' \
+    "$(git rev-parse HEAD^{tree})" "$CANARY" | git hash-object -t commit -w --literally --stdin)
+  git update-ref refs/heads/raw "$obj"
+  LC_ALL=C.UTF-8 run "$REPO/tools/scrub.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *denylist*history:identities* ]]
+  no_canary
+  git update-ref -d refs/heads/raw
+  obj=$(printf 'object %s\ntype commit\ntag v4\ntagger %s Ren\351 <a@example.com> 1700000000 +0000\n\nrelease\n' \
+    "$(git rev-parse HEAD)" "$CANARY" | git hash-object -t tag -w --literally --stdin)
+  git update-ref refs/tags/v4 "$obj"
+  LC_ALL=C.UTF-8 run "$REPO/tools/scrub.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *denylist*history:identities* ]]
+  no_canary
+}
+
 # --- From the mutation run of the locale fix ----------------------------------------------
 
 @test "a header with a NUL byte is still scanned (grep -a), in commits and tags" {
@@ -506,4 +565,356 @@ $CANARY"; git add -A; git commit -qm nl
   [ "$status" -eq 1 ]
   [[ $output == *denylist*history:commits* ]]
   no_canary
+}
+
+# Cargo.lock: `checksum = "<64 lowercase hex>"` lines are exempt from long-hex, in a file named
+# Cargo.lock only; every other line and every other rule still applies there.
+hex64() { printf '0123456789abcdef%.0s' 1 2 3 4; }
+tree_scan() { git add -A; git commit -qm "t" --allow-empty; run "$REPO/tools/scrub.sh"; }
+
+@test "Cargo.lock: checksum lines are exempt from long-hex (tree and history)" {
+  mkdir -p src-tauri
+  { for i in 1 2 3; do printf '[[package]]\nname = "p%s"\nchecksum = "%s"\n' "$i" "$(hex64)"; done; } > src-tauri/Cargo.lock
+  tree_scan
+  [ "$status" -eq 0 ]
+  scrub_history
+  [ "$status" -eq 0 ]
+}
+
+@test "Cargo.lock: the exemption is for the file name Cargo.lock only" {
+  printf 'checksum = "%s"\n' "$(hex64)" > Cargo.lock.bak
+  printf 'checksum = "%s"\n' "$(hex64)" > notes.txt
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*Cargo.lock.bak* ]]
+  [[ $output == *long-hex*notes.txt* ]]
+}
+
+@test "Cargo.lock: only the whole checksum line is exempt, and the other lines still count" {
+  printf 'checksum = "%s"\n' "$(hex64)" > Cargo.lock
+  printf 'checksum = "%s" x\n' "$(hex64)" >> Cargo.lock
+  printf 'source = "%s"\n' "$(hex64)" >> Cargo.lock
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *"long-hex"*"Cargo.lock"*" 2"* ]]
+}
+
+@test "Cargo.lock: a checksum that is not 64 lowercase hex is flagged" {
+  h=$(hex64)
+  printf 'checksum = "%s"\n' "${h:0:40}" > Cargo.lock
+  tree_scan
+  [ "$status" -eq 1 ]; [[ $output == *long-hex*Cargo.lock*" 1"* ]]
+  printf 'checksum = "%s"\n' "${h:0:63}" > Cargo.lock
+  tree_scan
+  [ "$status" -eq 1 ]; [[ $output == *long-hex*Cargo.lock*" 1"* ]]
+  printf 'checksum = "%s"\n' "$(printf %s "$h" | tr a-f A-F)" > Cargo.lock
+  tree_scan
+  [ "$status" -eq 1 ]; [[ $output == *long-hex*Cargo.lock*" 1"* ]]
+}
+
+@test "Cargo.lock: the denylist still applies inside it" {
+  { printf 'checksum = "%s"\n' "$(hex64)"; echo "name = \"$CANARY\""; } > Cargo.lock
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *denylist*Cargo.lock* ]]
+  [[ $output != *long-hex* ]]
+  no_canary
+}
+
+@test "Cargo.lock: a name that only ends in Cargo.lock, and a line that only contains a checksum, are flagged" {
+  h=$(hex64)
+  printf 'checksum = "%s"\n' "$h" > fooCargo.lock
+  printf '# checksum = "%s"\nxchecksum = "%s"\n' "$h" "$h" > Cargo.lock
+  printf 'checksum = "%s"\n' "$h" > CargoXlock
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*fooCargo.lock*" 1"* ]]
+  [[ $output == *long-hex*" Cargo.lock"*" 2"* ]]
+  [[ $output == *long-hex*CargoXlock*" 1"* ]]
+}
+
+# A NUL byte must not end the line for the exemption: BSD grep treats NUL as the end of a
+# line for `$`, so an exempt line followed by NUL and a secret hid the secret.
+@test "NUL: hex after an exempt Cargo.lock checksum line, on the same line, is still counted" {
+  printf 'checksum = "%s"\0key %s%s\n' "$(hex64)" "$(hex64)" "$(hex64)" > Cargo.lock
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*Cargo.lock*" 1"* ]]
+}
+
+@test "NUL: hex after an exempt pins/*.env sha256 line is still counted" {
+  mkdir pins
+  printf 'TOOL_SHA256_linux_amd64=%s\0key %s%s\n' "$(hex64)" "$(hex64)" "$(hex64)" > pins/tool.env
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*pins/tool.env*" 1"* ]]
+}
+
+@test "NUL: hex after an exempt tools/scrub-known-versions.txt blob line is still counted" {
+  mkdir tools
+  printf '%s\0key %s%s\n' "$(hex64 | cut -c1-40)" "$(hex64)" "$(hex64)" > tools/scrub-known-versions.txt
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*scrub-known-versions.txt*" 1"* ]]
+}
+
+# The NUL split comes before the scrub:pinned-hash sed: a marked line, a NUL and then a
+# secret is two lines, and the marker must not strip the secret on the far side of the NUL.
+@test "NUL: a secret hex after a scrub:pinned-hash line and a NUL is counted (plain file)" {
+  printf 'x # scrub:pinned-hash\0%s\n' "$(hex64)" > notes.txt
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*notes.txt*" 1"* ]]
+}
+
+@test "NUL: a secret hex after a scrub:pinned-hash line and a NUL is counted (Cargo.lock)" {
+  printf 'x # scrub:pinned-hash\0%s\n' "$(hex64)" > Cargo.lock
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*" Cargo.lock"*" 1"* ]]
+}
+
+@test "NUL: a secret hex after a scrub:pinned-hash line and a NUL is counted (pins/*.env)" {
+  mkdir pins
+  printf 'x # scrub:pinned-hash\0%s\n' "$(hex64)" > pins/tool.env
+  tree_scan
+  [ "$status" -eq 1 ]
+  [[ $output == *long-hex*pins/tool.env*" 1"* ]]
+}
+
+# --- #28: a commit stored in another encoding ---------------------------------------------
+
+@test "a non-ASCII term in a commit stored as ISO-8859-1 is found, as git shows it (UTF-8)" {
+  term=$(printf 'zorbl\303\251x')   # the term in UTF-8, as a denylist holds it
+  printf '%s\n' "$term" > "$SCRUB_DENYLIST"
+  for loc in C.UTF-8 C; do
+    obj=$(printf 'tree %s\nauthor Zorbl\351x Smith <a@example.com> 1700000000 +0000\ncommitter dev <dev@example.com> 1700000000 +0000\nencoding ISO-8859-1\n\nm\n' \
+      "$(git rev-parse HEAD^{tree})" | git hash-object -t commit -w --literally --stdin)
+    git update-ref refs/heads/latin "$obj"
+    LC_ALL=$loc run "$REPO/tools/scrub.sh" --history
+    [ "$status" -eq 1 ]
+    [[ $output == *denylist*history:identities* ]]
+    [[ $output != *"$term"* ]]
+    obj=$(printf 'tree %s\nauthor dev <dev@example.com> 1700000000 +0000\ncommitter dev <dev@example.com> 1700000000 +0000\nencoding ISO-8859-1\n\nabout zorbl\351x\n' \
+      "$(git rev-parse HEAD^{tree})" | git hash-object -t commit -w --literally --stdin)
+    git update-ref refs/heads/latin "$obj"
+    LC_ALL=$loc run "$REPO/tools/scrub.sh" --history
+    [ "$status" -eq 1 ]
+    [[ $output == *denylist*history:messages* ]]
+    [[ $output != *"$term"* ]]
+  done
+}
+
+@test "a commit in another encoding still passes when it holds no term" {
+  obj=$(printf 'tree %s\nauthor Ren\351 <a@example.com> 1700000000 +0000\ncommitter dev <dev@example.com> 1700000000 +0000\nencoding ISO-8859-1\n\ncaf\351\n' \
+    "$(git rev-parse HEAD^{tree})" | git hash-object -t commit -w --literally --stdin)
+  git update-ref refs/heads/latin "$obj"
+  scrub_history
+  [ "$status" -eq 0 ]
+  [[ $output == *clean* ]]
+}
+
+# --- GNU-only forms: BSD sed (macOS) dropped every identity (2026-10-27) ------------------
+
+# bsd_like_sed: a sed first on PATH that refuses GNU extensions in basic expressions (\|, \+,
+# \?), as BSD sed does: GNU sed in --posix mode, or the system sed when it isn't GNU.
+bsd_like_sed() {
+  local real; real=$(command -v sed)
+  mkdir -p "$BATS_TEST_TMPDIR/bsd"
+  if "$real" --version >/dev/null 2>&1; then
+    printf '#!/bin/sh\nexec "%s" --posix "$@" 2>/dev/null\n' "$real" > "$BATS_TEST_TMPDIR/bsd/sed"
+  else
+    printf '#!/bin/sh\nexec "%s" "$@"\n' "$real" > "$BATS_TEST_TMPDIR/bsd/sed"
+  fi
+  chmod +x "$BATS_TEST_TMPDIR/bsd/sed"
+  PATH="$BATS_TEST_TMPDIR/bsd:$PATH"
+}
+
+@test "with a BSD-like sed, a term in an author name or a committer email is still found" {
+  bsd_like_sed
+  GIT_AUTHOR_NAME="Ann $CANARY" git commit -q --allow-empty -m "a"
+  scrub_history
+  [ "$status" -eq 1 ]
+  [[ $output == *denylist*history:identities* ]]
+  no_canary
+  git reset -q --hard HEAD~1
+  GIT_COMMITTER_EMAIL="$CANARY@example.com" git commit -q --allow-empty -m "c"
+  scrub_history
+  [ "$status" -eq 1 ]
+  [[ $output == *denylist*history:identities* ]]
+  no_canary
+}
+
+@test "with a BSD-like sed, a tagger and a tree path are still found" {
+  bsd_like_sed
+  GIT_COMMITTER_NAME="Tag $CANARY" git tag -a -m "release" v1
+  scrub_history
+  [ "$status" -eq 1 ]
+  [[ $output == *denylist*history:identities* ]]
+  git tag -d v1 >/dev/null
+  mkdir d; echo x > "d/$CANARY.txt"; git add d; git commit -qm "p"
+  scrub_history
+  [ "$status" -eq 1 ]
+  [[ $output == *denylist*history:paths* ]]
+  no_canary
+}
+
+@test "fails closed: --history refuses to run when its extraction finds no tagger" {
+  mkdir -p "$BATS_TEST_TMPDIR/broken"
+  # A sed that prints nothing for a tagger line, as a GNU-only form on BSD sed would.
+  real=$(command -v sed)
+  printf '#!/bin/sh\ncase "$*" in *tagger*) exit 0 ;; esac\nexec "%s" "$@"\n' "$real" > "$BATS_TEST_TMPDIR/broken/sed"
+  chmod +x "$BATS_TEST_TMPDIR/broken/sed"
+  PATH="$BATS_TEST_TMPDIR/broken:$PATH" run "$REPO/tools/scrub.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *tagger*"refusing to scan"* ]]
+  [[ $output != *clean* ]]
+}
+
+@test "fails closed: --history refuses to run when its extraction finds no known identity" {
+  mkdir -p "$BATS_TEST_TMPDIR/broken"
+  # A sed that prints nothing for the probe's author line, as a GNU-only form on BSD sed did.
+  real=$(command -v sed)
+  printf '#!/bin/sh\ncase "$*" in *author*) exit 0 ;; esac\nexec "%s" "$@"\n' "$real" > "$BATS_TEST_TMPDIR/broken/sed"
+  chmod +x "$BATS_TEST_TMPDIR/broken/sed"
+  PATH="$BATS_TEST_TMPDIR/broken:$PATH" run "$REPO/tools/scrub.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *"refusing to scan"* ]]
+  [[ $output != *clean* ]]
+}
+
+@test "the self-test plants a history canary and finds it in the identities" {
+  run "$REPO/tools/scrub.sh" --self-test
+  [ "$status" -eq 0 ]
+  [[ $output == *"ok    history identities"* ]]
+}
+
+@test "the self-test's history canary runs a copy without the exec bit, as bash FILE does" {
+  # A vendored copy is often run as `bash scrub.sh` with mode 0644; re-running it as "$0" was exit 126.
+  mkdir -p "$BATS_TEST_TMPDIR/vendored"
+  cp "$REPO/tools/scrub.sh" "$BATS_TEST_TMPDIR/vendored/scrub.sh"
+  chmod 644 "$BATS_TEST_TMPDIR/vendored/scrub.sh"
+  run bash "$BATS_TEST_TMPDIR/vendored/scrub.sh" --self-test
+  [ "$status" -eq 0 ]
+  [[ $output == *"ok    history identities"* ]]
+}
+
+@test "the self-test fails when the history scan misses an identity" {
+  mkdir -p "$BATS_TEST_TMPDIR/broken"
+  real=$(command -v sed)
+  printf '#!/bin/sh\ncase "$*" in *author*) exit 0 ;; esac\nexec "%s" "$@"\n' "$real" > "$BATS_TEST_TMPDIR/broken/sed"
+  chmod +x "$BATS_TEST_TMPDIR/broken/sed"
+  PATH="$BATS_TEST_TMPDIR/broken:$PATH" run "$REPO/tools/scrub.sh" --self-test
+  [ "$status" -eq 1 ]
+  [[ $output == *"MISS  history identities"* ]]
+}
+
+# --- the self-test must not touch the caller's repository (review of #81) -------------------
+
+# A hook, a linked worktree or a --git-dir caller exports GIT_DIR; the self-test's own git work
+# (a temp repo, update-ref) then ran in THAT repository and moved its main to a canary commit.
+victim_state() {
+  { git -C "$VICTIM" for-each-ref; git -C "$VICTIM" symbolic-ref HEAD; git -C "$VICTIM" rev-parse HEAD
+    git -C "$VICTIM" cat-file --batch-all-objects --batch-check; } 2>&1
+}
+
+make_victim() {
+  VICTIM="$BATS_TEST_TMPDIR/victim"
+  git init -q -b main "$VICTIM"
+  git -C "$VICTIM" commit -q --allow-empty -m "real work"
+}
+
+@test "the self-test leaves a repository named by GIT_DIR untouched" {
+  make_victim
+  before=$(victim_state)
+  cd "$BATS_TEST_TMPDIR"
+  GIT_DIR="$VICTIM/.git" run "$REPO/tools/scrub.sh" --self-test
+  [ "$status" -eq 0 ]
+  [[ $output == *"ok    history identities"* ]]
+  [ "$(victim_state)" = "$before" ]
+}
+
+@test "the self-test leaves a repository named by GIT_DIR and GIT_WORK_TREE untouched" {
+  make_victim
+  before=$(victim_state)
+  cd "$BATS_TEST_TMPDIR"
+  GIT_DIR="$VICTIM/.git" GIT_WORK_TREE="$VICTIM" GIT_INDEX_FILE="$VICTIM/.git/index" \
+    run "$REPO/tools/scrub.sh" --self-test
+  [ "$status" -eq 0 ]
+  [ "$(victim_state)" = "$before" ]
+}
+
+# --- the probe holds a non-UTF-8 byte, so losing the C locale fails closed (review nit) ------
+
+@test "the extraction probe fails closed when the C locale is lost" {
+  locale -a 2>/dev/null | grep -qix 'en_US.UTF-8\|en_US.utf8\|C.UTF-8\|C.utf8' || skip "no UTF-8 locale installed"
+  loc=$(locale -a | grep -ix 'en_US.UTF-8\|en_US.utf8\|C.UTF-8\|C.utf8' | head -1)
+  cp "$REPO/tools/scrub.sh" "$BATS_TEST_TMPDIR/scrub-nolc.sh"
+  python3 - "$BATS_TEST_TMPDIR/scrub-nolc.sh" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p).read()
+old = "  export LC_ALL=C\n  set -E"
+assert s.count(old) == 1
+open(p, "w").write(s.replace(old, "  set -E"))
+PY
+  mkdir -p "$BATS_TEST_TMPDIR/tools"
+  mv "$BATS_TEST_TMPDIR/scrub-nolc.sh" "$BATS_TEST_TMPDIR/tools/scrub.sh"
+  cp "$REPO/tools/scrub-known-versions.txt" "$BATS_TEST_TMPDIR/tools/"
+  chmod +x "$BATS_TEST_TMPDIR/tools/scrub.sh"
+  LC_ALL=$loc run "$BATS_TEST_TMPDIR/tools/scrub.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *"refusing to scan"* ]]
+  [[ $output != *clean* ]]
+}
+
+# broken_sed PATTERN: a sed first on PATH that prints nothing when its arguments match PATTERN
+# (a shell case pattern), as a GNU-only form on BSD sed does; every other call is the real sed.
+broken_sed() {
+  mkdir -p "$BATS_TEST_TMPDIR/broken"
+  printf '#!/bin/sh\ncase "$*" in %s) exit 0 ;; esac\nexec "%s" "$@"\n' "$1" "$(command -v sed)" \
+    > "$BATS_TEST_TMPDIR/broken/sed"
+  chmod +x "$BATS_TEST_TMPDIR/broken/sed"
+  PATH="$BATS_TEST_TMPDIR/broken:$PATH"
+}
+
+# broken_copy SED-SCRIPT: a copy of the scrub with one edit that breaks an extraction in the
+# tree reader (bash itself now, no sed or tr); the edit must have changed the file.
+broken_copy() {
+  sed "$1" "$REPO/tools/scrub.sh" > "$BATS_TEST_TMPDIR/scrub-broken.sh"
+  if cmp -s "$REPO/tools/scrub.sh" "$BATS_TEST_TMPDIR/scrub-broken.sh"; then echo "broken_copy: the edit did not apply"; return 1; fi
+  chmod +x "$BATS_TEST_TMPDIR/scrub-broken.sh"
+}
+
+@test "fails closed: --history refuses to run when its extraction finds no blob path" {
+  broken_copy 's/sha=\${meta##\* }/sha=zz/'
+  run "$BATS_TEST_TMPDIR/scrub-broken.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *"history's blob-paths"*"refusing to scan"* ]]
+  [[ $output != *clean* ]]
+}
+
+@test "fails closed: --history refuses to run when its extraction finds no tree path" {
+  broken_copy 's/"\${rec#\*\$.\\t.}"/"$rec"/'
+  run "$BATS_TEST_TMPDIR/scrub-broken.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *"history's paths;"*"refusing to scan"* ]]
+  [[ $output != *clean* ]]
+}
+
+# Only the blob-paths probe's own record is changed (its type), so the paths and newline probes
+# stay green and the refusal must name blob-paths and nothing else.
+@test "fails closed: the blob-paths probe alone refuses, naming blob-paths" {
+  broken_copy 's/100644 blob 0a1b\\tdir\/probe/100644 tree 0a1b\\tdir\/probe/'
+  run "$BATS_TEST_TMPDIR/scrub-broken.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *"history's blob-paths;"*"refusing to scan"* ]]
+  [[ $output != *clean* ]]
+}
+
+@test "fails closed: --history refuses to run when a path with a newline can forge a blob pair" {
+  broken_copy "s/if \\[\\[ \$path == \\*\\\$'\\\\n'\\* \\]\\]; then path=.*; fi/:/"
+  run "$BATS_TEST_TMPDIR/scrub-broken.sh" --history
+  [ "$status" -eq 1 ]
+  [[ $output == *"blob-paths-newline"*"refusing to scan"* ]]
+  [[ $output != *clean* ]]
 }

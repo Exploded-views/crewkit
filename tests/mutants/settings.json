@@ -143,7 +143,7 @@
     },
     {
       "name": "a changed list isn't re-read",
-      "old": "  [[ $_CREW_LISTS_SRC == \"$CREW_FILE_ONLY|$CREW_ENV_OK\" ]] || _crew_flatten_lists",
+      "old": "  [[ $_CREW_LISTS_SRC == \"$CREW_FILE_ONLY|$CREW_ENV_OK|$CREW_USER_ONLY\" ]] || _crew_flatten_lists",
       "new": "  [[ -n $_CREW_LISTS_SRC ]] || _crew_flatten_lists"
     },
     {
@@ -155,6 +155,51 @@
       "name": "a malformed key can take the environment",
       "old": "  case $key in ''|*[!abcdefghijklmnopqrstuvwxyz0123456789_.-]*) return 1 ;; esac",
       "new": "  :"
+    },
+    {
+      "name": "nodes.* not user-only (a project could change the lead list or host)",
+      "old": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'",
+      "new": "CREW_USER_ONLY='registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'"
+    },
+    {
+      "name": "registry.* not user-only (a project could redirect the sync repo or its key)",
+      "old": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'",
+      "new": "CREW_USER_ONLY='nodes.* limits.* push_gate.* heavy_lock watch.trusted_authors'"
+    },
+    {
+      "name": "limits.* not user-only (a project could raise the host's session cap)",
+      "old": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'",
+      "new": "CREW_USER_ONLY='nodes.* registry.* push_gate.* heavy_lock watch.trusted_authors'"
+    },
+    {
+      "name": "push_gate.* not user-only (a project could point the gate at an empty denylist)",
+      "old": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'",
+      "new": "CREW_USER_ONLY='nodes.* registry.* limits.* heavy_lock watch.trusted_authors'"
+    },
+    {
+      "name": "crew_setting reads a user-only key from every file",
+      "old": "  if _crew_user_only \"$key\"; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "a user-only key read from the last file even when it isn't the user file",
+      "old": "${_CREW_FILES[${#_CREW_FILES[@]} - 1]} == \"$HOME/.claude/crewkit.md\" ]] &&",
+      "new": "-n ${_CREW_FILES[${#_CREW_FILES[@]} - 1]} ]] &&"
+    },
+    {
+      "name": "crew_keys lists user-only keys from project files",
+      "old": "        _crew_user_only \"${line%%:*}\" || printf",
+      "new": "        false || printf"
+    },
+    {
+      "name": "a user-only prefix doesn't cover the keys under it",
+      "old": "    case $_CREW_UO_FLAT in *\" $p.* \"*) return 0 ;; esac",
+      "new": "    :"
+    },
+    {
+      "name": "heavy_lock not user-only (a project could redirect the heavy lock)",
+      "old": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'",
+      "new": "CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* watch.trusted_authors'"
     }
   ]
 }

@@ -1,0 +1,2 @@
+#!/bin/sh
+SHIM_TOOL=grep exec python3 "$(dirname "$0")/shim.py" "$@"

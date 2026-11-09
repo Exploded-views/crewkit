@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# crewkit holder tokens NODE --base-url URL [--yes]
+#
+# Run on the hub. Makes NODE's ntfy user, which may only WRITE to its own topic
+# (crewkit-<node_id>), with a fresh token, and writes the ntfy user database to
+# <state_dir>/holder/ntfy_auth for mounting on the holder as the `ntfy_auth` secret. It prints the
+# node's two setting lines, which `crewkit join` writes into the node's user settings:
+#
+#   nodes.hub.pointer_url: URL/crewkit-<node_id>
+#   nodes.hub.pointer_token: tk_...
+#
+# A re-run deletes the node's user and makes it again, so the old token stops working. The user's
+# password is made here, passed to ntfy in its environment, and kept nowhere. Other nodes' users
+# are untouched. Without --yes it shows the plan and changes nothing.
+#
+# Exit: 0, 64 usage, 78 a node with no node_id or no ntfy, 1 ntfy failed.
+set -euo pipefail
+: "${CK_ROOT:?crewkit-holder-tokens is run by bin/crewkit}"
+# shellcheck source=/dev/null
+source "$CK_ROOT/lib/settings.sh"
+# shellcheck source=/dev/null
+source "$CK_ROOT/libexec/ck/common.sh"
+# settings-keys: nodes.<name>.node_id
+
+usage() { ck_die 64 "usage: crewkit holder tokens NODE --base-url URL [--yes]"; }
+
+node='' base=''
+while (($#)); do
+  case $1 in
+    --base-url) (($# >= 2)) || usage; base=$2; shift ;;
+    --yes) CK_YES=1 ;;
+    -*) usage ;;
+    *) [[ -z $node ]] || usage; node=$1 ;;
+  esac
+  shift
+done
+[[ -n $node && -n $base ]] || usage
+ck_name_ok "$node" || ck_die 64 "bad node name: $node"
+LC_ALL=C
+[[ $base =~ ^https?://[A-Za-z0-9._:-]{1,200}(/[A-Za-z0-9._~/-]{0,200})?$ ]] || ck_die 64 "--base-url must be a plain http(s) URL"
+base=${base%/}
+
+id=$(crew_setting "nodes.$node.node_id")  # settings-keys: nodes.<name>.node_id
+[[ $id =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]] || ck_die 78 "nodes.$node.node_id is not set (join the node first)"
+command -v ntfy >/dev/null 2>&1 || ck_die 78 "ntfy is required here (install it, or run this where the holder image's ntfy is)"
+topic=crewkit-$id
+
+if [[ ${CK_YES:-0} != 1 ]]; then
+  echo "would make the ntfy user $id (write-only to $topic), write the database to <state_dir>/holder/ntfy_auth, and print the node's two setting lines; run again with --yes"
+  exit 0
+fi
+
+dir=$(ck_state_dir)/holder
+mkdir -p "$dir" && chmod 700 "$dir"
+ck_lock holder-tokens
+work=$(mktemp "$dir/ntfy_auth.XXXXXX")
+cleanup() { rm -f "$work"; ck_unlock holder-tokens; }
+trap cleanup EXIT
+[[ ! -s $dir/ntfy_auth ]] || cp "$dir/ntfy_auth" "$work"
+export NTFY_AUTH_FILE=$work NTFY_AUTH_DEFAULT_ACCESS=deny-all
+if [[ ! -s $work ]]; then
+  # `ntfy user add` needs a database to exist, and only a server start makes one: start one on
+  # loopback until the file appears, then stop it.
+  NTFY_LISTEN_HTTP=127.0.0.1:$((20000 + RANDOM % 20000)) ntfy serve >/dev/null 2>&1 &
+  pid=$!
+  for _ in $(seq 40); do [[ -s $work ]] && break; sleep 0.5; done
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  [[ -s $work ]] || ck_die 1 "ntfy did not create its user database"
+fi
+ntfy user del "$id" >/dev/null 2>&1 || true
+password=$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9')
+password=${password:0:32}
+[[ ${#password} -eq 32 ]] || ck_die 1 "cannot read random bytes from /dev/urandom"
+NTFY_PASSWORD=$password ntfy user add --role=user "$id" >/dev/null || ck_die 1 "ntfy could not add the user"
+unset password
+ntfy access "$id" "$topic" write-only >/dev/null || ck_die 1 "ntfy could not set the user's access"
+out=$(ntfy token add "$id") || ck_die 1 "ntfy could not make a token"
+[[ $out =~ (tk_[A-Za-z0-9_]+) ]] || ck_die 1 "ntfy printed no token"
+token=${BASH_REMATCH[1]}
+chmod 600 "$work"
+mv "$work" "$dir/ntfy_auth"
+
+echo "wrote $dir/ntfy_auth (mount it on the holder as the ntfy_auth secret)"
+echo "nodes.hub.pointer_url: $base/$topic"
+echo "nodes.hub.pointer_token: $token"

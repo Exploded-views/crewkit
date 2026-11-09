@@ -1,0 +1,14 @@
+tools/scrub.sh --history on BSD sed: RED, 2026-10-27, bats tests/scrub-history.bats before the fix.
+Stock macOS PATH (BSD sed): existing tests 7, 13, 25, 46 fail (identities stream empty).
+New tests, against origin/main's scrub.sh:
+  stock macOS PATH:  not ok BSD-like sed identities; ok tagger/path; not ok fails closed;
+                     not ok self-test history canary (x2); not ok ISO-8859-1 (the encoding fix)
+  GNU sed on PATH (as Linux CI), sed --posix stub: not ok BSD-like sed identities;
+                     ok tagger/path; not ok fails closed; not ok self-test (x2)
+
+The encoding fix (a commit stored as ISO-8859-1), bats -f 'ISO-8859-1|another encoding' tests/scrub-history.bats before the fix:
+1..2
+not ok 1 a non-ASCII term in a commit stored as ISO-8859-1 is found, as git shows it (UTF-8)
+# (in test file tests/scrub-history.bats, line 521)
+#   `[ "$status" -eq 1 ]' failed
+ok 2 a commit in another encoding still passes when it holds no term

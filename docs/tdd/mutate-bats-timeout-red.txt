@@ -1,0 +1,9 @@
+mutate.py short BATS_TEST_TIMEOUT: RED run, 2026-10-27 (macOS), with the three new tests in place and
+tools/mutate.py at 0ceb279, which passes the caller's environment through unchanged (a hung mutant waits
+out the bats file's own watchdog: 120 s in tests/watcher-injection.bats, 300 s under the Linux gate).
+
+FAIL: test_a_bad_mutate_bats_test_timeout_is_usage (test_mutate.Mutate.test_a_bad_mutate_bats_test_timeout_is_usage)
+FAIL: test_a_hung_mutant_is_killed_at_the_short_limit_and_counts_as_killed (test_mutate.Mutate.test_a_hung_mutant_is_killed_at_the_short_limit_and_counts_as_killed)
+FAIL: test_suites_get_a_short_bats_test_timeout_whatever_the_caller_set (test_mutate.Mutate.test_suites_get_a_short_bats_test_timeout_whatever_the_caller_set)
+Ran 18 tests in 62.441s
+FAILED (failures=3)

@@ -1,0 +1,120 @@
+{
+  "target": "libexec/ck/registry.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-registry.bats"
+  ],
+  "mutants": [
+    {
+      "name": "key allow-list skipped",
+      "old": "if (keys != ($K | sort)) then",
+      "new": "if false then"
+    },
+    {
+      "name": "token reuse allowed",
+      "old": "|| -n $used ||",
+      "new": "|| -n \"\" ||"
+    },
+    {
+      "name": "token expiry ignored",
+      "old": "|| ((now >= exp))",
+      "new": "|| false"
+    },
+    {
+      "name": "token node binding ignored",
+      "old": "$rnode != \"$node\" ||",
+      "new": "-z \"$rnode\" ||"
+    },
+    {
+      "name": "debounce removed (commit every time)",
+      "old": "if [[ $last =~ ^[0-9]+$ ]] && ((now - last < min)); then continue; fi",
+      "new": "if false; then continue; fi"
+    },
+    {
+      "name": "pull without --ff-only",
+      "old": "pull -q --ff-only origin",
+      "new": "pull -q --no-rebase origin"
+    },
+    {
+      "name": "node_id path check skipped",
+      "old": "[[ ${1-} =~ ^n-[a-z2-7]{10}$ ]] || ck_die 65 \"bad node id (want n- and 10 of a-z2-7)\"",
+      "new": ":"
+    },
+    {
+      "name": "log line built by interpolation",
+      "old": "line=$(jq -cn --arg at",
+      "new": "line=$(printf '{\"at\":\"%s\",\"event\":\"%s\",\"node_id\":\"%s\",\"detail\":\"%s\"}' \"$(ck_iso \"$(ck_now)\")\" \"$event\" \"$id\" \"$detail\"; : jq -cn --arg at"
+    },
+    {
+      "name": "tokens.tsv not 600",
+      "old": "(umask 077; printf '%s\\t%s\\t%s\\n' \"$hash\"",
+      "new": "(umask 022; printf '%s\\t%s\\t%s\\n' \"$hash\""
+    },
+    {
+      "name": "secret passed in argv",
+      "old": "hash=$(printf '%s' \"$secret\" | _ck_sha256)",
+      "new": "hash=$(jq -nr --arg s \"$secret\" '$s' | _ck_sha256)"
+    },
+    {
+      "name": "registry_id unchecked in mint",
+      "old": "  _ck_reg_rid \"$id\"\n  printf '%s\\n' \"$id\"",
+      "new": "  printf '%s\\n' \"$id\""
+    },
+    {
+      "name": "commit without the registry lock",
+      "old": "  ck_lock registry\n  _ck_reg_commit_locked",
+      "new": "  _ck_reg_commit_locked"
+    },
+    {
+      "name": "askpass not disabled",
+      "old": " GIT_ASKPASS=/bin/false SSH_ASKPASS=/bin/false SSH_ASKPASS_REQUIRE=never",
+      "new": ""
+    },
+    {
+      "name": "tokens.tsv inside the sync repo allowed",
+      "old": "    [[ $p -ef $2 ]] && return 0",
+      "new": "    false && return 0"
+    },
+    {
+      "name": "non-canonical base64 accepted",
+      "old": "[[ $(_ck_b64url_enc \"$pub\") == \"$b64\" ]] ||",
+      "new": ": ||"
+    },
+    {
+      "name": "dotted label key accepted",
+      "old": "ck_label_ok \"$lab\" ||",
+      "new": ": ||"
+    },
+    {
+      "name": "prune before the expiry check",
+      "old": "    row=$(awk -F'\\t' -v h=\"$hash\" '$1 == h { print; exit }' \"$f\")\n    IFS=$'\\t' read -r _ rnode exp used <<<\"$row\"\n    if [[ -z $row || $rnode != \"$node\" || -n $used || ! $exp =~ ^[0-9]+$ ]] || ((now >= exp)); then",
+      "new": "    _ck_tok_prune \"$f\" \"$dir\" \"$now\"\n    row=$(awk -F'\\t' -v h=\"$hash\" '$1 == h { print; exit }' \"$f\")\n    IFS=$'\\t' read -r _ rnode exp used <<<\"$row\"\n    if [[ -z $row || $rnode != \"$node\" || -n $used || ! $exp =~ ^[0-9]+$ ]]; then"
+    },
+    {
+      "name": "prefix test for tokens inside the repo",
+      "old": "    [[ $p -ef $2 ]] && return 0",
+      "new": "    [[ $p == \"$2\" ]] && return 0"
+    },
+    {
+      "name": "commit stages tokens.tsv",
+      "old": "    if [[ ${path##*/} == tokens.tsv || ${path##*/} == .tokens.* ]]; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "control characters in labels accepted",
+      "old": "any(. < 32 or . == 127)",
+      "new": "any(false)"
+    },
+    {
+      "name": "cd -P failure passes the inside check",
+      "old": "|| ck_die 78 \"cannot resolve $1\"",
+      "new": "|| p="
+    },
+    {
+      "name": "control characters in role accepted",
+      "old": "select(. < 32 or . == 127)",
+      "new": "select(false)"
+    }
+  ]
+}

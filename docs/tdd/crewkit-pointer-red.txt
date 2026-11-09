@@ -1,0 +1,138 @@
+1..27
+not ok 1 ck_pointer_ok accepts a short prefix, a number and the owner flag
+# (in test file tests/crewkit-pointer.bats, line 50)
+#   `source "$TREE/libexec/ck/pointer.sh"' failed
+# tests/crewkit-pointer.bats: line 50: <tmp>/test/1/tree/libexec/ck/pointer.sh: No such file or directory
+not ok 2 ck_pointer_ok drops anything else: extra text, case, length, a second line
+# (in test file tests/crewkit-pointer.bats, line 59)
+#   `source "$TREE/libexec/ck/pointer.sh"' failed
+# tests/crewkit-pointer.bats: line 59: <tmp>/test/2/tree/libexec/ck/pointer.sh: No such file or directory
+not ok 3 outbox add appends the record and sends exactly '<id> owner:yes'
+# (in test file tests/crewkit-pointer.bats, line 73)
+#   `[ "$status" -eq 0 ]' failed
+not ok 4 the token reaches curl on stdin only, never argv, output or the outbox
+# (in test file tests/crewkit-pointer.bats, line 82)
+#   `[ "$status" -eq 0 ]' failed
+not ok 5 a failed send is exit 0 with the poll note, the record stays, and no secret is printed
+# (in test file tests/crewkit-pointer.bats, line 91)
+#   `[ "$status" -eq 0 ]' failed
+not ok 6 without the url or the token the send is skipped with the same note
+# (in test file tests/crewkit-pointer.bats, line 101)
+#   `[ "$status" -eq 0 ]' failed
+not ok 7 a bad id, owner, second line, long line or control character is 65 and sends nothing
+# (in test file tests/crewkit-pointer.bats, line 110)
+#   `run outbox add OB-12 --owner yes "line" --yes; [ "$status" -eq 65 ]' failed
+not ok 8 a line of exactly 200 characters is accepted
+# (in test file tests/crewkit-pointer.bats, line 125)
+#   `[ "$status" -eq 0 ]' failed
+not ok 9 the same id and line again appends nothing and sends again
+# (in test file tests/crewkit-pointer.bats, line 129)
+#   `run outbox add ob-12 --owner yes "line" --yes; [ "$status" -eq 0 ]' failed
+not ok 10 the same id with another line, or another owner flag, is 65
+# (in test file tests/crewkit-pointer.bats, line 136)
+#   `run outbox add ob-12 --owner yes "line" --yes; [ "$status" -eq 0 ]' failed
+not ok 11 without --yes it is a dry run: nothing written, nothing sent
+# (in test file tests/crewkit-pointer.bats, line 145)
+#   `[ "$status" -eq 0 ]' failed
+not ok 12 a record goes to the session's own log
+# (in test file tests/crewkit-pointer.bats, line 152)
+#   `[ "$status" -eq 0 ]' failed
+not ok 13 the listener pulls the node on a valid pointer and drops one with extra text, counting it
+# (in test file tests/crewkit-pointer.bats, line 163)
+#   `[ "$status" -eq 0 ]' failed
+not ok 14 the listener pulls once for a repeated node and id
+# (in test file tests/crewkit-pointer.bats, line 173)
+#   `[ "$(wc -l < "$PSTUB/pulled")" -eq 2 ]' failed with status 2
+# tests/crewkit-pointer.bats: line 173: <tmp>/test/14/pstub/pulled: No such file or directory
+# tests/crewkit-pointer.bats: line 173: [: : integer expected
+not ok 15 a message on a topic that is no node's is dropped
+# (in test file tests/crewkit-pointer.bats, line 181)
+#   `[ "$(cat "$HOME/.local/state/crewkit/pointer.dropped")" = "2" ]' failed
+# cat: <tmp>/test/15/hub/.local/state/crewkit/pointer.dropped: No such file or directory
+not ok 16 a pointer with a second line, or a command in it, is dropped and runs nothing
+# (in test file tests/crewkit-pointer.bats, line 191)
+#   `[ "$(cat "$PSTUB/pulled")" = "homebox" ]' failed
+# cat: <tmp>/test/16/pstub/pulled: No such file or directory
+not ok 17 a stream that drops is reconnected with backoff 1, 2, 4, 8 and the read token is not in argv
+# (in test file tests/crewkit-pointer.bats, line 198)
+#   `[ "$(calls)" -eq 5 ]' failed
+not ok 18 the backoff stops at 60 seconds
+# (in test file tests/crewkit-pointer.bats, line 207)
+#   `[ "$(paste -sd, "$PSTUB/sleep.log")" = "1,2,4,8,16,32,60,60" ]' failed
+not ok 19 a stream that delivered something starts the backoff over
+# (in test file tests/crewkit-pointer.bats, line 214)
+#   `[ "$(paste -sd, "$PSTUB/sleep.log")" = "1,2,1,2" ]' failed
+not ok 20 holder tokens without --yes is a dry run: nothing made
+# (in test file tests/crewkit-pointer.bats, line 225)
+#   `[ "$status" -eq 0 ]' failed
+not ok 21 holder tokens: write-only to its own topic, the file written, the two lines printed
+# (in test file tests/crewkit-pointer.bats, line 233)
+#   `[ "$status" -eq 0 ]' failed
+not ok 22 holder tokens: the password is never in argv, the log or the output
+# (in test file tests/crewkit-pointer.bats, line 244)
+#   `[ "$status" -eq 0 ]' failed
+not ok 23 holder tokens: a re-run kills the old token and prints a new one
+# (in test file tests/crewkit-pointer.bats, line 257)
+#   `[[ $output == *"tk_stub1"* ]]' failed
+not ok 24 holder tokens: another node's token is untouched
+# (from function `ck' in file tests/crewkit-helpers.bash, line 37,
+#  in test file tests/crewkit-pointer.bats, line 267)
+#   `ck holder tokens other --base-url http://holder:8080 --yes' failed with status 64
+# crewkit: unknown verb (no crewkit-holder in this tree)
+# usage: crewkit --version
+#        crewkit init | join | status | open | ask | doctor [args]
+#        crewkit registry move [args]
+#        crewkit node report | join | drill | authorize | take-registry [args]
+not ok 25 holder tokens: a node with no node_id, a bad name or a bad base url is refused
+# (in test file tests/crewkit-pointer.bats, line 275)
+#   `run tokens --yes; [ "$status" -eq 78 ]' failed
+not ok 26 holder tokens without ntfy installed is 78 naming it
+# (in test file tests/crewkit-pointer.bats, line 288)
+#   `[[ $output == *ntfy* ]]' failed
+not ok 27 the pointer settings are user-only: the environment and a project file cannot set them
+# (in test file tests/crewkit-pointer.bats, line 296)
+#   `[ "$status" -eq 0 ]' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `bash -c 
+    source "$TREE/lib/settings.sh"; source "$TREE/libexec/ck/common.sh"; source "$TREE/libexec/ck/pointer.sh"
+    ck_pointer_listen http://127.0.0.1:8080 "$1" "$2" _ <tmp>/test/13/readtoken <tmp>/test/13/pull` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `listen' in file tests/crewkit-pointer.bats, line 38,
+       in test file tests/crewkit-pointer.bats, line 162)
+BW01: `run`'s command `bash -c 
+    source "$TREE/lib/settings.sh"; source "$TREE/libexec/ck/common.sh"; source "$TREE/libexec/ck/pointer.sh"
+    ck_pointer_listen http://127.0.0.1:8080 "$1" "$2" _ <tmp>/test/14/readtoken <tmp>/test/14/pull` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `listen' in file tests/crewkit-pointer.bats, line 38,
+       in test file tests/crewkit-pointer.bats, line 172)
+BW01: `run`'s command `bash -c 
+    source "$TREE/lib/settings.sh"; source "$TREE/libexec/ck/common.sh"; source "$TREE/libexec/ck/pointer.sh"
+    ck_pointer_listen http://127.0.0.1:8080 "$1" "$2" _ <tmp>/test/15/readtoken <tmp>/test/15/pull` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `listen' in file tests/crewkit-pointer.bats, line 38,
+       in test file tests/crewkit-pointer.bats, line 179)
+BW01: `run`'s command `bash -c 
+    source "$TREE/lib/settings.sh"; source "$TREE/libexec/ck/common.sh"; source "$TREE/libexec/ck/pointer.sh"
+    ck_pointer_listen http://127.0.0.1:8080 "$1" "$2" _ <tmp>/test/16/readtoken <tmp>/test/16/pull` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `listen' in file tests/crewkit-pointer.bats, line 38,
+       in test file tests/crewkit-pointer.bats, line 190)
+BW01: `run`'s command `bash -c 
+    source "$TREE/lib/settings.sh"; source "$TREE/libexec/ck/common.sh"; source "$TREE/libexec/ck/pointer.sh"
+    ck_pointer_listen http://127.0.0.1:8080 "$1" "$2" _ <tmp>/test/17/readtoken <tmp>/test/17/pull` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `listen' in file tests/crewkit-pointer.bats, line 38,
+       in test file tests/crewkit-pointer.bats, line 197)
+BW01: `run`'s command `bash -c 
+    source "$TREE/lib/settings.sh"; source "$TREE/libexec/ck/common.sh"; source "$TREE/libexec/ck/pointer.sh"
+    ck_pointer_listen http://127.0.0.1:8080 "$1" "$2" _ <tmp>/test/18/readtoken <tmp>/test/18/pull` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `listen' in file tests/crewkit-pointer.bats, line 38,
+       in test file tests/crewkit-pointer.bats, line 206)
+BW01: `run`'s command `bash -c 
+    source "$TREE/lib/settings.sh"; source "$TREE/libexec/ck/common.sh"; source "$TREE/libexec/ck/pointer.sh"
+    ck_pointer_listen http://127.0.0.1:8080 "$1" "$2" _ <tmp>/test/19/readtoken <tmp>/test/19/pull` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       from function `listen' in file tests/crewkit-pointer.bats, line 38,
+       in test file tests/crewkit-pointer.bats, line 213)

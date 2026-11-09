@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Stub ssh. No network: it records its argv in $PSTUB/ssh.log (one line per call) and runs the
+# remote command the way sshd does, through `sh -c`. Two modes, by host:
+#
+# - the pane-ask tests: a host with no $PSTUB/hosts/<host>/ runs in one fake remote home,
+#   $PSTUB/remote, with a non-interactive PATH, so herdr is found only by its path. It takes -n and
+#   -o X; any other option is exit 98. Fault toggle (file in $PSTUB): ssh_fail (exit 255).
+# - the front door tests: a host with $PSTUB/hosts/<host>/ (tests/crewkit-helpers.bash fake_host) has
+#   its own home there. The command runs under `env -i`, so the only environment is HOME,
+#   PATH=<home>/bin:/usr/bin:/bin, PSTUB, CK_HOST=<host> and the KEY=VALUE lines of <home>/.stubenv
+#   (and SSH_ORIGINAL_COMMAND under a forced command). Also accepted: -i KEY, -t, -T. With -i KEY the
+#   line of <home>/.ssh/authorized_keys whose key (field 2 of its ssh-... part) equals field 2 of KEY.pub
+#   is required, else exit 255 "Permission denied (publickey)"; its command="..." (no escaped quotes)
+#   runs instead of the requested command, with the request in SSH_ORIGINAL_COMMAND. Fault toggles
+#   (files in the host's home): down (exit 255), corrupt_stdin (flips one byte of stdin).
+# Portable to bash 3.2: the fake remote's PATH may find macOS's stock bash.
+printf '%s\n' "$*" >> "$PSTUB/ssh.log"
+nostdin=0 key=""
+while (($#)); do
+  case $1 in
+    -n) nostdin=1 ;;
+    -t | -T)
+      [[ -d $PSTUB/hosts ]] || { echo "ssh stub: unexpected option $1" >&2; exit 98; }
+      ;;
+    -o) shift ;;
+    -i)
+      if [[ -d $PSTUB/hosts ]]; then key=${2-}; shift; else echo "ssh stub: unexpected option $1" >&2; exit 98; fi
+      ;;
+    --) shift; break ;;
+    -*) echo "ssh stub: unexpected option $1" >&2; exit 98 ;;
+    *) break ;;
+  esac
+  shift
+done
+host=$1
+shift
+if [[ -e $PSTUB/ssh_fail ]]; then
+  echo "ssh: connect to host $host port 22: Connection refused" >&2
+  exit 255
+fi
+home=$PSTUB/hosts/$host
+if [[ ! -d $home ]]; then
+  cd "$PSTUB/remote" || exit 97
+  if ((nostdin)); then
+    HOME=$PSTUB/remote PATH=/usr/bin:/bin exec sh -c "$*" </dev/null
+  fi
+  HOME=$PSTUB/remote PATH=/usr/bin:/bin exec sh -c "$*"
+fi
+
+if [[ -e $home/down ]]; then
+  echo "ssh: connect to host $host port 22: Connection refused" >&2
+  exit 255
+fi
+cmd=$*
+envs=()
+if [[ -n $key ]]; then
+  want=$(awk '{ print $2 }' "$key.pub" 2>/dev/null)
+  forced="" found=0
+  line="" opts="" rest="" q=0 i=0 c=""
+  while IFS= read -r line || [[ -n $line ]]; do
+    # options (quote-aware) are the first field when the line does not start with a key type
+    opts="" rest=$line
+    if [[ ! $line =~ ^(ssh-|ecdsa-) ]]; then
+      q=0 i=0
+      while ((i < ${#line})); do
+        c=${line:i:1}
+        if [[ $c == '"' ]]; then q=$((1 - q)); elif [[ $c == " " && $q -eq 0 ]]; then break; fi
+        i=$((i + 1))
+      done
+      opts=${line:0:i} rest=${line:i}
+    fi
+    # shellcheck disable=SC2086  # word splitting is the point
+    set -- $rest
+    if [[ -n $want && ${2-} == "$want" ]]; then
+      found=1
+      re_cmd='(^|,)command="([^"]*)"'
+      if [[ $opts =~ $re_cmd ]]; then forced=${BASH_REMATCH[2]}; fi
+      break
+    fi
+  done < "$home/.ssh/authorized_keys" 2>/dev/null
+  if ((!found)); then
+    echo "$host: Permission denied (publickey)." >&2
+    exit 255
+  fi
+  if [[ -n $forced ]]; then
+    envs+=("SSH_ORIGINAL_COMMAND=$cmd")
+    cmd=$forced
+  fi
+fi
+if [[ -f $home/.stubenv ]]; then
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ $line == *=* ]] && envs+=("$line")
+  done < "$home/.stubenv"
+fi
+cd "$home" || exit 97
+run() {
+  env -i HOME="$home" PATH="$home/bin:/usr/bin:/bin" PSTUB="$PSTUB" CK_HOST="$host" ${envs[@]+"${envs[@]}"} sh -c "$cmd"
+}
+if ((nostdin)); then
+  run < /dev/null
+elif [[ -e $home/corrupt_stdin ]]; then
+  python3 -c 'import sys; d = bytearray(sys.stdin.buffer.read()); d and d.__setitem__(len(d) // 2, d[len(d) // 2] ^ 1); sys.stdout.buffer.write(d)' | run
+else
+  run
+fi

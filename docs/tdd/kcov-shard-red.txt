@@ -1,0 +1,28 @@
+# RED: tests/coverage-sh.bats before tools/coverage.sh had --shard and --merge and the kcov image recipe had apt retries (the 19 existing tests pass; all 20 new ones fail)
+1..39
+not ok 20 --shard K/N runs that shard's suites only, from the planner, minus docs and settings
+not ok 21 --shard K/N writes kcov's output into its own directory and mounts only that directory writable
+not ok 22 --shard K/N keeps the unsharded options: no network, the same include pattern, KCOV_IMAGE, the timeout, the passwd entry
+not ok 23 a finished shard leaves a done marker with N, K, the commit and the suites it ran
+not ok 24 --shard rejects 0/2, 3/2, 1/0, 1/17, x, 1/2/3 and a missing value with exit 2, and runs nothing
+not ok 25 only the shard's own directory is replaced; the other shards' data stays
+not ok 26 a shard that fails under kcov exits 1 with the log named, and leaves no done marker (an older one is removed)
+not ok 27 --shard checks the image for ps first, as the unsharded run does, and touches nothing when it is missing
+not ok 28 --shard refuses a .cache/coverage-shards that is a symbolic link
+not ok 29 --shard stops when the times table is broken, instead of running everything
+not ok 30 --merge N merges the N shard directories in the pinned image, with no network and no apt, and writes the report where the floors look
+not ok 31 --merge replaces an older report, and a failed merge leaves none
+not ok 32 --merge fails when kcov wrote no coverage.json
+not ok 33 --merge refuses a missing shard, naming it, and runs nothing
+not ok 34 --merge refuses a shard without its done marker
+not ok 35 --merge refuses shards from a run with another N
+not ok 36 --merge refuses shards that ran at another commit than this checkout's
+not ok 37 --merge refuses when the shards' suites are not exactly tests/*.bats minus docs and settings
+not ok 38 --merge rejects 0, 17, x and a missing N with exit 2
+not ok 39 the kcov image recipe gives apt retries and a timeout for each fetch, on update and on install
+# Added after this run (the 20 above are the first round):
+#  - 2 tests written for mutants that survived the first mutation run (a shard with nothing to run, the
+#    merge refusing a symbolic link): they passed against the code at once;
+#  - after the Opus review, 5 tests: 4 failed first (the shard's log and the merge log written through a
+#    symbolic link; a shard with a done marker but no kcov data; a kcov run with no passing test) and 1
+#    passed at once (the merge refusing another K: a gap in the mutants, now covered).

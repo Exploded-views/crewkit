@@ -1,0 +1,251 @@
+# pane-ask suite (tests/pane-ask.bats) before plugins/crew-orchestrator/bin/pane-ask existed.
+# Every test fails: the script is missing (exit 127). Paths are replaced with <repo> and <tmp>.
+
+1..40
+not ok 1 no arguments is a usage error
+# (in test file tests/pane-ask.bats, line 48)
+#   `[ "$status" -eq 64 ]' failed
+not ok 2 a pane without a message is a usage error
+# (in test file tests/pane-ask.bats, line 54)
+#   `[ "$status" -eq 64 ]' failed
+not ok 3 an empty message is a usage error
+# (in test file tests/pane-ask.bats, line 60)
+#   `[ "$status" -eq 64 ]' failed
+not ok 4 an unknown option is a usage error
+# (in test file tests/pane-ask.bats, line 66)
+#   `[ "$status" -eq 64 ]' failed
+not ok 5 a timeout that isn't a whole number is a usage error
+# (in test file tests/pane-ask.bats, line 71)
+#   `[ "$status" -eq 64 ]' failed
+not ok 6 no host anywhere is a config error (78) naming the setting
+# (in test file tests/pane-ask.bats, line 79)
+#   `[ "$status" -eq 78 ]' failed
+not ok 7 a bad numeric setting is a config error (78)
+# (in test file tests/pane-ask.bats, line 87)
+#   `[ "$status" -eq 78 ]' failed
+not ok 8 a host that starts with a dash is refused before ssh runs (option injection)
+# (in test file tests/pane-ask.bats, line 93)
+#   `[ "$status" -eq 64 ]' failed
+not ok 9 a pane id that starts with a dash or holds shell characters is refused
+# (in test file tests/pane-ask.bats, line 104)
+#   `[ "$status" -eq 64 ]' failed
+not ok 10 --read prints the pane's tail without sending anything
+# (in test file tests/pane-ask.bats, line 115)
+#   `[ "$status" -eq 0 ]' failed
+not ok 11 --read --lines N reads N lines
+# (in test file tests/pane-ask.bats, line 123)
+#   `[ "$status" -eq 0 ]' failed
+not ok 12 --read takes its default line count from pane_ask.read_lines
+# (in test file tests/pane-ask.bats, line 131)
+#   `grep -qx 'pane read wX:pY --source recent-unwrapped --lines 7' "$PSTUB/herdr.log"' failed
+not ok 13 --host overrides pane_ask.host, and ssh runs in batch mode on that host
+# (in test file tests/pane-ask.bats, line 136)
+#   `[ "$status" -eq 0 ]' failed
+not ok 14 a failed ssh is exit 1 with a message
+# (in test file tests/pane-ask.bats, line 145)
+#   `[ "$status" -eq 1 ]' failed
+not ok 15 a message is sent prefixed, once, after an idle check
+# (in test file tests/pane-ask.bats, line 153)
+#   `[ "$status" -eq 0 ]' failed
+not ok 16 --prefix overrides pane_ask.prefix
+# (in test file tests/pane-ask.bats, line 161)
+#   `[ "$status" -eq 0 ]' failed
+not ok 17 the prefix defaults to orchestrator_name
+# (in test file tests/pane-ask.bats, line 168)
+#   `[ "$(cat "$PSTUB/sent.1")" = "coordinator: hi" ]' failed
+# cat: <tmp>/test/17/pstub/sent.1: No such file or directory
+not ok 18 it waits for busy then idle, and prints only the output from the sent message on
+# (in test file tests/pane-ask.bats, line 173)
+#   `[ "$status" -eq 0 ]' failed
+not ok 19 an earlier copy of the same message on the screen is skipped: output starts at the last one
+# (in test file tests/pane-ask.bats, line 182)
+#   `[ "$status" -eq 0 ]' failed
+not ok 20 a reply too fast to see busy: idle with the message on the screen ends the wait
+# (in test file tests/pane-ask.bats, line 189)
+#   `[ "$status" -eq 0 ]' failed
+not ok 21 idle without the message on the screen is not a reply: it times out (40)
+# (in test file tests/pane-ask.bats, line 198)
+#   `[ "$status" -eq 40 ]' failed
+not ok 22 the fast-reply fallback waits pane_ask.settle_seconds after the send
+# (in test file tests/pane-ask.bats, line 206)
+#   `[ "$status" -eq 40 ]' failed
+not ok 23 no reply within the timeout: exit 40, said to be sent, never sent twice
+# (in test file tests/pane-ask.bats, line 212)
+#   `[ "$status" -eq 40 ]' failed
+not ok 24 pane_ask.timeout_seconds is the default timeout
+# (in test file tests/pane-ask.bats, line 223)
+#   `[ "$status" -eq 40 ]' failed
+not ok 25 a failed status poll after the send doesn't end the wait
+# (in test file tests/pane-ask.bats, line 230)
+#   `[ "$status" -eq 0 ]' failed
+not ok 26 a busy pane: it waits for idle first, then sends once
+# (in test file tests/pane-ask.bats, line 240)
+#   `[ "$status" -eq 0 ]' failed
+not ok 27 a pane that stays busy: exit 75 and nothing is sent
+# (in test file tests/pane-ask.bats, line 250)
+#   `[ "$status" -eq 75 ]' failed
+not ok 28 pane_ask.wait_idle false: a busy pane is refused at once (75), nothing sent
+# (in test file tests/pane-ask.bats, line 260)
+#   `[ "$status" -eq 75 ]' failed
+not ok 29 pane_ask.wait_idle other than true or false is a config error
+# (in test file tests/pane-ask.bats, line 268)
+#   `[ "$status" -eq 78 ]' failed
+not ok 30 blocked and unknown statuses count as busy
+# (in test file tests/pane-ask.bats, line 275)
+#   `[ "$status" -eq 75 ]' failed
+not ok 31 idle is done or idle by default
+# (in test file tests/pane-ask.bats, line 285)
+#   `[ "$status" -eq 0 ]' failed
+not ok 32 pane_ask.idle_statuses sets what counts as idle
+# (in test file tests/pane-ask.bats, line 293)
+#   `[ "$status" -eq 0 ]' failed
+not ok 33 a failed status read before the send is exit 1, nothing sent
+# (in test file tests/pane-ask.bats, line 303)
+#   `[ "$status" -eq 1 ]' failed
+not ok 34 a status reply that isn't herdr's JSON is exit 1, nothing sent
+# (in test file tests/pane-ask.bats, line 313)
+#   `[ "$status" -eq 1 ]' failed
+not ok 35 a failed send is exit 1 and says to read before resending
+# (in test file tests/pane-ask.bats, line 320)
+#   `[ "$status" -eq 1 ]' failed
+not ok 36 quotes, $, backticks, $(...), backslashes and newlines arrive byte for byte, with no remote injection
+# (in test file tests/pane-ask.bats, line 329)
+#   `[ "$status" -eq 0 ]' failed
+not ok 37 a prefix with shell characters arrives as it is
+# (in test file tests/pane-ask.bats, line 339)
+#   `[ "$status" -eq 0 ]' failed
+not ok 38 herdr is reached by path: ~/.local/bin/herdr by default, not PATH
+# (in test file tests/pane-ask.bats, line 346)
+#   `[ "$status" -eq 0 ]' failed
+not ok 39 pane_ask.herdr: a path with spaces and quotes, under ~, is quoted for the remote shell
+# (in test file tests/pane-ask.bats, line 355)
+#   `[ "$status" -eq 0 ]' failed
+not ok 40 a missing herdr on the host is exit 1
+# (in test file tests/pane-ask.bats, line 363)
+#   `[ "$status" -eq 1 ]' failed
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 47)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 53)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY ` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 59)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --bogus wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 65)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --timeout soon wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 70)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 78)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 86)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --host -oProxyCommand=touch <tmp>/test/8/pstub/pwned wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 92)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask -- --help hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 103)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --read wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 114)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --read --lines 1 wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 122)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --read wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 130)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --read --host other-host wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 135)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --read wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 144)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY status please` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 152)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --prefix helper wX:pY status please` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 160)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 167)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY status please` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 172)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY status please` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 181)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY quick one` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 188)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY lost` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 197)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY too soon` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 205)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --timeout 1 wX:pY long job` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 211)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY long job` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 222)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY blip` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 229)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY after you` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 239)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --timeout 1 wX:pY after you` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 249)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY now` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 259)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY now` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 267)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY now` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 274)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 284)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 292)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 302)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 312)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 319)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask wX:pY it's "quoted" $HOME `touch <tmp>/test/36/pstub/pwned1` $(touch <tmp>/test/36/pstub/pwned2)
+line two; touch <tmp>/test/36/pstub/pwned3
+'; touch <tmp>/test/36/pstub/pwned4; '\n \ end
+
+` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 328)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --prefix a'b $(touch <tmp>/test/37/pstub/pwned) wX:pY hi` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 338)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --read wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 345)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --read wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 354)
+BW01: `run`'s command `<repo>/plugins/crew-orchestrator/bin/pane-ask --read wX:pY` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file .cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/pane-ask.bats, line 362)

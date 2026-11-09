@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# _dispatch: the host-wide git hooks dispatcher. The global core.hooksPath points at this
+# directory (push-gate.sh install), and every hook name here is a symlink to this file.
+# pre-push runs the gate first; every hook then chains to the repository's own
+# <git-common-dir>/hooks/<name>, so per-repo hooks keep working: the receive-side ones too
+# (pre-receive, update, proc-receive, post-receive, post-update), which a local bare repository
+# runs when it is pushed to. A repository with its own local core.hooksPath (husky, lefthook)
+# bypasses this directory: push-gate.sh shim covers it.
+name=${0##*/}
+own=''   # no repository found: no hook of its own (never /hooks/<name>)
+if gd=$(git rev-parse --git-common-dir 2>/dev/null) && [[ -n $gd ]]; then own=$gd/hooks/$name; fi
+if [[ $name == pre-push ]]; then
+  input=$(cat)
+  printf '%s\n' "$input" | "${0%/*}/../push-gate.sh" hook "$@" || exit 1
+  [[ -n $own && -x $own ]] || exit 0
+  printf '%s\n' "$input" | "$own" "$@"; exit
+fi
+[[ -n $own && -x $own ]] && exec "$own" "$@"
+exit 0

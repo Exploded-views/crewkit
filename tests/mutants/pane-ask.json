@@ -1,0 +1,300 @@
+{
+  "target": "plugins/crew-nodes/bin/pane-ask",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/pane-ask.bats"
+  ],
+  "mutants": [
+    {
+      "name": "message on ssh's command line instead of stdin",
+      "old": "  for a in \"$@\"; do cmd+=\" $(sq \"$a\")\"; done",
+      "new": "  for a in \"$@\"; do [[ $a == \"$STDIN_ARG\" ]] && a=\"\\\"$sent\\\"\" || a=$(sq \"$a\"); cmd+=\" $a\"; done"
+    },
+    {
+      "name": "herdr path and arguments not quoted for the remote shell",
+      "old": "sq() { local q=\"'\\\\''\"; printf \"'%s'\" \"${1//\\'/$q}\"; }",
+      "new": "sq() { printf '%s' \"$1\"; }"
+    },
+    {
+      "name": "trailing newlines of the message dropped",
+      "old": "a=$(cat; echo .); a=${a%.}",
+      "new": "a=$(cat)"
+    },
+    {
+      "name": "remote ~ not expanded",
+      "old": "case $h in \"~/\"*) h=$HOME/${h#\"~/\"} ;; esac",
+      "new": ":"
+    },
+    {
+      "name": "a host starting with a dash accepted",
+      "old": "HOST_RE='^[A-Za-z0-9_.@%:][A-Za-z0-9_.@%:-]*$'",
+      "new": "HOST_RE='^[A-Za-z0-9_.@%:-]+$'"
+    },
+    {
+      "name": "target not checked",
+      "old": "[[ $target =~ $TARGET_RE ]] || usage",
+      "new": "true || usage"
+    },
+    {
+      "name": "no batch mode (a password prompt would hang)",
+      "old": "    ssh -n -o BatchMode=yes",
+      "new": "    ssh -n"
+    },
+    {
+      "name": "--node, --host and --machine not exclusive",
+      "old": "((picked <= 1)) || usage",
+      "new": "true || usage"
+    },
+    {
+      "name": "machine profile ignored (always ssh)",
+      "old": "  if [[ -n $machine ]]; then\n    for a in",
+      "new": "  if false; then\n    for a in"
+    },
+    {
+      "name": "no lead-pane check on the target as typed",
+      "old": "! is_lead \"$(lc \"$target\")\" || lead_refused",
+      "new": "true || lead_refused"
+    },
+    {
+      "name": "ad hoc targets skip other nodes' lead panes",
+      "old": "    [[ $key == nodes.*.lead_pane ]] && leads+=",
+      "new": "    false && leads+="
+    },
+    {
+      "name": "bridge not the default target",
+      "old": "    target=$(crew_setting \"nodes.$node.bridge\")",
+      "new": "    target="
+    },
+    {
+      "name": "sent while busy (no idle check)",
+      "old": "if ! is_idle \"$st\"; then\n  [[ $st != blocked ]]",
+      "new": "if false; then\n  [[ $st != blocked ]]"
+    },
+    {
+      "name": "blocked agent waited for instead of refused",
+      "old": "  [[ $st != blocked ]] || die 75",
+      "new": "  true || die 75"
+    },
+    {
+      "name": "wait_idle false ignored",
+      "old": "  [[ $wait_idle == true ]] || die 75",
+      "new": "  true || die 75"
+    },
+    {
+      "name": "settled state not checked after agent wait",
+      "old": "  is_idle \"$st\" || die 75",
+      "new": "  true || die 75"
+    },
+    {
+      "name": "idle set setting ignored",
+      "old": "idle_set=$(crew_setting nodes.idle_statuses \"idle,done\")",
+      "new": "idle_set=idle,done"
+    },
+    {
+      "name": "any status counts as idle",
+      "old": "is_idle() { [[ $idle_set == *\",$1,\"* ]]; }",
+      "new": "is_idle() { [[ $1 != working ]]; }"
+    },
+    {
+      "name": "no --wait on the prompt",
+      "old": "\"$STDIN_ARG\" --wait --timeout \"$ms\"",
+      "new": "\"$STDIN_ARG\" --timeout \"$ms\""
+    },
+    {
+      "name": "timeout not in milliseconds",
+      "old": "ms=$((timeout * 1000))",
+      "new": "ms=$timeout"
+    },
+    {
+      "name": "timeout not 40",
+      "old": "    1:timeout|1:agent_prompt_stalled)\n      die 40",
+      "new": "    1:timeout|1:agent_prompt_stalled)\n      die 1"
+    },
+    {
+      "name": "agent_blocked not 75",
+      "old": "    1:agent_blocked) die 75",
+      "new": "    1:agent_blocked) die 1"
+    },
+    {
+      "name": "old herdr not named",
+      "old": "    2:*) cat",
+      "new": "    9:*) cat"
+    },
+    {
+      "name": "send failure reported as success",
+      "old": "  die 1 \"sending to $target",
+      "new": "  exit 0; die 1 \"sending to $target"
+    },
+    {
+      "name": "blocked turn not 41",
+      "old": "[[ $st != blocked ]] || die 41",
+      "new": "true || die 41"
+    },
+    {
+      "name": "output not cut at the sent message",
+      "old": "    END { if (!start) exit 1; for (i = start; i <= NR; i++) print line[i] }'",
+      "new": "    END { exit 1 }'"
+    },
+    {
+      "name": "output from the first copy of the message, not the last",
+      "old": "index($0, ENVIRON[\"NEEDLE\"]) { start = NR }",
+      "new": "index($0, ENVIRON[\"NEEDLE\"]) && !start { start = NR }"
+    },
+    {
+      "name": "no prefix",
+      "old": "sent=\"$prefix: $message\"",
+      "new": "sent=\"$message\""
+    },
+    {
+      "name": "prefix setting ignored",
+      "old": "prefix=${prefix:-$(crew_setting nodes.prefix \"$(crew_setting orchestrator_name orchestrator)\")}",
+      "new": "prefix=${prefix:-$(crew_setting orchestrator_name orchestrator)}"
+    },
+    {
+      "name": "no node is not 78",
+      "old": "  [[ -n $node ]] || die 78 \"no node",
+      "new": "  [[ -n $node ]] || die 1 \"no node"
+    },
+    {
+      "name": "read lines setting ignored",
+      "old": "    lines=$(crew_setting nodes.read_lines 80)",
+      "new": "    lines=80"
+    },
+    {
+      "name": "no lead-pane check on the pane herdr resolves",
+      "old": "  ! is_lead \"$r\" || lead_refused",
+      "new": "  true || lead_refused"
+    },
+    {
+      "name": "resolved agent name not checked, only the pane id",
+      "old": "'.result.agent | (.pane_id // empty), (.name // empty)'",
+      "new": "'.result.agent | (.pane_id // empty)'"
+    },
+    {
+      "name": "lead list compared with case",
+      "old": "leads=,$(lc \"${leads//[[:space:]]/,}\"),",
+      "new": "leads=,${leads//[[:space:]]/,},"
+    },
+    {
+      "name": "typed target compared with case",
+      "old": "! is_lead \"$(lc \"$target\")\"",
+      "new": "! is_lead \"$target\""
+    },
+    {
+      "name": "resolved pane and agent compared with case",
+      "old": "<<<\"$json\" | tr '[:upper:]' '[:lower:]')",
+      "new": "<<<\"$json\")"
+    },
+    {
+      "name": "space-separated lead list collapses into one entry",
+      "old": "\"${leads//[[:space:]]/,}\"",
+      "new": "\"${leads//[[:space:]]/}\""
+    },
+    {
+      "name": "space-separated idle statuses collapse into one entry",
+      "old": "idle_set=\",${idle_set//[[:space:]]/,},\"",
+      "new": "idle_set=\",${idle_set//[[:space:]]/},\""
+    },
+    {
+      "name": "stderr noise before herdr's JSON hides the error code",
+      "old": "code=$(jq -rR 'fromjson? | .error.code // empty' <\"$err\" | tail -1)",
+      "new": "code=$(jq -r '.error.code // empty' 2>/dev/null <\"$err\")"
+    },
+    {
+      "name": "a backslash in nodes.<name>.herdr accepted",
+      "old": "[[ $herdr != *\\\\* ]] || bad_setting",
+      "new": "true || bad_setting"
+    },
+    {
+      "name": "the agent's kind (.agent) compared instead of its name (.name)",
+      "old": "(.pane_id // empty), (.name // empty)'",
+      "new": "(.pane_id // empty), (.agent // empty)'"
+    },
+    {
+      "name": "caller not checked (any pane may prompt another node)",
+      "old": "((caller_ok)) || not_a_bridge",
+      "new": "true || not_a_bridge"
+    },
+    {
+      "name": "target not required to be the node's bridge",
+      "old": "[[ $(lc \"${target:-$node_bridge}\") == \"$(lc \"$node_bridge\")\" ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "a session in a pane may prompt a local pane",
+      "old": "[[ -z $caller ]] || not_a_bridge \"the target is on this host, and sessions",
+      "new": "true || not_a_bridge \"the target is on this host, and sessions"
+    },
+    {
+      "name": "daemon may prompt any local pane",
+      "old": "[[ -z $target || $(lc \"$target\") == \"$(lc \"$node_bridge\")\" ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "the local host not recognised",
+      "old": "! this_host_flag \"$gnode\" || local_target=1",
+      "new": "local_target=0"
+    },
+    {
+      "name": "a host that is no configured node accepted",
+      "old": "[[ -n $gnode ]] || not_a_bridge",
+      "new": "true || not_a_bridge"
+    },
+    {
+      "name": "--host also matched against nodes.*.machine",
+      "old": "[[ $key == nodes.*.\"$want\" ]] || continue",
+      "new": "case $key in nodes.*.host | nodes.*.machine) ;; *) continue ;; esac"
+    },
+    {
+      "name": "pane id not validated before the caller lookup",
+      "old": "[[ -z $caller || $caller =~ $TARGET_RE ]] || not_a_bridge \"HERDR_PANE_ID is not a pane id\"",
+      "new": ":"
+    },
+    {
+      "name": "a node with no bridge is not a config error",
+      "old": "[[ -n $node_bridge ]] || die 78",
+      "new": "true || die 78"
+    },
+    {
+      "name": "a local node goes through a machine profile, not the local herdr directly",
+      "old": "    \"$local_herdr\" \"${args[@]}\"\n    return\n  fi\n  if [[ -n $machine ]]; then",
+      "new": "    \"$local_herdr\" --machine local \"${args[@]}\"\n    return\n  fi\n  if [[ -n $machine ]]; then"
+    },
+    {
+      "name": "a local target's session dropped",
+      "old": "[[ -z $lsession ]] || args=(--session \"$lsession\")",
+      "new": ":"
+    },
+    {
+      "name": "an ambiguous local session accepted (several local nodes, no session)",
+      "old": "if [[ -z $lsession ]] && ((${#local_names[@]} > 1)); then",
+      "new": "if false; then"
+    },
+    {
+      "name": "several local nodes: every local bridge may send",
+      "old": "[[ $(crew_setting \"nodes.$n.session\") != \"${HERDR_SESSION:-default}\" ]] || sess_names+=(\"$n\")",
+      "new": "sess_names+=(\"$n\")"
+    },
+    {
+      "name": "this_host value not validated",
+      "old": "  bad_setting \"nodes.$1.this_host\" \"must be true or false\" \"$v\"",
+      "new": "  return 1"
+    },
+    {
+      "name": "this_host: false counted as local",
+      "old": "    true) return 0 ;;",
+      "new": "    true | false) return 0 ;;"
+    },
+    {
+      "name": "a this_host node with a host or machine accepted",
+      "old": "    [[ -z $(crew_setting \"nodes.$n.host\") && -z $(crew_setting \"nodes.$n.machine\") ]] ||",
+      "new": "    true ||"
+    },
+    {
+      "name": "an absent HERDR_SESSION is not treated as default",
+      "old": "\"${HERDR_SESSION:-default}\"",
+      "new": "\"${HERDR_SESSION:-}\""
+    }
+  ]
+}

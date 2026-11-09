@@ -1,0 +1,25 @@
+{
+  "target": "push-gate/hooks/_dispatch",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/push-gate.bats"
+  ],
+  "mutants": [
+    {
+      "name": "dispatcher: gate failure ignored",
+      "old": "\"${0%/*}/../push-gate.sh\" hook \"$@\" || exit 1",
+      "new": "\"${0%/*}/../push-gate.sh\" hook \"$@\""
+    },
+    {
+      "name": "dispatcher: repo's own pre-push not chained",
+      "old": "  printf '%s\\n' \"$input\" | \"$own\" \"$@\"; exit",
+      "new": "  exit 0"
+    },
+    {
+      "name": "dispatcher: other hooks not chained",
+      "old": "[[ -n $own && -x $own ]] && exec \"$own\" \"$@\"\nexit 0",
+      "new": "exit 0"
+    }
+  ]
+}

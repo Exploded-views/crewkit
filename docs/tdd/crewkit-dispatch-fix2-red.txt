@@ -1,0 +1,13 @@
+# Fix round 2 for tests/crewkit.bats, against 1faa034's common.sh: a directory at the lock path (ln -s succeeds inside it), a link to pid 0 or 007 kept alive, ck_unlock not checking its name. Only the failures are kept.
+
+1..42
+not ok 34 ck_lock refuses a directory at the lock path and creates nothing inside it
+# (in test file tests/crewkit.bats, line 453)
+#   `[ "$status" -ne 0 ]' failed
+not ok 35 ck_lock: a link to pid 0, to 007 or to a negative number counts as dead
+# (in test file tests/crewkit.bats, line 466)
+#   `[ "$status" -eq 0 ] || { echo "target $t gave $status"; return 1; }' failed
+# target 0 gave 75
+not ok 36 ck_unlock checks its name like ck_lock (64), and a stale reap clears quietly
+# (in test file tests/crewkit.bats, line 476)
+#   `[ "$status" -eq 64 ]' failed

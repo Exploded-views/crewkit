@@ -1,0 +1,29 @@
+no-bypass hook, security review of ef7ef7a (heredocs fed to a shell, a nested parse error, the
+message exemption): RED run (the new cases against ef7ef7a's hook), 2026-10-27:
+
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="bash <<'X'\ngit commit -n -m x\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="sh <<'X'\ngit push --no-verify\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='zsh <<X\ngit commit -n -m x\nX')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="dash <<-'X'\n\tgit commit -n -m x\n\tX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="ksh <<'X'\ngit push --no-verify\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="ssh host <<'X'\ngit push --no-verify origin main\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='eval "$(cat <<\'X\'\ngit commit -n -m x\nX\n)"')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="source /dev/stdin <<'X'\ngit commit -n -m x\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="cat <<'X' | bash\ngit commit -n -m x\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="xargs -0 git <<'X'\npush --no-verify\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='bash -c "$(cat <<\'X\'\ngit commit -n -m x\nX\n)"')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='bash -c "git commit --no-verify -m \'x"')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='ssh host "git commit -n -m it\'s"')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="bash -c -m 'git commit -n -m x'")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="sh -c -m 'git push --no-verify'")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="ssh host git commit -m 'x; git push --no-verify origin main'")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='eval git commit -m \'"x"; git commit -n -m y\'')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="xargs -m 'git commit -n -m x'")
+Ran 9 tests in 5.949s
+FAILED (failures=18)
+
+Found while fixing (the heredoc's own line pipes its body on), RED against the work in progress,
+which already treated the git-message heredoc as data:
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='git commit -m "$(cat <<\'X\' | bash\ngit push --no-verify\nX\n)"')
+Ran 9 tests
+FAILED (failures=1)

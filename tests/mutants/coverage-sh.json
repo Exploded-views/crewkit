@@ -1,0 +1,275 @@
+{
+  "target": "tools/coverage.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/coverage-sh.bats"
+  ],
+  "mutants": [
+    {
+      "name": "the kcov container unnamed (LINUX_GATE_TIMEOUT can't kill it by name)",
+      "old": "${KCOV_NAME:+--name \"$KCOV_NAME\"} ",
+      "new": ""
+    },
+    {
+      "name": "the scanned repo's get-bats.sh run",
+      "old": "bats=$(\"$(dirname \"${BASH_SOURCE[0]}\")/get-bats.sh\")",
+      "new": "bats=$(\"$root/tools/get-bats.sh\")"
+    },
+    {
+      "name": "the report snippet without -I",
+      "old": "python3 -I - \"$1\" <<'PY'",
+      "new": "python3 - \"$1\" <<'PY'"
+    },
+    {
+      "name": "symlinked rm target allowed",
+      "old": "  if [[ -L $d ]]; then echo \"coverage: $d is a symlink; refusing to remove or write through it\"; exit 1; fi",
+      "new": "  :"
+    },
+    {
+      "name": ".cache resolving outside the repository allowed",
+      "old": "if [[ -e $root/.cache && $(cd \"$root/.cache\" && pwd -P) != \"$(cd \"$root\" && pwd -P)/.cache\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "the kcov container without its passwd mount (ssh-keygen: no user for the uid)",
+      "old": " -v \"$root/.cache/passwd:/etc/passwd:ro\"",
+      "new": ""
+    },
+    {
+      "name": "the kcov passwd entry written with the wrong uid",
+      "old": "printf 't:x:%s:%s:gate:/tmp:/bin/sh\\n' \"$(id -u)\"",
+      "new": "printf 't:x:%s:%s:gate:/tmp:/bin/sh\\n' 4242424"
+    },
+    {
+      "name": "the symlink refusal without .cache/passwd (the mount file written through a link)",
+      "old": " \"$root/.cache/passwd\" \"${@:2}\"; do",
+      "new": " \"${@:2}\"; do"
+    },
+    {
+      "name": "--shard K above N accepted",
+      "old": "shard_k <= shard_n && shard_n <= 16",
+      "new": "shard_n <= 16"
+    },
+    {
+      "name": "--shard N of 17 accepted",
+      "old": "shard_k <= shard_n && shard_n <= 16",
+      "new": "shard_k <= shard_n && shard_n <= 17"
+    },
+    {
+      "name": "--merge N of 17 accepted",
+      "old": "((shard_n >= 1 && shard_n <= 16)) || usage",
+      "new": "((shard_n >= 1 && shard_n <= 17)) || usage"
+    },
+    {
+      "name": "--shard value not checked",
+      "old": "[[ $# -eq 2 && $2 =~ ^([0-9]{1,2})/([0-9]{1,2})$ ]] || usage",
+      "new": "[[ $# -eq 2 && $2 =~ ^([0-9]{1,2})/([0-9]{1,2})$ ]] || true"
+    },
+    {
+      "name": "--merge value not checked",
+      "old": "[[ $# -eq 2 && $2 =~ ^[0-9]{1,2}$ ]] || usage",
+      "new": "[[ $# -eq 2 && $2 =~ ^[0-9]{1,2}$ ]] || true"
+    },
+    {
+      "name": "a shard also runs docs and settings",
+      "old": "[[ -z $f || $skip == *\" $f \"* ]] || suites+=(\"tests/$f\")",
+      "new": "[[ -z $f ]] || suites+=(\"tests/$f\")"
+    },
+    {
+      "name": "a shard mounts the whole report directory",
+      "old": "mounts=(-v \"$outdir:$out\")",
+      "new": "mounts=(-v \"$root/.cache/coverage:/src/.cache/coverage\")"
+    },
+    {
+      "name": "a shard's old data is kept",
+      "old": "rm -rf \"$outdir\"\n  mkdir -p \"$outdir\"",
+      "new": "mkdir -p \"$outdir\""
+    },
+    {
+      "name": "the planner's failure is ignored",
+      "old": "files \"$shard_k/$shard_n\") || exit 1",
+      "new": "files \"$shard_k/$shard_n\") || true"
+    },
+    {
+      "name": "a shard is marked with the wrong commit",
+      "old": "echo \"sha=$(git -C \"$root\" rev-parse HEAD)\"",
+      "new": "echo \"sha=none\""
+    },
+    {
+      "name": "a shard is marked with the wrong N",
+      "old": "echo \"n=$shard_n\"",
+      "new": "echo \"n=1\""
+    },
+    {
+      "name": "a shard is marked with the wrong K",
+      "old": "echo \"k=$shard_k\"",
+      "new": "echo \"k=1\""
+    },
+    {
+      "name": "a shard's suites are not recorded",
+      "old": "for f in ${suites[@]+\"${suites[@]}\"}; do echo \"file=${f#tests/}\"; done",
+      "new": ":"
+    },
+    {
+      "name": "a shard with nothing to run still runs kcov",
+      "old": "if [[ $mode == shard && ${#suites[@]} -eq 0 ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "the shard guard against links is dropped",
+      "old": "guard_cache \"$root\" \"$root/.cache/coverage-shards/shard-$shard_k.log\"\n  planned=",
+      "new": "planned="
+    },
+    {
+      "name": "the merge guard against links is dropped",
+      "old": "guard_cache \"$root\" \"$root/.cache/coverage-merge.log\"\n  shards=",
+      "new": "shards="
+    },
+    {
+      "name": "a missing shard is not noticed",
+      "old": "if [[ ! -f $m ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "an unfinished shard is called missing",
+      "old": "if [[ -d $d ]]; then\n        echo \"coverage: shard $k did not finish",
+      "new": "if false; then\n        echo \"coverage: shard $k did not finish"
+    },
+    {
+      "name": "a shard of another N or K is merged",
+      "old": "if [[ $(sed -n 's/^n=//p' \"$m\") != \"$shard_n\" || $(sed -n 's/^k=//p' \"$m\") != \"$k\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "a shard of another commit is merged",
+      "old": "if [[ $(sed -n 's/^sha=//p' \"$m\") != \"$head\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "shards covering other suites are merged",
+      "old": "if [[ $have != \"$want\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "docs and settings are expected in a shard",
+      "old": "[[ $skip == *\" ${f##*/} \"* ]] || expected+=\"${f##*/}\"$'\\n'",
+      "new": "expected+=\"${f##*/}\"$'\\n'"
+    },
+    {
+      "name": "the merge runs in KCOV_IMAGE",
+      "old": "-w /src \"$pinned\" \\\n    kcov --merge",
+      "new": "-w /src \"$image\" \\\n    kcov --merge"
+    },
+    {
+      "name": "the merge has a network",
+      "old": "if ! docker run --rm --network none --user",
+      "new": "if ! docker run --rm --user"
+    },
+    {
+      "name": "an older report is kept by the merge",
+      "old": "rm -rf \"$root/.cache/coverage\"\n  mkdir -p \"$root/.cache/coverage\"\n  inputs=()",
+      "new": "mkdir -p \"$root/.cache/coverage\"\n  inputs=()"
+    },
+    {
+      "name": "the last shard is not merged",
+      "old": "for ((k = 1; k <= shard_n; k++)); do inputs+=",
+      "new": "for ((k = 1; k < shard_n; k++)); do inputs+="
+    },
+    {
+      "name": "a failed merge exits 0",
+      "old": "echo \"coverage: kcov --merge failed (full output: ${log#\"$root\"/})\"\n    exit 1",
+      "new": "echo \"coverage: kcov --merge failed (full output: ${log#\"$root\"/})\"\n    exit 0"
+    },
+    {
+      "name": "a failed merge leaves its half report",
+      "old": "rm -rf \"$root/.cache/coverage/bats.merged\"\n    echo \"coverage: kcov --merge failed",
+      "new": "echo \"coverage: kcov --merge failed"
+    },
+    {
+      "name": "the merged report is not put where the floors look",
+      "old": "    json.dump(report, out)",
+      "new": "    pass"
+    },
+    {
+      "name": "the shard's log is not guarded",
+      "old": "guard_cache \"$root\" \"$root/.cache/coverage-shards/shard-$shard_k.log\"",
+      "new": "guard_cache \"$root\""
+    },
+    {
+      "name": "the merge log is not guarded",
+      "old": "guard_cache \"$root\" \"$root/.cache/coverage-merge.log\"",
+      "new": "guard_cache \"$root\""
+    },
+    {
+      "name": "a shard of another K is merged",
+      "old": " || $(sed -n 's/^k=//p' \"$m\") != \"$k\" ]]; then",
+      "new": " ]]; then"
+    },
+    {
+      "name": "a shard with no kcov data is merged",
+      "old": "if [[ -n $(sed -n 's/^file=//p' \"$m\") ]] && ! ls \"$d\"/*/coverage.json > /dev/null 2>&1; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "a run with no passing test is not a failure",
+      "old": "if ((${#suites[@]})); then\n  grep -cE",
+      "new": "if false; then\n  grep -cE"
+    },
+    {
+      "name": "the done marker is written through a link left in the shard directory",
+      "old": "mv -f \"$marker\" \"$outdir/done\"",
+      "new": "cat \"$marker\" > \"$outdir/done\""
+    },
+    {
+      "name": "the done marker is made inside the container's directory",
+      "old": "marker=$(mktemp \"$root/.cache/coverage-shards/.done.XXXXXX\")",
+      "new": "marker=$outdir/done.tmp"
+    },
+    {
+      "name": "the fold's python is not isolated",
+      "old": "python3 -I - \"$1\" \"$2\" <<'PY'",
+      "new": "python3 - \"$1\" \"$2\" <<'PY'"
+    },
+    {
+      "name": "the twins' hits go to the last path by name",
+      "old": "members.sort(key=lambda m: m[0])",
+      "new": "members.sort(key=lambda m: m[0], reverse=True)"
+    },
+    {
+      "name": "only the last twin's lines are counted",
+      "old": "union |= {int(n) for n, h in hits.get(rel, {}).items() if h > 0}",
+      "new": "union = {int(n) for n, h in hits.get(rel, {}).items() if h > 0}"
+    },
+    {
+      "name": "the other twins keep their own numbers",
+      "old": "covered = len(union) if i == 0 else 0",
+      "new": "covered = len(union) if i == 0 else int(f[\"covered_lines\"])"
+    },
+    {
+      "name": "files are grouped by name, not by content",
+      "old": "digest = hashlib.sha256(src.read()).hexdigest()",
+      "new": "digest = rel.split(\"/\")[-1]"
+    },
+    {
+      "name": "a line with no hits is counted covered",
+      "old": "if h > 0}",
+      "new": "if h >= 0}"
+    },
+    {
+      "name": "a report path that is not a repository file is skipped",
+      "old": "print(f\"coverage: {rel} is in the merged report but is not a file of the repository\")\n        sys.exit(1)",
+      "new": "continue"
+    },
+    {
+      "name": "a merge without codecov.json is accepted",
+      "old": "    print(\"coverage: kcov --merge wrote no codecov.json (the hits per line)\")\n    sys.exit(1)",
+      "new": "    hits = {}"
+    },
+    {
+      "name": "the folded percentage has one decimal",
+      "old": "f[\"percent_covered\"] = \"%.2f\" % (100.0 * covered / total) if total else \"0.00\"",
+      "new": "f[\"percent_covered\"] = \"%.1f\" % (100.0 * covered / total) if total else \"0.00\""
+    }
+  ]
+}
