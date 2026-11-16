@@ -37,6 +37,11 @@ def suite(tree):
 
 
 def main():
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    import heavy_lock
+    if not heavy_lock.proof():
+        print(heavy_lock.refusal("mutate-check-workflows.py", "python3 tools/mutate-check-workflows.py"), file=sys.stderr)
+        return 1
     tree = pathlib.Path(tempfile.mkdtemp())
     shutil.copytree(ROOT / "tests", tree / "tests")
     (tree / "tools").mkdir()

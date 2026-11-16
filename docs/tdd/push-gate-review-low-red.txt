@@ -1,0 +1,127 @@
+Push gate, Opus review part 1, LOW items 10, 11, 13-16: RED run, 2026-10-27. tests/push-gate.bats with the
+new tests, against the gate at 3557867 (HIGH, MED and scan hardening in): every local path skipped, the
+gitleaks sidecar trusted alone, 40 zeros as the only missing sha and the remote sha unchecked, no receive-side
+hook names in the dispatcher, the shim found anywhere in the hook, schedule's sed fill unescaped, the
+installed doctor comparing its copy with itself. The existing Linux schedule test now expects the quoted
+ExecStart, so it fails here too.
+
+1..101
+ok 1 a clean first push to a gated remote passes
+ok 2 a denylist term in a new file blocks, names the file, never prints the term
+ok 3 an exempt remote passes with a term, needs no denylist, and still blocks a secret
+ok 4 a skip-all remote (ssh alias form) skips every check, gitleaks included, and logs SKIP
+ok 5 skip-all doesn't leak to similar names; an ssh alias of a gated remote still blocks
+ok 6 a gate-exempt line (another tool's) is not a denylist exemption
+ok 7 a push to a local path or file:// isn't gated; PUSH_GATE_LOCAL=1 gates it
+ok 8 a term in a commit message blocks, naming the commit and not the text
+ok 9 a term in an author name blocks
+ok 10 a term in a file path blocks, without printing the path
+ok 11 a term only in history (removed from the tree) still blocks
+ok 12 an update push scans only the new range
+ok 13 a secret blocks, and the secret is never printed
+ok 14 a branch delete, empty input and an unknown remote sha pass
+ok 15 a term in a binary file blocks
+ok 16 a term in the pushed branch name blocks, and no message prints the name
+ok 17 a repo's own .gitleaks.toml, .gitleaksignore or gitleaks:allow, or GITLEAKS_CONFIG*, can't switch gitleaks off
+ok 18 gitleaks runs on the gate's own config ([extend] useDefault), outside the repository, with no GITLEAKS_* variables
+ok 19 a -diff attribute can't hide a secret from gitleaks (.git/info/attributes, nothing pushed)
+ok 20 a textconv driver can't hide a secret from gitleaks
+ok 21 a -diff attribute or a textconv driver can't hide a term that is only in history
+ok 22 log.showRoot=false can't hide a root commit's secret from gitleaks
+ok 23 a secret added in a merge commit (not in either parent) blocks
+ok 24 a commit that takes out an already-pushed secret passes (removed lines aren't a new leak)
+ok 25 a term in a binary file added, then deleted, still blocks
+ok 26 end to end, the real gitleaks: a clean push passes; a secret blocks, whatever the repository says # skip opt-in: CREWKIT_E2E_GITLEAKS=/path/to/the pinned gitleaks
+ok 27 an author name that starts with '-' still reaches gitleaks (only a hunk's removed lines are dropped)
+ok 28 a replace ref can't swap a pushed commit for a clean one in either scan
+ok 29 the repository's log output encoding (EBCDIC) can't garble what either scan reads
+ok 30 a non-ASCII term in a path blocks (core.quotePath can't escape it)
+not ok 31 a push to a local path on a mount or a synced folder is gated; an unresolvable one too
+# (in test file tests/push-gate.bats, line 412)
+#   `[ "$status" -eq 1 ]' failed
+not ok 32 a gitleaks swapped together with its sidecar is refused: it must match the gate's own record
+# (in test file tests/push-gate.bats, line 428)
+#   `[ "$status" -eq 1 ]' failed
+not ok 33 a sha256 repository: a branch delete passes, a clean push passes, a term blocks
+# (in test file tests/push-gate.bats, line 445)
+#   `[ "$status" -eq 0 ]' failed
+not ok 34 a remote sha git didn't write refuses the push
+# (in test file tests/push-gate.bats, line 455)
+#   `[ "$status" -eq 1 ]; [[ $output == *"a pre-push line git didn't write"* ]]' failed
+ok 35 a term only in a middle commit blocks, on an update push and on a new branch
+ok 36 a new branch: history the push URL already has (git ls-remote) isn't scanned again
+ok 37 a new branch: a forged tracking ref (git update-ref) doesn't hide history from the scans
+ok 38 a new branch: with a pushurl, what the fetch remote has doesn't count as pushed
+ok 39 an annotated tag's message and tagger are scanned, nested tags too
+ok 40 the log gets one PASS line naming repo and remote; BLOCKED lines hold no term
+ok 41 a credential in the push URL never reaches the log
+ok 42 an unwritable log never blocks a clean push
+ok 43 a missing, comment-only or invalid denylist blocks, even a clean push
+ok 44 a missing exempt file gates everything
+ok 45 an unreadable exempt file, or an invalid exempt pattern, refuses the push
+ok 46 no gitleaks, no recorded sha256, or a gitleaks that changed since install blocks
+ok 47 gitleaks erroring (not a finding) still blocks
+ok 48 fail-open (a): git rev-list failing refuses the push, it doesn't scan nothing
+ok 49 fail-open (b): grep exiting 2 on a commit refuses the push, it isn't an empty count
+ok 50 git show failing on a commit refuses the push
+ok 51 git grep failing on the pushed tree refuses the push
+ok 52 git ls-tree failing on the pushed tree refuses the push
+ok 53 grep exiting 2 on the path list refuses the push (a range with no new commits)
+ok 54 grep exiting 2 on the branch name refuses the push
+ok 55 grep exiting 2 on a hit's path refuses the push, and never prints the unchecked path
+ok 56 a pushed sha that isn't in the repository, or a line git didn't write, refuses the push
+ok 57 the settings are user-only: neither the environment nor a project can redirect the denylist
+ok 58 a user settings file that fails the ownership checks falls back to the defaults, not to nothing
+ok 59 install without --yes is a dry run: prints the git config command, changes nothing
+ok 60 install --yes copies the gate and sets the global core.hooksPath; status reports it
+ok 61 an install that fails partway leaves the installed gate in place (a missing gate dir is no gate)
+ok 62 install with no denylist is an owner step (78), and changes nothing
+ok 63 install with an unverified gitleaks is an owner step (78)
+ok 64 install refuses to replace someone else's global core.hooksPath
+ok 65 status takes only --json; an unknown verb is usage (64)
+ok 66 a real git push with a term is refused; a clean one goes through
+ok 67 the repo's own hooks still run (chained), and their failures still count
+ok 68 the repo's own pre-push gets the same stdin after the gate, and doesn't run after a refusal
+ok 69 a push from a linked worktree is gated too
+not ok 70 a local bare remote's own receive hooks still run (pre-receive, update, post-receive)
+# (in test file tests/push-gate.bats, line 770)
+#   `[ -f "$SB/update-ran" ]; [ -f "$SB/post-receive-ran" ]' failed
+ok 71 the dispatcher fails closed when the gate script is missing
+ok 72 a local core.hooksPath bypasses the global gate (why the shim exists)
+ok 73 shim without --yes changes nothing; with it, a push with a term is refused and a clean one passes
+ok 74 shim on a shell pre-push: the shim runs first, then the hook with the same stdin
+ok 75 shim on a non-shell pre-push: it's moved aside and chained
+not ok 76 the shim counts only as line 2 of a shell script: an exit above it is a FAIL; shim again fixes it
+# (in test file tests/push-gate.bats, line 851)
+#   `[ "$status" -eq 1 ]; grep -q '^repo:~/code/h FAIL ' <<<"$output"' failed
+ok 77 shim with no local core.hooksPath has nothing to do
+ok 78 --doctor, healthy: exit 0, one '<check-id> ok <detail>' line per check, no absolute home paths
+ok 79 --doctor: each check fails on its own fault (exit 1, that check FAIL)
+ok 80 --doctor lists repos with a local core.hooksPath, with or without the shim, and only those
+ok 81 --doctor reads the effective core.hooksPath: include.path, includeIf in ~/.gitconfig, config.worktree
+ok 82 --doctor: a core.hooksPath set to empty (git then runs no hooks at all) is a FAIL
+ok 83 --doctor checks each linked worktree's own core.hooksPath
+ok 84 --doctor exits 2 on its own error (the root can't be listed)
+ok 85 gate-check: 0 when pushes from the repo are gated, 1 when not, 2 outside a repo
+ok 86 a non-push hook costs little to dispatch
+ok 87 doctor-watch: a FAIL notifies once with a pointer (check ids only), not again while unchanged
+ok 88 doctor-watch: a change in the FAIL set notifies again; recovery notifies ok
+ok 89 doctor-watch: a healthy first run notifies nothing
+ok 90 doctor-watch: a failed notify isn't recorded, so the next run tries again
+ok 91 doctor-watch: no notify_command prints the pointer, only on a change
+ok 92 doctor-watch: the pointer never carries a term or an absolute home path
+ok 93 doctor-watch: a doctor that crashes or is killed (127, 137), or exits 1 with no FAIL, is an error
+ok 94 --doctor reports the exempt file: its pattern counts and a fingerprint, never the patterns
+ok 95 doctor-watch: a changed exempt file notifies (counts only), even with no FAIL change
+ok 96 schedule needs the gate installed first (78)
+not ok 97 schedule on Linux: dry run writes nothing; --yes writes the user timer and enables it
+# (in test file tests/push-gate.bats, line 1148)
+#   `grep -qx "ExecStart=\"$GD/push-gate/push-gate.sh\" doctor-watch" "$u/crewkit-push-gate-doctor.service"' failed
+ok 98 schedule on macOS: --yes writes the launch agent (hourly, the installed gate) and loads it
+not ok 99 schedule escapes what it fills in: & | % " < in PATH, relative PATH entries dropped, the gate path quoted
+# (in test file tests/push-gate.bats, line 1173)
+#   `[ "$status" -eq 0 ]' failed
+not ok 100 the scheduled doctor (run from the installed copy) compares it with the clone it came from
+# (in test file tests/push-gate.bats, line 1194)
+#   `[ "$status" -eq 1 ]; grep -q '^dispatcher FAIL ' <<<"$output"' failed
+ok 101 the shim says why when the gate's installed copy is missing

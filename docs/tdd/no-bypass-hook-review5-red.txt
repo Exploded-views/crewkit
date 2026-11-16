@@ -1,0 +1,18 @@
+no-bypass hook, security review of 5dc8fd7 (the plain-text fallback, env into heredocs, the
+message-heredoc line): RED run (the new cases against 5dc8fd7's hook), 2026-10-27:
+
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='bash -c "git commit --n\'\'o-verify -m \'x"')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='bash -c "git -c core.hooks\\\\Path=/dev/null push \'x"')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="GIT_CONFIG_GLOBAL=/dev/null bash <<'X'\ngit push\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="HOME=/tmp sh <<'X'\ngit push origin main\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="env -i bash <<'X'\ngit push\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command="cat <<'X' | XDG_CONFIG_HOME=/tmp bash\ngit push\nX")
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='git commit -m "$(bash -c -m "$(cat <<\'X\'\ngit push --no-verify\nX\n)")"')
+FAIL: test_each_bypass_form_is_refused_with_exit_2_and_a_reason (command='gh pr create --body "$(bash -c -b "$(cat <<\'X\'\ngit push --no-verify\nX\n)")"')
+Ran 9 tests in 8.198s
+FAILED (failures=8)
+
+Two cases added while writing the mutants, each checked against 5dc8fd7's finding_in:
+  BLOCKED 'bash -c "git push --no-$(echo v)erify \'x"': 5dc8fd7's hook allows it
+  ALLOWED "cat <<'EOF' > notes.md\nThe hook's job (a guard) is done; see push-gate.md.\nEOF":
+  5dc8fd7's hook allows it (a guard: the metacharacter rule must not reach a heredoc body)

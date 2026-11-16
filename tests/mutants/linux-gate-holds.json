@@ -1,0 +1,115 @@
+{
+  "target": "tools/linux-gate.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/linux-gate-holds.bats"
+  ],
+  "mutants": [
+    {
+      "name": "hold list read from the script's repository, not the gated head",
+      "old": "  \"${g[@]}\" cat-file blob \"$rev:$holds_path\" > \"$tmp/holds.raw\" || { hold_err=\"can't read $holds_path\"; return 1; }",
+      "new": "  cp \"$root/$holds_path\" \"$tmp/holds.raw\" 2>/dev/null || return 0"
+    },
+    {
+      "name": "hold list read from the source checkout's work tree",
+      "old": "  \"${g[@]}\" cat-file blob \"$rev:$holds_path\" > \"$tmp/holds.raw\" || { hold_err=\"can't read $holds_path\"; return 1; }",
+      "new": "  cp \"$gitdir/$holds_path\" \"$tmp/holds.raw\" || return 1"
+    },
+    {
+      "name": "hold list that is not a regular file accepted",
+      "old": "{ [[ $type == blob ]] && [[ $mode == 100644 || $mode == 100755 ]]; } || {",
+      "new": "true || {"
+    },
+    {
+      "name": "NUL byte in the hold list accepted",
+      "old": "[[ $(tr -d '\\0' < \"$tmp/holds.raw\" | wc -c) -eq $(wc -c < \"$tmp/holds.raw\") ]] || {",
+      "new": "true || {"
+    },
+    {
+      "name": "CR in the hold list accepted",
+      "old": "[[ $(tr -d '\\r' < \"$tmp/holds.raw\" | wc -c) -eq $(wc -c < \"$tmp/holds.raw\") ]] || {",
+      "new": "true || {"
+    },
+    {
+      "name": "absent hold list fails",
+      "old": "    done <<<\"$entry\"\n    return 0\n",
+      "new": "    done <<<\"$entry\"\n    return 1\n"
+    },
+    {
+      "name": "a link or gitlink for tests/mutants read as no holds",
+      "old": "[[ -z $mode ]] || [[ $mode == 040000 && $type == tree ]] || {",
+      "new": "true || {"
+    },
+    {
+      "name": "tests itself not looked at",
+      "old": "ls-tree \"$rev\" -- tests tests/mutants)",
+      "new": "ls-tree \"$rev\" -- tests/mutants)"
+    },
+    {
+      "name": "an @ entry under tests/mutants accepted",
+      "old": "! awk -F'\\t' '$2 ~ /@/ { f = 1 } END { exit !f }' \"$tmp/tree.txt\" || {",
+      "new": "true || {"
+    },
+    {
+      "name": "a spec a hold names need not exist",
+      "old": "awk -F'\\t' -v p=\"tests/mutants/$name\" '$2 == p && $1 ~ /^100(644|755) blob / { f = 1 } END { exit !f }' \"$tmp/tree.txt\" || {",
+      "new": "true || {"
+    },
+    {
+      "name": "a spec that is a link accepted",
+      "old": "$1 ~ /^100(644|755) blob /",
+      "new": "$1 ~ / blob /"
+    },
+    {
+      "name": "hold token with a path accepted",
+      "old": "re='^([A-Za-z0-9_.-]+)",
+      "new": "re='^([A-Za-z0-9_./-]+)"
+    },
+    {
+      "name": "hold slice K of 0 accepted",
+      "old": "(@([1-9][0-9]*)of",
+      "new": "(@([0-9]+)of"
+    },
+    {
+      "name": "hold slice with K above N accepted",
+      "old": "&& k <= total && total <= 100)); then ok=1",
+      "new": "&& total <= 100)); then ok=1"
+    },
+    {
+      "name": "hold slice of more than 100 accepted",
+      "old": "&& k <= total && total <= 100)); then ok=1",
+      "new": "&& k <= total)); then ok=1"
+    },
+    {
+      "name": "hold slice number too long for the arithmetic accepted",
+      "old": "((${#k} <= 3 && ${#total} <= 3 && k <= total",
+      "new": "((k <= total"
+    },
+    {
+      "name": "# line read as a hold",
+      "old": "[[ ${toks[0]} != '#'* ]] || continue",
+      "new": ":"
+    },
+    {
+      "name": "only a lone # starts a comment line",
+      "old": "[[ ${toks[0]} != '#'* ]] || continue",
+      "new": "[[ ${toks[0]} != '#' ]] || continue"
+    },
+    {
+      "name": "a hold list without a final newline loses its last line",
+      "old": "while IFS= read -r line || [[ -n $line ]]; do",
+      "new": "while IFS= read -r line; do"
+    },
+    {
+      "name": "a blank hold line not skipped",
+      "old": "    ((${#toks[@]})) || continue\n",
+      "new": ""
+    },
+    {
+      "name": "a clone that is not the head accepted",
+      "old": "if [[ -n $modified ]]; then",
+      "new": "if false; then"
+    }
+  ]
+}

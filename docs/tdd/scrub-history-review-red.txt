@@ -1,0 +1,17 @@
+Review fixes for scrub --history on scrub-history-encoding@8895c92 (2026-10-28)
+Run: bats tests/scrub-history.bats -f 'GIT_DIR|C locale is lost' (3 new tests, before the fix)
+
+1. --self-test with GIT_DIR exported rewrote that repository (its main moved to a canary commit)
+   and still printed ok. 2. The probe had no non-UTF-8 byte, so dropping LC_ALL=C did not make it
+   fail at run time.
+
+1..3
+not ok 1 the self-test leaves a repository named by GIT_DIR untouched
+# (in test file tests/scrub-history.bats, line 670)
+#   `[ "$(victim_state)" = "$before" ]' failed
+not ok 2 the self-test leaves a repository named by GIT_DIR and GIT_WORK_TREE untouched
+# (in test file tests/scrub-history.bats, line 680)
+#   `[ "$(victim_state)" = "$before" ]' failed
+not ok 3 the extraction probe fails closed when the C locale is lost
+# (in test file tests/scrub-history.bats, line 701)
+#   `[ "$status" -eq 1 ]' failed

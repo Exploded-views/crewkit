@@ -1,0 +1,42 @@
+scrub.sh exact-value allowlist (.scrub-allow), RED run, 2026-10-28, tests written before the code existed.
+
+$ bats tests/scrub-allow.bats   (summary of the failing tests; the passing ones are existing behaviour, proved by mutants)
+1..21
+ok 1 baseline: an unlisted 32-hex id and a uuid are flagged
+not ok 2 a listed value passes, for each rule it is listed under
+ok 3 the same value listed under a different rule still fails
+ok 4 a one-character change to the value fails
+ok 5 a one-character change to the listed hash fails
+not ok 6 a malformed .scrub-allow line fails closed, names its line, and prints nothing from it
+ok 7 a .scrub-allow with a NUL byte fails closed
+not ok 8 a denylist rule line is refused, whatever its hash
+ok 9 a denylist hit is never exempt, even if its hash is listed under another rule
+ok 10 --require-denylist still fails with no denylist, allowlist or not
+not ok 11 a line with one allowed and one other match of the same rule still counts the other
+not ok 12 counting is per match: two other matches count two, two allowed matches count none
+not ok 13 .scrub-allow itself: valid lines pass, other hex in it trips
+ok 14 other rules still apply inside .scrub-allow
+ok 15 a .scrub-allow in a subdirectory gives no exemption, and its hash lines trip
+ok 16 a file with another name gives no exemption
+ok 17 an untracked .scrub-allow gives no exemption (it is read from the index)
+not ok 18 --secrets-only honours the allowlist too, and still validates it
+not ok 19 --history honours the current .scrub-allow for old content, per rule and exact value
+not ok 20 --history fails closed on a malformed .scrub-allow
+not ok 21 --self-test passes and reports the allowlist cases
+
+$ tools/scrub.sh --self-test | tail -2   (allow: canaries added, load_allow and sha256_hex not yet written)
+  ok    NUL after a marked line (pins/tool.env)
+tools/scrub.sh: line 270: sha256_hex: command not found
+
+Mutation check (tests/mutants/scrub-allow.json) after the code:
+  killed       the rule column is ignored
+  killed       a prefix of the hash is accepted
+  killed       an allowed value exempts the rest of the stream (whole-line, not per-match)
+  killed       the malformed-line check is removed
+  killed       the denylist refusal is removed
+  killed       an unknown rule is accepted
+  killed       a NUL in the allow file is accepted
+  killed       the allow file's own exemption covers any long hex
+  killed       the allow file's own exemption applies to any path ending in .scrub-allow
+  killed       long-hex's delimiter character is hashed with the value
+  all 10 mutants killed

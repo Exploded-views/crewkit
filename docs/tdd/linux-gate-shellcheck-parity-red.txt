@@ -1,0 +1,104 @@
+# RED: the local gate's shellcheck step against ci.yml's shellcheck job, on main's tools/linux-gate.sh (before the fix).
+# Run: python3 -m unittest tests.test_shellcheck_parity; tests/run.sh tests/linux-gate.bats -f 'shellcheck step'
+# (paths and counts trimmed to the failing lines)
+
+........FF
+======================================================================
+FAIL: test_the_gate_checks_what_ci_checks (tests.test_shellcheck_parity.Parity.test_the_gate_checks_what_ci_checks)
+----------------------------------------------------------------------
+AssertionError: Lists differ: ['shellcheck -x: ${libexec_sh[@]} is check[931 chars]one"] != []
+
+First list contains 11 additional elements.
+First extra element 0:
+'shellcheck -x: ${libexec_sh[@]} is checked by ci.yml, missing from linux-gate.sh'
+
+Diff is 1064 characters long. Set self.maxDiff to None to see it. : 
+shellcheck -x: ${libexec_sh[@]} is checked by ci.yml, missing from linux-gate.sh
+shellcheck -x: ${plugin_sh[@]} is checked by ci.yml, missing from linux-gate.sh
+shellcheck -x: bin/crewkit is checked by ci.yml, missing from linux-gate.sh
+shellcheck -x: push-gate/hooks/_dispatch is checked by ci.yml, missing from linux-gate.sh
+shellcheck -x: push-gate/push-gate.sh is checked by ci.yml, missing from linux-gate.sh
+shellcheck -x: ${p[@]} is checked by linux-gate.sh, missing from ci.yml
+shellcheck -s bash: libexec/ck/*.sh is checked by ci.yml, missing from linux-gate.sh
+shellcheck -s sh: in ci.yml, not run by linux-gate.sh
+array libexec_sh: ci.yml builds it with 'compgen -G libexec/crewkit-*', linux-gate.sh with None
+array p: ci.yml builds it with None, linux-gate.sh with 'grep -l ^#!/usr/bin/env bash plugins/crew-*/bin/*'
+array plugin_sh: ci.yml builds it with 'grep -l ^#!/usr/bin/env bash plugins/crew-*/bin/*', linux-gate.sh with None
+
+======================================================================
+FAIL: test_the_real_files_yield_the_three_commands (tests.test_shellcheck_parity.Parity.test_the_real_files_yield_the_three_commands)
+----------------------------------------------------------------------
+AssertionError: Lists differ: [('', True), ('bash', False)] != [('', True), ('bash', False), ('sh', False)]
+
+Second list contains 1 additional elements.
+First extra element 2:
+('sh', False)
+
+- [('', True), ('bash', False)]
++ [('', True), ('bash', False), ('sh', False)]
+?                       +++++++++++++++
+ : <repo>/tools/linux-gate.sh
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.004s
+
+FAILED (failures=2)
+
+1..2
+not ok 1 the shellcheck step fails on a finding in libexec/, libexec/ck/, bin/ or push-gate/, as CI's job does
+# (in test file tests/linux-gate.bats, line 157)
+#   `[ "$status" -eq 1 ] || { echo "$f: the gate passed a shellcheck finding" >&2; return 1; }' failed
+# libexec/crewkit-x: the gate passed a shellcheck finding
+not ok 2 the shellcheck step passes clean files in libexec/, and is handed every file CI's job checks
+# (in test file tests/linux-gate.bats, line 172)
+#   `grep -qE '^shellcheck --norc -x .* bin/crewkit .*libexec/crewkit-x .*push-gate/push-gate.sh push-gate/hooks/_dispatch' "$CALLS"' failed
+
+# review round 1 (RED): the parser missed a command with no leading flag; nothing pinned that all three commands run
+# Run: python3 -m unittest tests.test_shellcheck_parity   (old parser: only commands whose first argument is a flag)
+FAIL: test_a_command_without_a_leading_flag_is_seen (tests.test_shellcheck_parity.Parity.test_a_command_without_a_leading_flag_is_seen)
+AssertionError: False is not true : []
+FAIL: test_a_flagless_command_in_the_gate_is_seen_too (tests.test_shellcheck_parity.Parity.test_a_flagless_command_in_the_gate_is_seen_too)
+AssertionError: False is not true
+Ran 14 tests in 0.004s
+FAILED (failures=2)
+# Run: tests/run.sh tests/linux-gate.bats -f "doesn't stop|shellcheck step"  with each new mutant applied to tools/linux-gate.sh by hand
+# mutant: first command's || rc=1 -> || exit 1: the four older shellcheck tests pass (it survives them); the new test:
+not ok - a finding in the first or the second shellcheck command doesn't stop the later ones   (bin/crewkit: not all three commands ran)
+# mutant: sh shim command's || rc=1 -> || exit 1: same, survives the older tests; the new test:
+not ok - a finding in the first or the second shellcheck command doesn't stop the later ones   (push-gate/shim.sh: not all three commands ran)
+
+# review round 2 (RED): a shellcheck that is not the first word of a command is invisible; a trailing comment is read as paths
+# Run: python3 -m unittest tests.test_shellcheck_parity
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_ci (form="find libexec/ck -name '*.sh' -exec shellcheck -s bash {} +")
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_ci (form='xargs shellcheck < list')
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_ci (form='timeout 60 shellcheck new.sh')
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_ci (form='if ! shellcheck new.sh; then exit 1; fi')
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_ci (form='echo "$(shellcheck new.sh)"')
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_the_gate (form="find libexec/ck -name '*.sh' -exec shellcheck -s bash {} +")
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_the_gate (form='xargs shellcheck < list')
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_the_gate (form='timeout 60 shellcheck new.sh')
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_the_gate (form='if ! shellcheck new.sh; then exit 1; fi')
+FAIL: test_a_shellcheck_that_is_not_the_first_word_is_reported_in_the_gate (form='echo "$(shellcheck new.sh)"')
+FAIL: test_a_trailing_comment_is_not_a_path (tests.test_shellcheck_parity.Parity.test_a_trailing_comment_is_not_a_path)
+Ran 18 tests in 0.007s
+FAILED (failures=11)
+
+# gate round: the killing tests must not need a real shellcheck
+# The full gate runs the mutant spec's suite in a container whose image has no shellcheck, so the three
+# tests that killed these mutants skipped there ("no shellcheck on this machine") and 8 survived. The
+# shellcheck stub is now deterministic (records argv; a file with the line `# shellcheck-stub: fail`
+# makes it print a finding and exit 1) and the killing tests use it; the real-shellcheck test is an extra.
+# Run (each mutant applied by hand to tools/linux-gate.sh in a scratch copy, shellcheck hidden from PATH):
+#   PATH=<homebrew bin minus shellcheck>:/usr/bin:/bin tests/run.sh tests/linux-gate.bats -f "CI's three commands|any of the three"
+# libexec/crewkit-* dropped                 : test 1 not ok, test 2 not ok
+# sh shim command dropped                   : test 1 not ok, test 2 not ok
+# sh shim failure ignored (|| true)         : test 2 not ok
+# libexec/ck/*.sh dropped                   : test 1 not ok, test 2 not ok
+# push-gate/push-gate.sh dropped            : test 1 not ok, test 2 not ok
+# bin/crewkit dropped                       : test 1 not ok, test 2 not ok
+# exit 0 whatever the commands returned     : test 2 not ok
+# first command || exit 1                   : test 2 not ok
+# shim command || exit 1                    : test 2 not ok
+# (test 1 = the step runs CI's three commands over CI's files; test 2 = a finding in any file fails the step and all three still run)
+# Independence: tests/linux-gate.bats with shellcheck hidden from PATH: 71 ok, 0 not ok; the only skip among shellcheck tests is the extra
+#   'with the real shellcheck, a finding in libexec/ ...' (the others skipped need crew-heavy, unrelated).

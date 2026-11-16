@@ -1,0 +1,26 @@
+scrub.sh denylist class tags and --private-infra, RED run, 2026-10-29, tests written before the code existed.
+
+$ bats tests/scrub-private-infra.bats   (the passing ones are exit-2 usage cases and unchanged behaviour, proved by mutants)
+1..22
+not ok 1 baseline: without the flag every tagged and untagged term is found
+not ok 2 --private-infra skips a crew-host term and nothing else
+not ok 3 --private-infra passes when only crew-host terms are present
+not ok 4 an unknown class applies everywhere, with and without the flag
+not ok 5 a tag leaves the rest of the line as the pattern (tagged terms still match)
+not ok 6 a malformed class tag fails the scrub, naming the line number only
+not ok 7 a line that is only a tag is malformed
+not ok 8 a comment line may mention a tag
+not ok 9 --private-infra on a public remote exits 2 with a fixed message
+ok 10 --private-infra refuses when any one of several remotes is not listed
+ok 11 --private-infra refuses when the private-remote list is missing
+not ok 12 a trailing .git or slash on the remote is not a way round the list
+not ok 13 --private-infra with no remote refuses unless the list says @no-remote
+ok 14 the remote check does not apply without the flag
+not ok 15 secret and PII rules still fire under --private-infra
+not ok 16 --private-infra with --secrets-only: no denylist, but the remote gate still applies
+not ok 17 --private-infra with --history skips crew-host terms in every version
+ok 18 --private-infra with --history refuses a public remote
+not ok 19 --private-infra with --require-denylist: a missing denylist still fails, 1
+not ok 20 --private-infra with --require-denylist passes a present denylist
+ok 21 --private-infra cannot combine with --self-test
+ok 22 a path holding a crew-host term is not printed under --private-infra

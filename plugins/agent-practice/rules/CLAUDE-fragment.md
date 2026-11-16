@@ -25,6 +25,10 @@ The agent-practice skills hold the detail.
 - **Estimate from measured velocity, in hours.** Use the team's merged-PR history (see the
   `orchestrator` skill), never human engineer-days. List the gating waits (owner decisions,
   reviews, gates, dispatches) separately; don't fold them into a total.
+- **Every slip gets a mechanism.** Tell the owner, then add an enforced hook, gate, lint
+  or test (test-first) and a slip-log entry naming the mechanism and its test. If a mechanism
+  already existed and failed, fix the mechanism, not the note. Never bypass one; only the owner
+  does, themself.
 - **Durable state lives in files**, never only in context or `/tmp`. Write the ledger as you go.
 - **Never message an agent that is running inside a workflow**; it spawns a duplicate.
 - **Never run an alerting or paging tool to learn its usage.** Read its source.

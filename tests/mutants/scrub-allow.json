@@ -1,0 +1,95 @@
+{
+  "target": "tools/scrub.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/scrub-allow.bats"
+  ],
+  "mutants": [
+    {
+      "name": "the rule column is ignored",
+      "old": "    [[ -n ${allowed[\"$r $h\"]:-} ]] || printf '%s\\n' \"$v\"",
+      "new": "    [[ \" ${!allowed[*]} \" == *\" $h \"* ]] || printf '%s\\n' \"$v\""
+    },
+    {
+      "name": "a prefix of the hash is accepted",
+      "old": "    [[ -n ${allowed[\"$r $h\"]:-} ]] || printf '%s\\n' \"$v\"",
+      "new": "    [[ \" ${!allowed[*]} \" == *\" $r ${h:0:63}\"* ]] || printf '%s\\n' \"$v\""
+    },
+    {
+      "name": "an allowed value exempts the rest of the stream (whole-line, not per-match)",
+      "old": "    [[ -n ${allowed[\"$r $h\"]:-} ]] || printf '%s\\n' \"$v\"",
+      "new": "    [[ -n ${allowed[\"$r $h\"]:-} ]] && skip=1; (( ${skip:-0} )) || printf '%s\\n' \"$v\""
+    },
+    {
+      "name": "the malformed-line check is removed",
+      "old": "    if [[ $line =~ $allow_shape_re ]]; then",
+      "new": "    if true; then"
+    },
+    {
+      "name": "the denylist refusal is removed",
+      "old": "    if [[ $rule == denylist ]]; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "a NUL in the allow file is accepted",
+      "old": "  if [[ $(tr -d '\\0' < \"$f\" | wc -c) != \"$(wc -c < \"$f\")\" ]]; then",
+      "new": "  if false; then"
+    },
+    {
+      "name": "the allow file's own exemption covers any long hex",
+      "old": "sed -E \"s/^sha256:$allow_hash_re(  ($allow_rules_re)  $allow_reason_re)\\$/sha256:\\\\1/\"",
+      "new": "sed -E 's/[0-9a-f]{32,}//g'"
+    },
+    {
+      "name": "the allow file's own exemption applies to any path ending in .scrub-allow",
+      "old": "    elif [[ $r == long-hex && $ctx == .scrub-allow ]]; then",
+      "new": "    elif [[ $r == long-hex && $ctx == *.scrub-allow* ]]; then"
+    },
+    {
+      "name": "long-hex's delimiter character is hashed with the value",
+      "old": "    if [[ $r == long-hex && $v != [0-9A-Fa-f]* ]]; then v=${v:1}; fi",
+      "new": "    :"
+    },
+    {
+      "name": "rule allowlist widened (any non-denylist rule)",
+      "old": "    if [[ ! $line =~ $allow_line_re ]]; then",
+      "new": "    if false; then"
+    },
+    {
+      "name": "the self-exemption uses a looser regex",
+      "old": "(  ($allow_rules_re)  $allow_reason_re)\\$/sha256:",
+      "new": "(  ([a-z-]+)  .+)\\$/sha256:"
+    },
+    {
+      "name": "--history reads the index, not HEAD",
+      "old": "(( history )) && allow_ref=HEAD:.scrub-allow",
+      "new": ":"
+    },
+    {
+      "name": "the allow file is read from the work tree",
+      "old": "if git cat-file -e \"$allow_ref\" 2>/dev/null; then",
+      "new": "if [[ -f .scrub-allow ]]; then"
+    },
+    {
+      "name": "the scanned tree's tools/scrub.sh exempt by path",
+      "old": "if [[ $f == tools/scrub.sh ]] && { cmp -s -- \"$f\" \"$script_path\" || is_known_self \"$(git hash-object --no-filters -- \"$f\")\"; }; then self=1; fi",
+      "new": "if [[ $f == tools/scrub.sh ]]; then self=1; fi"
+    },
+    {
+      "name": "the known-versions list read from the scanned tree",
+      "old": "\"$script_dir/scrub-known-versions.txt\"",
+      "new": "\"$PWD/tools/scrub-known-versions.txt\""
+    },
+    {
+      "name": "the script path taken after the cd",
+      "old": "script_path=$script_dir/$(basename \"${BASH_SOURCE[0]}\")\ncd \"$(git rev-parse --show-toplevel)\"",
+      "new": "script_path=${BASH_SOURCE[0]}\ncd \"$(git rev-parse --show-toplevel)\""
+    },
+    {
+      "name": "the known-version hash with the clone's filters",
+      "old": "git hash-object --no-filters -- \"$f\"",
+      "new": "git hash-object -- \"$f\""
+    }
+  ]
+}

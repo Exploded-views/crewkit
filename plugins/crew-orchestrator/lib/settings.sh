@@ -13,6 +13,7 @@
 # Lookup order, first match wins (an empty value counts as set):
 #   1. environment  CREWKIT_<KEY>, the key upper-cased with dots as underscores
 #                   (gates.test -> CREWKIT_GATES_TEST), for keys in CREW_ENV_OK only (below)
+#   (keys in CREW_USER_ONLY, below, skip 1 to 3: only the user file sets them)
 #   2. project      .claude/crewkit.local.md   (per checkout, git-ignored)
 #   3. project      .claude/crewkit.md         (committed, shared by the team)
 #   4. user         ~/.claude/crewkit.md
@@ -34,26 +35,38 @@
 # in neither list is file-only. tools/lint-skills.py fails unless every key in docs/settings.md
 # is in exactly one list, so a new key gets classified in review. CREW_ENV_OK lists exact keys;
 # its only prefixes are placeholder families documented "Never gates a merge" (the lint checks).
-CREW_FILE_ONLY='repo main_branch required_check ci.* min_green_checks ignored_checks
+CREW_FILE_ONLY='owner_send.* repo main_branch required_check ci.* min_green_checks ignored_checks
   release_workflows health_url high_risk_areas.* review_model review.* labels.do_not_merge
-  labels.awaiting_approval land.* state_dir campaign_dir branch_prefix.batch'
+  labels.awaiting_approval land.* state_dir campaign_dir branch_prefix.batch nodes.*
+  registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'
 CREW_ENV_OK='checkout implement_model branch_prefix.lane branch_prefix.refresh lane.worktree_dir
   lane.note_dir lane.setup_hook lane.db_hook gates.* pool_command gh_write.min_gap_ms
   gh_write.retries gh_write.backoff_seconds gh_write.max_body_bytes labels.* owner_name
   orchestrator_name page_command notify_command poll_seconds poll_max lock_wait_seconds
   stale_seconds labels.fixed_in_main flakes_file merge_retries'
+# Which keys only the user file (~/.claude/crewkit.md) may set: they describe this machine (the
+# nodes it reaches and which sessions there are never typed into, the registry it clones and the
+# key it uses, its host limits, its push gate and its heavy lock), not a project, so a repository or a lane's
+# worktree must not widen, shrink or redirect them. Same entry syntax;
+# every entry must be file-only too (the lint checks).
+CREW_USER_ONLY='nodes.* registry.* limits.* push_gate.* heavy_lock watch.trusted_authors'
 
-_CREW_LISTS_SRC="" _CREW_FO_FLAT="" _CREW_EO_FLAT=""
+_CREW_LISTS_SRC="" _CREW_FO_FLAT="" _CREW_EO_FLAT="" _CREW_UO_FLAT=""
 # _crew_flatten_lists: each list as one space-separated string, split with read -a (no pathname
 # expansion: an unquoted $CREW_FILE_ONLY would glob "ci.*" against files in the current dir).
-# Redone only when a list changes.
+# Redone only when a list changes (_crew_lists_current).
 _crew_flatten_lists() {
-  local _crew_fo=() _crew_eo=() IFS=$' \t\n'
+  local _crew_fo=() _crew_eo=() _crew_uo=() IFS=$' \t\n'
   read -rd '' -a _crew_fo <<<"$CREW_FILE_ONLY" || true
   read -rd '' -a _crew_eo <<<"$CREW_ENV_OK" || true
+  read -rd '' -a _crew_uo <<<"$CREW_USER_ONLY" || true
   IFS=' '
-  _CREW_FO_FLAT=" ${_crew_fo[*]-} " _CREW_EO_FLAT=" ${_crew_eo[*]-} "
-  _CREW_LISTS_SRC="$CREW_FILE_ONLY|$CREW_ENV_OK"
+  _CREW_FO_FLAT=" ${_crew_fo[*]-} " _CREW_EO_FLAT=" ${_crew_eo[*]-} " _CREW_UO_FLAT=" ${_crew_uo[*]-} "
+  _CREW_LISTS_SRC="$CREW_FILE_ONLY|$CREW_ENV_OK|$CREW_USER_ONLY"
+}
+
+_crew_lists_current() {
+  [[ $_CREW_LISTS_SRC == "$CREW_FILE_ONLY|$CREW_ENV_OK|$CREW_USER_ONLY" ]] || _crew_flatten_lists
 }
 
 # _crew_env_ok KEY: true if CREWKIT_* may set KEY. An exact entry first (file-only, then
@@ -64,7 +77,7 @@ _crew_env_ok() {
   # Only a plain setting name can take the environment (a space could match across two list
   # entries). The characters are spelled out: a range like [a-z] follows the locale.
   case $key in ''|*[!abcdefghijklmnopqrstuvwxyz0123456789_.-]*) return 1 ;; esac
-  [[ $_CREW_LISTS_SRC == "$CREW_FILE_ONLY|$CREW_ENV_OK" ]] || _crew_flatten_lists
+  _crew_lists_current
   case $_CREW_FO_FLAT in *" $key "*) return 1 ;; esac
   case $_CREW_EO_FLAT in *" $key "*) return 0 ;; esac
   p=$key
@@ -72,6 +85,19 @@ _crew_env_ok() {
     p=${p%.*}
     case $_CREW_FO_FLAT in *" $p.* "*) return 1 ;; esac
     case $_CREW_EO_FLAT in *" $p.* "*) return 0 ;; esac
+  done
+  return 1
+}
+
+# _crew_user_only KEY: true if only ~/.claude/crewkit.md may set KEY (an exact entry in
+# CREW_USER_ONLY, or one of the key's dotted prefixes).
+_crew_user_only() {
+  local p=$1
+  _crew_lists_current
+  case $_CREW_UO_FLAT in *" $p "*) return 0 ;; esac
+  while [[ $p == *.* ]]; do
+    p=${p%.*}
+    case $_CREW_UO_FLAT in *" $p.* "*) return 0 ;; esac
   done
   return 1
 }
@@ -146,12 +172,20 @@ _CREW_AWK='
   fm && $0 == "---" { fm = 0; nextfile }
   fm && index($0, k ":") == 1 { print "F=" substr($0, length(k) + 2); exit }'
 
-# crew_setting KEY [DEFAULT]: the environment only for keys in CREW_ENV_OK, then the files.
+# crew_setting KEY [DEFAULT]: the environment only for keys in CREW_ENV_OK, then the files; a
+# key in CREW_USER_ONLY only from the user file.
 crew_setting() {
-  local key=$1 hit fo=1
+  local key=$1 hit fo=1 files
   _crew_env_ok "$key" && fo=0
   _crew_find_files   # in this shell, so the cache survives between lookups
-  hit=$(awk -v k="$key" -v fo="$fo" "$_CREW_AWK" ${_CREW_FILES[@]+"${_CREW_FILES[@]}"} </dev/null)
+  files=(${_CREW_FILES[@]+"${_CREW_FILES[@]}"})
+  if _crew_user_only "$key"; then   # the environment still per CREW_ENV_OK (never, per the lint)
+    files=()
+    # The user file comes last in _CREW_FILES when it exists and passed the ownership checks.
+    [[ ${#_CREW_FILES[@]} -gt 0 && ${_CREW_FILES[${#_CREW_FILES[@]} - 1]} == "$HOME/.claude/crewkit.md" ]] &&
+      files=("$HOME/.claude/crewkit.md")
+  fi
+  hit=$(awk -v k="$key" -v fo="$fo" "$_CREW_AWK" ${files[@]+"${files[@]}"} </dev/null)
   case $hit in
     E=*) printf '%s\n' "${hit#E=}"; return 0 ;;   # environment values are taken as they are
     F=*) _crew_clean "${hit#F=}"; printf '\n'; return 0 ;;
@@ -179,9 +213,15 @@ crew_cd_main_checkout() {
 }
 
 crew_keys() {
-  local prefix=$1 f
+  local prefix=$1 f line
   while IFS= read -r f; do
-    _crew_frontmatter "$f"
+    if [[ $f == "$HOME/.claude/crewkit.md" ]]; then
+      _crew_frontmatter "$f"
+    else   # a project file never sets a CREW_USER_ONLY key
+      while IFS= read -r line; do
+        _crew_user_only "${line%%:*}" || printf '%s\n' "$line"
+      done < <(_crew_frontmatter "$f")
+    fi
   done < <(crew_settings_files) | awk -F: -v p="$prefix" '
     /^[A-Za-z0-9_.-]+:/ && index($1, p) == 1 && !seen[$1]++ { print $1 }'
 }

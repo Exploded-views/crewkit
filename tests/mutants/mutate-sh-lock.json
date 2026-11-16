@@ -1,0 +1,21 @@
+{
+  "target": "tools/mutate.sh",
+  "suite": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_heavy_lock"
+  ],
+  "mutants": [
+    {
+      "name": "mutate.sh runs without the lock",
+      "old": "heavy_lock.py\" tools/mutate.sh || exit 1",
+      "new": "heavy_lock.py\" tools/mutate.sh || true"
+    },
+    {
+      "name": "mutate.sh guard call without -I",
+      "old": "python3 -I \"$(cd",
+      "new": "python3 \"$(cd"
+    }
+  ]
+}

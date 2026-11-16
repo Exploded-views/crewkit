@@ -6,8 +6,8 @@ description: >-
   session in a pane, and choose between SendMessage and herdr. Never type into an existing
   session through herdr. Use this when you run inside herdr (HERDR_ENV=1) and need to check
   whether a session is working, idle, done or blocked, read what it shows, or start a new
-  session; and before any `herdr agent prompt`, `send-keys` or `pane run` aimed at a pane you
-  didn't create.
+  session; and before any `herdr agent prompt`, `send-keys` or `pane run` aimed at any pane (a
+  bridge reaches another host's bridge only through `pane-ask`).
 ---
 
 # herdr
@@ -55,11 +55,12 @@ herdr agent read <name|pane> --source recent-unwrapped --lines 120
 |---|---|
 | Ask, tell, hand off or report to an existing session | `SendMessage` (see `cross-session-messaging`) |
 | Know whether a session is busy, stuck or blocked | `herdr agent list/get/read` |
-| Start a new session with a brief | `herdr agent start`, then prompt it (section 3) |
+| Start a new session with a brief | `herdr agent start`, then brief it with `SendMessage` (section 3) |
 | Wake a session that seems wedged | Report it to `orchestrator_name`; don't send keys |
 
-**Never** use `herdr agent prompt`, `agent send-keys`, `pane run` or `pane send-*` on a
-session you didn't start in this conversation. It arrives as the owner's own input,
+**Never** use `herdr agent prompt`, `agent send-keys`, `pane run` or `pane send-*` on any
+session, including one you started. Sessions on one host talk over `SendMessage`; a herdr
+pane prompt goes only from a bridge to another host's bridge (`pane-ask`). It arrives as the owner's own input,
 skipping the trust model that marks peer messages as requests. Never answer another
 session's `blocked` dialog through herdr: that dialog is waiting for `owner_name`.
 
@@ -88,14 +89,9 @@ A distinct workstream with its own loop earns a session; a one-off subtask is a 
    ```
 
    Pass the permission mode the owner chose for that role; `auto` is the usual one.
-5. **Brief it** with the first prompt (the `orchestrator` skill's brief template). Prompting a
-   session you just started is fine:
-
-   ```bash
-   herdr agent prompt <name> "<brief>" --wait --timeout 120000
-   ```
-
-   A timeout doesn't prove the prompt was lost. Read the screen before sending it again.
+5. **Brief it** with `SendMessage` (the `orchestrator` skill's brief template) once the
+   started session is up: find it with `ListAgents`, and wait until it is listed and idle.
+   Never brief it through `herdr agent prompt`.
 6. **Register it** with the coordinator (roster, decision log) and tell `owner_name`.
 
 After the brief, talk to it with `SendMessage` like any other peer.
@@ -109,7 +105,7 @@ After the brief, talk to it with `SendMessage` like any other peer.
 
 ## Red flags
 
-- About to `agent prompt` or `send-keys` a session someone else started.
+- About to `agent prompt` or `send-keys` any session, including one you started.
 - About to press a key in a `blocked` pane to "unstick" it.
 - Treating `unknown` as `done`, or a prompt timeout as "not delivered".
 - Spawning a session for a one-off task, or without checking memory first.

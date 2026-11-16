@@ -1,0 +1,45 @@
+{
+  "target": "plugins/crew-orchestrator/bin/public-watch",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/watcher-injection.bats"
+  ],
+  "mutants": [
+    {
+      "name": "the body selected",
+      "old": ".author_association] | @tsv'\nCOMMENTS_JQ",
+      "new": ".author_association, .body] | @tsv'\nCOMMENTS_JQ"
+    },
+    {
+      "name": "a title fetched for every author",
+      "old": "        if watchline.association(a) in watchline.TRUSTED:",
+      "new": "        if True:"
+    },
+    {
+      "name": "a malformed number kept",
+      "old": "not watchline.NUM_RE.match(parts[0]) or parts[1] not in",
+      "new": "parts[1] not in"
+    },
+    {
+      "name": "a malformed comment id kept",
+      "old": "or not watchline.NUM_RE.match(parts[1]):",
+      "new": ":"
+    },
+    {
+      "name": "a gh failure reads as nothing new",
+      "old": "        sys.exit(1)\n    return r.stdout",
+      "new": "        return \"\"\n    return r.stdout"
+    },
+    {
+      "name": "since unchecked",
+      "old": "or not SINCE_RE.match(argv[1]):",
+      "new": ":"
+    },
+    {
+      "name": "skipped items not reported",
+      "old": "        print(f\"public-watch: skipped {skipped} malformed item(s)\", file=sys.stderr)",
+      "new": "        pass"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+Push gate scan hardening (a follow-up security review of c591abc, plus review item 12): RED run, 2026-10-27.
+tests/push-gate.bats, the new tests only, against the gate at c591abc: sed '/^-/d' dropping a header line
+(an author name) that starts with '-', a replace ref swapping the pushed commit, the repository's
+i18n.logOutputEncoding (EBCDIC, under LC_ALL=C so no tool error blocks by accident), and core.quotePath
+escaping a non-ASCII path. A first try with UTF-16 passed for the wrong reason: bash's $(...) drops NUL
+bytes, and sed's illegal-byte error in a UTF-8 locale blocked by accident.
+
+1..4
+not ok 1 an author name that starts with '-' still reaches gitleaks (only a hunk's removed lines are dropped)
+# (in test file tests/push-gate.bats, line 378)
+#   `[ "$status" -eq 1 ]' failed
+not ok 2 a replace ref can't swap a pushed commit for a clean one in either scan
+# (in test file tests/push-gate.bats, line 386)
+#   `[ "$status" -eq 1 ]' failed
+not ok 3 the repository's log output encoding (EBCDIC) can't garble what either scan reads
+# (in test file tests/push-gate.bats, line 396)
+#   `[ "$status" -eq 1 ]' failed
+not ok 4 a non-ASCII term in a path blocks (core.quotePath can't escape it)
+# (in test file tests/push-gate.bats, line 404)
+#   `[ "$status" -eq 1 ]' failed

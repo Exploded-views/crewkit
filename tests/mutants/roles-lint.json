@@ -1,0 +1,205 @@
+{
+  "target": "tools/lint-roles.py",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/roles.bats"
+  ],
+  "mutants": [
+    {
+      "name": "unclosed front matter returns its keys",
+      "old": "            keys[m.group(1)] = value\n    return None",
+      "new": "            keys[m.group(1)] = value\n    return keys"
+    },
+    {
+      "name": "closing --- never recognised",
+      "old": "if line.rstrip() == \"---\":\n            return keys",
+      "new": "if False:\n            return keys"
+    },
+    {
+      "name": "trailing comment kept in the value",
+      "old": "value = re.sub(r\"\\s+#.*$\", \"\", m.group(2)).strip()",
+      "new": "value = m.group(2).strip()"
+    },
+    {
+      "name": "missing key not reported",
+      "old": "for k in required if k not in fm]",
+      "new": "for k in required if False]"
+    },
+    {
+      "name": "empty value accepted",
+      "old": "for k in required if k in fm and not fm[k]]",
+      "new": "for k in required if False]"
+    },
+    {
+      "name": "template values checked",
+      "old": "    if template:\n        return out\n",
+      "new": "    pass\n"
+    },
+    {
+      "name": "kind vs folder not compared",
+      "old": "if fm.get(\"kind\") and fm[\"kind\"] != folder_kind:",
+      "new": "if False:"
+    },
+    {
+      "name": "variant vs folder not compared",
+      "old": "fm[\"variant\"] != folder_variant:",
+      "new": "False:"
+    },
+    {
+      "name": "permission_mode set not checked",
+      "old": "if mode and mode not in MODES:",
+      "new": "if False:"
+    },
+    {
+      "name": "runs_as set not checked",
+      "old": "if runs and runs not in RUNS_AS:",
+      "new": "if False:"
+    },
+    {
+      "name": "cron without schedule passes",
+      "old": "if runs in (\"cron\", \"timer\") and \"schedule\" not in fm:",
+      "new": "if runs == \"timer\" and \"schedule\" not in fm:"
+    },
+    {
+      "name": "timer without schedule passes",
+      "old": "if runs in (\"cron\", \"timer\") and \"schedule\" not in fm:",
+      "new": "if runs == \"cron\" and \"schedule\" not in fm:"
+    },
+    {
+      "name": "dontAsk without detail passes",
+      "old": "if mode == \"dontAsk\" and \"permission_detail\" not in fm:",
+      "new": "if False:"
+    },
+    {
+      "name": "remove without ruling passes",
+      "old": "if \"remove\" in fm and not fm.get(\"ruling\"):",
+      "new": "if False:"
+    },
+    {
+      "name": "empty ruling accepted",
+      "old": "not fm.get(\"ruling\"):",
+      "new": "\"ruling\" not in fm:"
+    },
+    {
+      "name": "base lead not required",
+      "old": "BASE_KEYS = (\"kind\", \"lead\", \"model\", \"permission_mode\", \"runs_as\")",
+      "new": "BASE_KEYS = (\"kind\", \"model\", \"permission_mode\", \"runs_as\")"
+    },
+    {
+      "name": "base runs_as not required",
+      "old": "BASE_KEYS = (\"kind\", \"lead\", \"model\", \"permission_mode\", \"runs_as\")",
+      "new": "BASE_KEYS = (\"kind\", \"lead\", \"model\", \"permission_mode\")"
+    },
+    {
+      "name": "variant: not required",
+      "old": "VARIANT_KEYS = (\"kind\", \"variant\", \"permission_mode\")",
+      "new": "VARIANT_KEYS = (\"kind\", \"permission_mode\")"
+    },
+    {
+      "name": "variant permission_mode not required",
+      "old": "VARIANT_KEYS = (\"kind\", \"variant\", \"permission_mode\")",
+      "new": "VARIANT_KEYS = (\"kind\", \"variant\")"
+    },
+    {
+      "name": "empty tree passes",
+      "old": "if not kinds:",
+      "new": "if False:"
+    },
+    {
+      "name": "missing kind.md not reported",
+      "old": "problems.append(f\"{kdir.name}: no kind.md\")",
+      "new": "pass"
+    },
+    {
+      "name": "missing role.md not reported",
+      "old": "problems.append(f\"{kdir.name}/{vdir.name}: no role.md\")",
+      "new": "pass"
+    },
+    {
+      "name": "template role.md not checked",
+      "old": "problems += check(variant, f\"{kdir.name}/role.md\", VARIANT_KEYS, None, None, True)",
+      "new": "pass"
+    },
+    {
+      "name": "problems exit 0",
+      "old": "return 1 if problems else 0",
+      "new": "return 0"
+    },
+    {
+      "name": "usage error exits 1",
+      "old": "        return 64",
+      "new": "        return 1"
+    },
+    {
+      "name": "indented keys counted",
+      "old": "KEY = re.compile(r\"^([A-Za-z_]",
+      "new": "KEY = re.compile(r\"^\\s*([A-Za-z_]"
+    },
+    {
+      "name": "duplicate key accepted",
+      "old": "out += [f\"{label}: key given twice: {k}\" for k in dict.fromkeys(twice)]",
+      "new": "pass"
+    },
+    {
+      "name": "a heading with no blank above it passes",
+      "old": "        if kind == \"heading\":\n            if before not in (\"blank\", \"front\"):",
+      "new": "        if kind == \"heading\":\n            if False:"
+    },
+    {
+      "name": "a heading with no blank below it passes",
+      "old": "            if after not in (\"blank\", \"front\"):",
+      "new": "            if False:"
+    },
+    {
+      "name": "a list after text needs no blank",
+      "old": "            if before in (\"text\", \"heading\", \"fence\"):",
+      "new": "            if before in (\"heading\", \"fence\"):"
+    },
+    {
+      "name": "a list above a heading needs no blank",
+      "old": "            if before in (\"text\", \"heading\", \"fence\"):",
+      "new": "            if before in (\"text\", \"fence\"):"
+    },
+    {
+      "name": "a list right above a fence passes",
+      "old": "        if kind in (\"item\", \"cont\") and after == \"fence\":",
+      "new": "        if False:"
+    },
+    {
+      "name": "a fence is never closed",
+      "old": "            fenced = not fenced\n",
+      "new": "            fenced = True\n"
+    },
+    {
+      "name": "fenced lines are checked",
+      "old": "        elif fenced:\n            kinds.append(\"fence\")\n",
+      "new": ""
+    },
+    {
+      "name": "an indented line is not a continuation",
+      "old": "        elif line[0] in \" \\t\":",
+      "new": "        elif False:"
+    },
+    {
+      "name": "a hash with no space is a heading",
+      "old": "HEADING = re.compile(r\"^ {0,3}#{1,6}( +|$)\")",
+      "new": "HEADING = re.compile(r\"^ {0,3}#{1,6}\")"
+    },
+    {
+      "name": "a dash with no space is a list item",
+      "old": "LIST_ITEM = re.compile(r\"^ {0,3}([-*+]|\\d{1,9}[.)])( +|$)\")",
+      "new": "LIST_ITEM = re.compile(r\"^ {0,3}([-*+]|\\d{1,9}[.)])\")"
+    },
+    {
+      "name": "the closing front matter line is checked",
+      "old": "for i in range(1, len(lines)) if lines[i].rstrip() == \"---\") + 1\n",
+      "new": "for i in range(1, len(lines)) if lines[i].rstrip() == \"---\")\n"
+    },
+    {
+      "name": "the layout is not checked for a template",
+      "old": "    out += layout(text, label)\n    if template:\n        return out\n",
+      "new": "    if template:\n        return out\n    out += layout(text, label)\n"
+    }
+  ]
+}

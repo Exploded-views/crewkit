@@ -1,0 +1,118 @@
+Commit 1 (tests only) of the private-repos check in tools/export.py, before it existed.
+`cd tests && python3 -m unittest test_export`: 125 tests, 19 failures, all in PrivateRepos
+(trimmed below to the failure lines). Why each failed:
+- a listed name, a name in a path, in a slug, after a dot and in another case: export exits 0
+  (nothing reads the list yet) where 1 is wanted.
+- a list open to group/other, a symlinked list, a directory as the list: exit 0, not 1.
+- no list with --require-private-repos, and the flag with a good list: argparse exits 2
+  (unrecognized argument) where 1 and 0 are wanted; the no-list warning is missing too.
+- comments and blank lines: the one listed name is not refused, exit 0.
+- the docs test: EXPORT_PRIVATE_REPOS and --require-private-repos are in neither the docstring nor
+  docs/public-export.md.
+The ones that pass today (a word that only contains the name, a name inside a drop region, an
+exempt public name, a strict mode) pass because nothing is checked; the mutants prove them.
+
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag (mode='0o640')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag (mode='0o604')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag (mode='0o644')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag (mode='0o660')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag (mode='0o606')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_a_list_that_is_not_a_regular_file_is_refused
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_a_listed_name_is_refused_with_file_and_line_but_never_printed
+AssertionError: 'names a private repo (from the private-repos list); move it into an export:drop region' not found in "export: docs/a.md:2: cites a re ...
+FAIL: test_a_path_that_names_it_is_refused_without_printing_the_path
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_a_symlink_to_a_good_list_is_refused
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_comments_and_blank_lines_are_ignored
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_no_list_warns_and_carries_on_unless_the_flag_is_given
+AssertionError: 'private-repos list missing' not found in ''
+FAIL: test_the_docs_say_what_the_list_is
+AssertionError: 'EXPORT_PRIVATE_REPOS' not found in 'export.py: build the public export of one commit (the dev repo\'s docs/public-export.md).\n\n  to ...
+FAIL: test_the_flag_with_a_good_list_passes
+AssertionError: 2 != 0 : usage: export.py [-h] [--repo REPO] --ref REF --out OUT [--require-denylist]
+FAIL: test_the_match_ignores_case
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_the_name_is_found_in_a_slug_a_clone_url_and_after_a_dot (text='org/secret-thing')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_the_name_is_found_in_a_slug_a_clone_url_and_after_a_dot (text='secret-thing.git')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_the_name_is_found_in_a_slug_a_clone_url_and_after_a_dot (text='(secret-thing)')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_the_name_is_found_in_a_slug_a_clone_url_and_after_a_dot (text='x/secret-thing/y')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+FAIL: test_the_name_is_found_in_a_slug_a_clone_url_and_after_a_dot (text='secret-thing.')
+AssertionError: 0 != 1 : export: 0 file(s) transformed from HEAD
+Ran 125 tests in 74.075s
+FAILED (failures=19)
+
+
+== review round 1 (RED): the tests for the review's findings, before any of it was fixed ==
+`cd tests && python3 -m unittest test_export.PrivateRepos` on the tests-only commit: 28 tests, 34
+failures. By finding:
+- 1: a slug line (acme/name) protects only the full slug; a tab, space, inline # or extra-slash line is
+  not refused; a BOM line is not read as the bare name.
+- 2: an empty, comments-only or all-exempt list passes, flag or not.
+- 3: a set EXPORT_PRIVATE_REPOS pointing at a missing file only warns.
+- 4: a path holding the name as %2D, U+2010 or &#45; plus a short-reference suffix is printed in full in the refusal.
+- 5: a listed name with an underscore passes as \_ or &#95;.
+- addendum: a bad line beside a good name is not an error (fail closed, with and without the flag).
+- the list's refusals (modes, symlink, directory, FIFO, no list with the flag, no name) now go to
+  stderr, where the tests read them; today they are on stdout.
+- the docs lack the exact `gh repo list ... --json name --jq` command.
+The view tests (%2D, &#45;, \-, a Cyrillic lookalike, zero-width, a tag, emphasis) and the fstat pin pass
+today: they pin behavior the mutants then attack.
+FAIL: test_a_bad_line_beside_a_good_name_fails_closed_with_and_without_the_flag
+FAIL: test_a_bad_line_beside_a_good_name_fails_closed_with_and_without_the_flag
+FAIL: test_a_byte_order_mark_on_the_first_line_is_dropped
+FAIL: test_a_disguised_name_in_a_path_is_not_printed_whatever_check_fired
+FAIL: test_a_disguised_name_in_a_path_is_not_printed_whatever_check_fired
+FAIL: test_a_disguised_name_in_a_path_is_not_printed_whatever_check_fired
+FAIL: test_a_fifo_is_refused_and_never_waited_on
+FAIL: test_a_line_that_is_not_a_repo_name_refuses_naming_only_its_number
+FAIL: test_a_line_that_is_not_a_repo_name_refuses_naming_only_its_number
+FAIL: test_a_line_that_is_not_a_repo_name_refuses_naming_only_its_number
+FAIL: test_a_line_that_is_not_a_repo_name_refuses_naming_only_its_number
+FAIL: test_a_line_that_is_not_a_repo_name_refuses_naming_only_its_number
+FAIL: test_a_line_that_is_not_a_repo_name_refuses_naming_only_its_number
+FAIL: test_a_line_that_is_not_a_repo_name_refuses_naming_only_its_number
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag
+FAIL: test_a_list_open_to_group_or_other_is_refused_even_without_the_flag
+FAIL: test_a_list_that_is_not_a_regular_file_is_refused
+FAIL: test_a_list_with_no_name_to_check_refuses
+FAIL: test_a_list_with_no_name_to_check_refuses
+FAIL: test_a_list_with_no_name_to_check_refuses
+FAIL: test_a_list_with_no_name_to_check_refuses
+FAIL: test_a_list_with_no_name_to_check_refuses
+FAIL: test_a_list_with_no_name_to_check_refuses
+FAIL: test_a_name_with_an_underscore_is_found_escaped_or_as_an_entity
+FAIL: test_a_name_with_an_underscore_is_found_escaped_or_as_an_entity
+FAIL: test_a_name_with_an_underscore_is_found_escaped_or_as_an_entity
+FAIL: test_a_set_variable_pointing_at_a_missing_file_refuses_even_without_the_flag
+FAIL: test_a_slug_line_protects_the_bare_name
+FAIL: test_a_symlink_to_a_good_list_is_refused
+FAIL: test_no_list_warns_and_carries_on_unless_the_flag_is_given
+FAIL: test_the_docs_say_what_the_list_is
+Ran 28 tests in 12.690s
+FAILED (failures=34)
+
+# Gate round (merge head 88f017fd): the mutant "private repos: a list that is not a regular file is
+# accepted" survived. A directory list was still refused later by the failed read, and a FIFO as an
+# empty list, so the two tests passed without the type check. They now also assert the type
+# check's own message. Against tools/export.py with that mutant applied
+# (`if not stat.S_ISREG(st.st_mode):` -> `if False:`):
+# Run: cd tests && python3 -m unittest -k not_a_regular_file -k fifo_is_refused test_export
+FAIL: test_a_fifo_is_refused_and_never_waited_on (test_export.PrivateRepos.test_a_fifo_is_refused_and_never_waited_on)
+FAIL: test_a_list_that_is_not_a_regular_file_is_refused (test_export.PrivateRepos.test_a_list_that_is_not_a_regular_file_is_refused)
+Ran 2 tests in 0.193s
+FAILED (failures=2)

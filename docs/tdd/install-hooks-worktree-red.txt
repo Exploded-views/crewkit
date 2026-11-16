@@ -1,0 +1,16 @@
+tools/install-hooks.sh from a linked worktree: RED run, 2026-10-27. bats tests/install-hooks.bats before the fix:
+
+1..4
+ok 1 from the main checkout: installed, and a commit runs the scrub and the lint
+not ok 2 from a linked worktree: installed, and a commit there runs the scrub
+# (in test file tests/install-hooks.bats, line 36)
+#   `[ "$status" -eq 0 ]' failed
+not ok 3 installed from a worktree, the hook also runs in the main checkout
+# (in test file tests/install-hooks.bats, line 45)
+#   `[ "$status" -eq 0 ]' failed
+not ok 4 core.hooksPath set: refuses, rather than writing a hook git won't run
+# (in test file tests/install-hooks.bats, line 54)
+#   `[ "$status" -ne 0 ]' failed
+
+From a worktree, .git is a file, so $root/.git/hooks/pre-commit failed (Not a directory). Test 3's first
+run also had a fixture gap (its scrub.sh not executable), fixed in the fixture. tests/mutants/install-hooks.json: 5 mutants.

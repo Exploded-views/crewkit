@@ -1,0 +1,13 @@
+push gate doctor-watch and schedule: RED run, 2026-10-27:
+
+1..10
+not ok 1 doctor-watch: a FAIL notifies once with a pointer (check ids only), not again while unchanged
+not ok 2 doctor-watch: a change in the FAIL set notifies again; recovery notifies ok
+not ok 3 doctor-watch: a healthy first run notifies nothing
+not ok 4 doctor-watch: a failed notify isn't recorded, so the next run tries again
+not ok 5 doctor-watch: no notify_command prints the pointer, only on a change
+not ok 6 doctor-watch: the pointer never carries a term or an absolute home path
+not ok 7 schedule needs the gate installed first (78)
+not ok 8 schedule on Linux: dry run writes nothing; --yes writes the user timer and enables it
+not ok 9 schedule on macOS: --yes writes the launch agent (hourly, the installed gate) and loads it
+not ok 10 the shim says why when the gate's installed copy is missing

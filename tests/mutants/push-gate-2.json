@@ -1,0 +1,180 @@
+{
+  "target": "push-gate/push-gate.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/push-gate.bats"
+  ],
+  "mutants": [
+    {
+      "name": "install: someone else's hooksPath replaced",
+      "old": "if [[ -n $hp && ${hp%/} != \"$GATE_DIR/push-gate/hooks\" ]]; then",
+      "new": "if false; then"
+    },
+    {
+      "name": "install: no denylist not an owner step",
+      "old": "((owner)) && exit 78",
+      "new": ":"
+    },
+    {
+      "name": "install: dry run changes things",
+      "old": "((yes)) || { echo \"(dry run: nothing changed; --yes to do it)\"; exit 0; }\n  local new",
+      "new": "  local new"
+    },
+    {
+      "name": "status: installed when it isn't",
+      "old": "check_global >/dev/null && check_dispatcher >/dev/null && i=true",
+      "new": "i=true"
+    },
+    {
+      "name": "gate-check: local hooksPath repo not checked",
+      "old": "  check_repo \"$(cd \"$dir\" && pwd)\" || bad=1",
+      "new": "  :"
+    },
+    {
+      "name": "shim: idempotence lost",
+      "old": "if has_shim \"$hook\"; then echo",
+      "new": "if false; then echo"
+    },
+    {
+      "name": "shim: existing non-shell hook dropped",
+      "old": "exec \"$(dirname \"$0\")/pre-push.chained\" \"$@\"\\n",
+      "new": "\\n"
+    },
+    {
+      "name": "doctor-watch: notifies every run",
+      "old": "  [[ $state != \"$prev\" ]] && parts+=(\"$pointer\")",
+      "new": "  parts+=(\"$pointer\")"
+    },
+    {
+      "name": "doctor-watch: a failed notify recorded",
+      "old": "        { echo \"push-gate: notify failed; not recorded, the next run tries again\" >&2; exit \"$rc\"; }",
+      "new": "        true"
+    },
+    {
+      "name": "doctor-watch: state never saved",
+      "old": "    mkdir -p \"${f%/*}\" && printf '%s\\n%s\\n' \"$state\" \"$ex\" > \"$f.new\" && mv \"$f.new\" \"$f\"",
+      "new": "    :"
+    },
+    {
+      "name": "doctor-watch: FAIL ids not collected",
+      "old": "    [[ $line == *\" FAIL \"* ]] && ids+=(\"${line%% *}\")",
+      "new": "    :"
+    },
+    {
+      "name": "schedule: without the installed gate",
+      "old": "  [[ -x $gate ]] || { echo \"owner step: install the gate first",
+      "new": "  true || { echo \"owner step: install the gate first"
+    },
+    {
+      "name": "schedule: the old agent not unloaded",
+      "old": "      launchctl bootout \"gui/$(id -u)/com.crewkit.push-gate-doctor\" 2>/dev/null || true",
+      "new": "      :"
+    },
+    {
+      "name": "schedule: the timer not enabled",
+      "old": "      systemctl --user enable --now crewkit-push-gate-doctor.timer || exit 1 ;;",
+      "new": "      : ;;"
+    },
+    {
+      "name": "shim line: no missing-gate refusal",
+      "old": "SHIM_LINE=\"[ -r \\\"\\$HOME/.local/share/crewkit/gate/push-gate/shim.sh\\\" ] || { echo",
+      "new": "SHIM_LINE=\"true || { echo"
+    },
+    {
+      "name": "gitleaks: the repository's config can load (no --config)",
+      "old": "--config \"$here/gitleaks-rules.toml\" ",
+      "new": ""
+    },
+    {
+      "name": "gitleaks: run in the repository (its .gitleaksignore applies)",
+      "old": "  cd \"$glwd\" || exit 2\n",
+      "new": ""
+    },
+    {
+      "name": "gitleaks: GITLEAKS_* variables passed through",
+      "old": "  unset \"${!GITLEAKS_@}\"\n",
+      "new": ""
+    },
+    {
+      "name": "gitleaks: an inline gitleaks:allow honoured",
+      "old": " --ignore-gitleaks-allow",
+      "new": ""
+    },
+    {
+      "name": "diffs: a binary or -diff attribute hides content",
+      "old": "NODIFF=(--text --no-textconv --no-ext-diff)",
+      "new": "NODIFF=(--no-textconv --no-ext-diff)"
+    },
+    {
+      "name": "diffs: a textconv driver hides content",
+      "old": "NODIFF=(--text --no-textconv --no-ext-diff)",
+      "new": "NODIFF=(--text --no-ext-diff)"
+    },
+    {
+      "name": "denylist: git show with the repository's diff attributes",
+      "old": "show --no-color \"${NODIFF[@]}\"",
+      "new": "show --no-color"
+    },
+    {
+      "name": "gitleaks: git log with the repository's diff attributes",
+      "old": "--no-color \"${NODIFF[@]}\" --stdin",
+      "new": "--no-color --stdin"
+    },
+    {
+      "name": "gitleaks: log.showRoot=false hides the root commit",
+      "old": "-c log.showRoot=true ",
+      "new": ""
+    },
+    {
+      "name": "gitleaks: merge commits' own changes not scanned",
+      "old": "log -p --cc -U0",
+      "new": "log -p -U0"
+    },
+    {
+      "name": "gitleaks: removed lines scanned",
+      "old": "} | added_only | gl_scan",
+      "new": "} | gl_scan"
+    },
+    {
+      "name": "doctor: only the local core.hooksPath read",
+      "old": "hp=$(git -C \"$1\" config --type=path --get core.hooksPath 2>/dev/null)",
+      "new": "hp=$(git -C \"$1\" config --local --type=path --get core.hooksPath 2>/dev/null)"
+    },
+    {
+      "name": "doctor: linked worktrees not checked",
+      "old": "done <<<\"$r\"$'\\n'\"$wts\"",
+      "new": "done <<<\"$r\""
+    },
+    {
+      "name": "doctor: a checkout with no core.hooksPath at all ok",
+      "old": "if [[ -z $hp ]]; then report \"$id\" FAIL",
+      "new": "if [[ -z $hp ]]; then report \"$id\" ok"
+    },
+    {
+      "name": "shim: only the local core.hooksPath read",
+      "old": "if [[ -z $hp || $hp == \"$GATE_DIR/push-gate/hooks\" ]]; then",
+      "new": "if [[ -z $(git -C \"$dir\" config --local core.hooksPath) ]]; then"
+    },
+    {
+      "name": "gitleaks: a hunk's added lines dropped too",
+      "old": "/^commit [0-9a-f]+$/ { h = 0 } /^@@/ { h = 1 } !(h && /^-/)",
+      "new": "/^commit [0-9a-f]+$/ { h = 0 } /^@@/ { h = 1 } !(h && /^[-+]/)"
+    },
+    {
+      "name": "gitleaks: a hunk never starts, so its removed lines are kept",
+      "old": "/^commit [0-9a-f]+$/ { h = 0 } /^@@/ { h = 1 } !(h && /^-/)",
+      "new": "/^commit [0-9a-f]+$/ { h = 0 } /^@@/ { h = 0 } !(h && /^-/)"
+    },
+    {
+      "name": "scans: replace refs honoured",
+      "old": "git --no-replace-objects -c",
+      "new": "git -c"
+    },
+    {
+      "name": "scans: the repository's log output encoding",
+      "old": "-c i18n.logOutputEncoding=UTF-8 ",
+      "new": ""
+    }
+  ]
+}

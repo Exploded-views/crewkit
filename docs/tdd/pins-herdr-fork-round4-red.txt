@@ -1,0 +1,12 @@
+# RED, round 4: tests/test_export.py before the Exploded-views/herdr fork was on PUBLIC_REPOS in
+# tools/export.py. The new test links to the fork (repo, release tag, release download, bare slug)
+# and expects the export to pass, and expects another repo of the same owner to stay refused; the
+# repo's own self-export also fails on README.md and pins/herdr.env.
+# Run: cd tests && python3 -m unittest test_export test_lint_pins   (134 tests, 2 failed)
+FAIL: test_exporting_this_repo_changes_markdown_only (test_export.Export.test_exporting_this_repo_changes_markdown_only)
+AssertionError: 1 != 0 : export: README.md:196: links to a repo that isn't public; move it into an export:drop region
+export: pins/herdr.env:12: links to a repo that isn't public; move it into an export:drop region
+FAIL: test_the_herdr_fork_is_public_but_another_repo_of_the_same_owner_is_not (test_export.Export.test_the_herdr_fork_is_public_but_another_repo_of_the_same_owner_is_not)
+AssertionError: 1 != 0 : export: lib/x.sh:1: links to a repo that isn't public; move it into an export:drop region
+Ran 2 tests in 2.765s
+FAILED (failures=2)

@@ -1,0 +1,46 @@
+# The pane-ask PR's delta review: pane-ask compared lead lists with herdr's `.agent`, which in herdr 0.9.5 is
+# the agent's KIND (claude); the agent's name is `.name` (null until it is named). The stub put
+# the name in `.agent`, so the tests agreed with the bug.
+# The stub now answers in herdr 0.9.5's shape (tests/fixtures/herdr/agent-schema.json, copied
+# from `herdr api schema --json`). Runs below are in a debian:bookworm-slim container.
+
+# 1. tests/herdr-stub.bats run against the OLD stub (ba23121's tests/stubs/herdr): the shape and
+#    field checks fail. (Tests 1, 4 and 5 check the fixture, the error shape, which didn't change,
+#    and that the checker rejects bad replies.)
+
+1..5
+ok 1 the fixture is herdr's schema, naming the version it was copied from
+not ok 2 agent get, wait, prompt and list answer in herdr's shape, named or not
+# (in test file tests/herdr-stub.bats, line 32)
+#   `"$STUB" agent list' failed with status 2
+# herdr stub: unexpected call: agent list
+not ok 3 the agent's kind is in agent and its name in name (null when it has none)
+# (in test file tests/herdr-stub.bats, line 42)
+#   `[ "$(jq -r '.result.agent | "\(.pane_id) \(.agent) \(.name)"' <<<"$output")" = "w1:p1 claude boss" ]' failed
+ok 4 errors answer in herdr's shape
+ok 5 the shape check is not vacuous: the old hand-made reply, an unknown field and a bad status fail
+
+# The old stub's `agent get w1:p1` through tests/herdr_shape.py (test 2 above stops earlier, at
+# `agent list`, which the old stub lacked):
+
+# line 1: agent_info.agent: missing required terminal_id
+# line 1: agent_info.agent: missing required workspace_id
+# line 1: agent_info.agent: missing required tab_id
+# line 1: agent_info.agent: missing required focused
+# line 1: agent_info.agent: missing required revision
+# exit 1
+
+# 2. tests/pane-ask.bats with the new stub, against ba23121's pane-ask: the three tests that
+#    depend on .name vs .agent fail. ("an agent with no name is checked and reached by its pane id"
+#    passes: it guards that the fix keeps unnamed agents working.)
+
+1..62
+not ok 15 a lead listed by agent name, reached by its pane id, is refused (65)
+# (in test file tests/pane-ask.bats, line 187)
+#   `[ "$status" -eq 65 ]' failed
+not ok 16 herdr's agent field is the agent's kind: a lead list naming claude doesn't refuse an unrelated claude pane
+# (in test file tests/pane-ask.bats, line 195)
+#   `[ "$status" -eq 0 ]' failed
+not ok 17 a lead listed by name, targeted by its pane id, is refused (65): herdr's name field is checked
+# (in test file tests/pane-ask.bats, line 203)
+#   `[ "$status" -eq 65 ]' failed

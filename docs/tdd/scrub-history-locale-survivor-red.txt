@@ -1,0 +1,15 @@
+Mutation survivor on scrub-history-encoding@35bdceb, Linux gate (2026-10-27):
+  mutants-scrub-history  SURVIVED  extraction follows the user's locale  (LC_ALL=C removed)
+
+Why: the only test with bytes that aren't UTF-8 stores them under "encoding ISO-8859-1", and
+since the encoding fix, git shows such a commit re-encoded, as valid UTF-8. GNU sed's "." then matches, so the
+C locale makes no difference on Linux. (BSD sed on a Mac still killed it.)
+
+New test: the same bytes with no encoding header, for an author and a tagger. Reproduced on the
+Mac with GNU sed and grep (gsed, ggrep) first on PATH, bats -f on the two locale tests:
+
+  clean, GNU:   ok      the new test
+  mutant, GNU:  ok      identities and headers that aren't valid UTF-8 are read under a UTF-8 locale
+                not ok  an identity or tagger with bytes that aren't UTF-8, and no encoding header, ...
+                        `[[ $output == *denylist*history:identities* ]]' failed
+  mutant, BSD:  not ok  both

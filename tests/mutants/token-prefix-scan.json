@@ -1,0 +1,200 @@
+{
+  "target": "tools/token-prefix-scan.py",
+  "suite": [
+    "bash",
+    "-c",
+    "git init -q . && python3 -m unittest tests.test_token_prefix_scan"
+  ],
+  "mutants": [
+    {
+      "name": "a hit still exits 0",
+      "old": "    if failed:\n        print(f\"token-prefix-scan: {scanned} file(s), {failed} hit(s)\")\n        return 1",
+      "new": "    if failed:\n        print(f\"token-prefix-scan: {scanned} file(s), {failed} hit(s)\")\n        return 0"
+    },
+    {
+      "name": "a usage error exits 1",
+      "old": "print(f\"token-prefix-scan: {e}\", file=sys.stderr)\n        sys.exit(2)",
+      "new": "print(f\"token-prefix-scan: {e}\", file=sys.stderr)\n        sys.exit(1)"
+    },
+    {
+      "name": "a non-directory argument is accepted",
+      "old": "if len(argv) != 1 or not os.path.isdir(argv[0]):",
+      "new": "if len(argv) != 1:"
+    },
+    {
+      "name": "an exempt path still fails",
+      "old": "is_exempt = any(rx.fullmatch(rel) for rx in exempt)",
+      "new": "is_exempt = False"
+    },
+    {
+      "name": "every path is exempt",
+      "old": "is_exempt = any(rx.fullmatch(rel) for rx in exempt)",
+      "new": "is_exempt = bool(exempt)"
+    },
+    {
+      "name": "an exempt glob matches by prefix",
+      "old": "rx.fullmatch(rel) for rx in exempt",
+      "new": "rx.match(rel) for rx in exempt"
+    },
+    {
+      "name": "a glob star crosses a slash",
+      "old": "\"[^/]*\" if c == \"*\"",
+      "new": "\".*\" if c == \"*\""
+    },
+    {
+      "name": "a double star stops at a slash",
+      "old": "out.append(\".*\")\n            i += 2",
+      "new": "out.append(\"[^/]*\")\n            i += 2"
+    },
+    {
+      "name": "a second paths-ignore key is accepted",
+      "old": "            if seen_key:\n                raise Usage(f\"{CONFIG}:{n}: paths-ignore: appears twice\")\n",
+      "new": "            if False:\n                raise Usage(\"x\")\n"
+    },
+    {
+      "name": "content outside the list is accepted",
+      "old": "        if not seen_key or not m:\n            raise",
+      "new": "        if not m:\n            continue\n        if False:\n            raise"
+    },
+    {
+      "name": "an empty list is accepted",
+      "old": "    if not globs:\n        raise Usage(f\"{CONFIG}: no paths-ignore entries\")\n",
+      "new": ""
+    },
+    {
+      "name": "a comment line is not skipped",
+      "old": "if not line.strip() or line.lstrip().startswith(\"#\"):",
+      "new": "if not line.strip():"
+    },
+    {
+      "name": "an unreadable config reads as none",
+      "old": "        raise Usage(f\"{CONFIG} is not readable text\")",
+      "new": "        return []"
+    },
+    {
+      "name": "the config is not read",
+      "old": "    exempt = [glob_regex(g) for g in read_exempt(root)]",
+      "new": "    exempt = []"
+    },
+    {
+      "name": ".git is scanned",
+      "old": "dirnames[:] = sorted(d for d in dirnames if d != \".git\")",
+      "new": "dirnames[:] = sorted(dirnames)"
+    },
+    {
+      "name": "binary files are scanned",
+      "old": "if b\"\\0\" in data[:8192]:",
+      "new": "if False:"
+    },
+    {
+      "name": "symlinks are followed",
+      "old": "if os.path.islink(full) or not os.path.isfile(full):",
+      "new": "if not os.path.isfile(full):"
+    },
+    {
+      "name": "only the first hit on a line is kept",
+      "old": "            for m in rx.finditer(line):\n                hits.append((n, rid, len(m.group(0))))",
+      "new": "            for m in rx.finditer(line):\n                hits.append((n, rid, len(m.group(0))))\n                break"
+    },
+    {
+      "name": "the line number starts at 0",
+      "old": "enumerate(data.decode(\"latin-1\").split(\"\\n\"), 1)",
+      "new": "enumerate(data.decode(\"latin-1\").split(\"\\n\"), 0)"
+    },
+    {
+      "name": "the match length is not the whole match",
+      "old": "len(m.group(0))",
+      "new": "len(m.group(0)) - 1"
+    },
+    {
+      "name": "a word char before a prefix is allowed",
+      "old": "_B = r\"(?<![A-Za-z0-9])\"",
+      "new": "_B = r\"\""
+    },
+    {
+      "name": "a clean run does not say clean",
+      "old": "print(f\"token-prefix-scan: {scanned} file(s), clean{note}\")",
+      "new": "print(f\"token-prefix-scan: {scanned} file(s){note}\")"
+    },
+    {
+      "name": "the Tailscale body minimum drops to 1",
+      "old": "tskey-[a-z]+-[A-Za-z0-9-]{12,}",
+      "new": "tskey-[a-z]+-[A-Za-z0-9-]{1,}"
+    },
+    {
+      "name": "the npm body minimum drops",
+      "old": "npm_[A-Za-z0-9]{36,}",
+      "new": "npm_[A-Za-z0-9]{1,}"
+    },
+    {
+      "name": "the Anthropic body minimum drops",
+      "old": "sk-ant-[A-Za-z0-9_-]{80,}",
+      "new": "sk-ant-[A-Za-z0-9_-]{1,}"
+    },
+    {
+      "name": "the GitHub classic prefixes lose gho_",
+      "old": "gh[pousr]_",
+      "new": "gh[pusr]_"
+    },
+    {
+      "name": "the Slack prefixes lose xoxr",
+      "old": "xox[abposr]-",
+      "new": "xox[abpos]-"
+    },
+    {
+      "name": "the Shopify prefixes lose shppa",
+      "old": "shp(?:at|ss|ca|pa)_",
+      "new": "shp(?:at|ss|ca)_"
+    },
+    {
+      "name": "the Vault prefixes lose hvb",
+      "old": "hv[sb]\\.",
+      "new": "hvs\\."
+    },
+    {
+      "name": "the DigitalOcean prefixes lose doo",
+      "old": "do[por]_v1_",
+      "new": "do[pr]_v1_"
+    },
+    {
+      "name": "a hit prints the matched value",
+      "old": "hits.append((n, rid, len(m.group(0))))",
+      "new": "hits.append((n, rid, m.group(0)))"
+    },
+    {
+      "name": "an unreadable directory is skipped",
+      "old": "os.walk(root, onerror=on_error)",
+      "new": "os.walk(root)"
+    },
+    {
+      "name": "an unreadable file is skipped",
+      "old": "        return False\n",
+      "new": "        return None\n"
+    },
+    {
+      "name": "an unreadable file is not printed",
+      "old": "        print(f\"unreadable: {rel}\")",
+      "new": "        pass"
+    },
+    {
+      "name": "an unreadable file exits 1",
+      "old": "        return 2\n    if failed:",
+      "new": "        return 1\n    if failed:"
+    },
+    {
+      "name": "an unreadable file does not fail the run",
+      "old": "    if unreadable:\n        print(f\"token-prefix-scan: {scanned} file(s), {failed} hit(s), {len(unreadable)} unreadable\")\n        return 2\n",
+      "new": ""
+    },
+    {
+      "name": "tab indentation is accepted in the list",
+      "old": "re.fullmatch(r' +- \"",
+      "new": "re.fullmatch(r'\\s+- \""
+    },
+    {
+      "name": "a backslash in a glob is accepted",
+      "old": "[^\"\\n\\\\]+",
+      "new": "[^\"\\n]+"
+    }
+  ]
+}

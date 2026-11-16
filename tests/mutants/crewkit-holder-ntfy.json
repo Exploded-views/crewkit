@@ -1,0 +1,25 @@
+{
+  "target": "holder/ntfy-server.yml",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-holder.bats"
+  ],
+  "mutants": [
+    {
+      "name": "deny-all dropped",
+      "old": "auth-default-access: \"deny-all\"",
+      "new": "auth-default-access: \"read-write\""
+    },
+    {
+      "name": "listens on every address",
+      "old": "listen-http: \"127.0.0.1:@PORT@\"",
+      "new": "listen-http: \":@PORT@\""
+    },
+    {
+      "name": "no auth database",
+      "old": "auth-file: \"@STATE@/ntfy/auth.db\"",
+      "new": "# auth-file"
+    }
+  ]
+}

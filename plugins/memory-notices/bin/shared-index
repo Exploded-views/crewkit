@@ -5,6 +5,12 @@ Reads ~/.claudesync/distilled/*.md frontmatter (name, description) and prints a 
 index as hookSpecificOutput.additionalContext, so every session in every project knows
 the shared notes exist and where they are. Never prints note bodies. Always exits 0.
 
+It runs at every session start, so it has a budget: it reads only <sync dir>/distilled (never
+$HOME, $TMPDIR or any other directory), each note only as far as the end of its frontmatter (at
+most 16 KiB), and it stops at
+CREWKIT_SHARED_INDEX_TIMEOUT_MS (default 2000, far under the harness's 10 s), printing the
+index it has by then (nothing, if the deadline passes before the first note is read).
+
 Notes are written on other hosts, so names and file names are untrusted: a name is shown
 only if it is a slug (else the file stem, if that is one), and a note whose file name isn't
 slug-safe is skipped and counted, never shown.
@@ -12,12 +18,35 @@ slug-safe is skipped and counted, never shown.
 import json
 import os
 import re
+import signal
 import sys
 from pathlib import Path
 
 BUDGET = 9000  # hook output past ~10k characters is cut to a preview
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}$")
 SAFE_FILE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.md$")
+DEFAULT_TIMEOUT_MS = 2000
+MAX_FRONTMATTER = 16 * 1024  # bytes read of one note at most
+CHUNK = 4096
+
+
+class Deadline(BaseException):
+    """Not an Exception, so no `except Exception` along the way can swallow it."""
+
+
+def deadline_ms():
+    raw = os.environ.get("CREWKIT_SHARED_INDEX_TIMEOUT_MS", "")
+    return int(raw) if raw.isdigit() and 0 < int(raw) < 10**6 else DEFAULT_TIMEOUT_MS
+
+
+def arm_deadline():
+    """SIGALRM at the deadline, raised wherever the hook is. It interrupts a read a signal can
+    interrupt (a FIFO, a slow network read); a read stuck in uninterruptible sleep on a hard-mounted
+    dead filesystem is only ended by the harness's own limit."""
+    def fire(signum, frame):
+        raise Deadline()
+    signal.signal(signal.SIGALRM, fire)
+    signal.setitimer(signal.ITIMER_REAL, deadline_ms() / 1000)
 
 
 def personal_sync_dir():
@@ -31,6 +60,20 @@ def personal_sync_dir():
     except Exception:
         return Path.home() / ".claudesync"
 
+def read_head(f):
+    """The start of the note up to the end of its frontmatter (the closing fence), at most
+    MAX_FRONTMATTER bytes, decoded as UTF-8 (a character cut by the bound becomes U+FFFD)."""
+    data = b""
+    while len(data) < MAX_FRONTMATTER:
+        chunk = f.read(min(CHUNK, MAX_FRONTMATTER - len(data)))
+        if not chunk:
+            break
+        data += chunk
+        if data.find(b"\n---\n", 3) != -1:
+            break
+    return data.decode("utf-8", errors="replace")
+
+
 def frontmatter(text):
     m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
     meta = {}
@@ -42,33 +85,48 @@ def frontmatter(text):
     return meta
 
 
-def main():
-    try:
-        event = json.load(sys.stdin).get("hook_event_name") or "SessionStart"
-    except Exception:
-        event = "SessionStart"
-    sync = Path(os.environ.get("CLAUDE_MEMSYNC_DIR", "") or personal_sync_dir())
-    base = sync / "distilled"
-    if not base.is_dir():
-        return
-    lines, unsafe = [], 0
+def collect(base, found):
+    """Fill found = {"lines": [...], "unsafe": n} from the notes in base; may be cut short by Deadline."""
     for p in sorted(base.glob("*.md")):
         if p.name == "DISTILLED.md":
             continue
         if not SAFE_FILE.match(p.name):
-            unsafe += 1
+            found["unsafe"] += 1
             continue
         try:
-            meta = frontmatter(p.read_text(errors="replace")[:4000])
+            with open(p, "rb") as f:
+                meta = frontmatter(read_head(f))
         except OSError:
             continue
         name = meta.get("name", "")
         if not SLUG.match(name):
             name = p.stem if SLUG.match(p.stem) else ""
         if not name:
-            unsafe += 1
+            found["unsafe"] += 1
             continue
-        lines.append(f"- {name} ({p.name})")
+        found["lines"].append(f"- {name} ({p.name})")
+
+
+def main():
+    arm_deadline()
+    found, cut = {"lines": [], "unsafe": 0}, False
+    try:
+        try:
+            event = json.load(sys.stdin).get("hook_event_name") or "SessionStart"
+        except Exception:
+            event = "SessionStart"
+        sync = Path(os.environ.get("CLAUDE_MEMSYNC_DIR", "") or personal_sync_dir())
+        base = sync / "distilled"
+        if not base.is_dir():
+            return
+        collect(base, found)
+    except Deadline:
+        cut = True
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+    if cut and not found["lines"]:
+        return
+    lines, unsafe = found["lines"], found["unsafe"]
 
     head = ("# Shared memory (claude-memsync distilled catalog: all projects and machines)\n\n"
             f"Notes live in {base}/ (index with descriptions: {base / 'DISTILLED.md'}). Read a note "
@@ -82,6 +140,8 @@ def main():
             break
         out.append(l)
         budget -= len(l) + 1
+    if cut:
+        out.append("(index cut short at the hook's deadline)")
     if unsafe:
         out.append(f"({unsafe} note{' with an unsafe file name was' if unsafe == 1 else 's with unsafe names were'} skipped)")
     print(json.dumps({"hookSpecificOutput": {"hookEventName": event,
@@ -91,6 +151,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (Exception, Deadline):
         pass
     sys.exit(0)

@@ -1,0 +1,12 @@
+Push gate local paths, a follow-up security review of b6144d5 (item 10's fix): RED run, 2026-10-27.
+tests/push-gate.bats, the two new tests only, against b6144d5: the synced-folder case was case-sensitive
+(a lowercase dropbox, onedrive or mobile documents folder slipped past it on case-insensitive APFS), and a
+mount on no list was skipped. The second test stubs stat to put one directory on another device.
+
+1..2
+not ok 1 a synced folder in any letter case (dropbox, onedrive) is gated
+# (in test file tests/push-gate.bats, line 431)
+#   `[ "$status" -eq 1 ]' failed
+not ok 2 a local path on another device than $HOME (a mount not on any list) is gated
+# (in test file tests/push-gate.bats, line 444)
+#   `[ "$status" -eq 1 ]' failed

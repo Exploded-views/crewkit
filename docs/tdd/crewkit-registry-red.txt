@@ -1,0 +1,230 @@
+# ck_reg_* / ck_token_* (libexec/ck/registry.sh) before any of that code. RED: the new suite with no registry.sh (the first call of every test fails with status 127 or an assertion on the missing result):
+$ bats tests/crewkit-registry.bats
+1..24
+not ok 1 create writes registry.json and an empty nodes dir, committed
+# (in test file tests/crewkit-registry.bats, line 40)
+#   `[ "$status" -eq 0 ]' failed
+not ok 2 create refuses bad ids (65) and an existing registry
+# (in test file tests/crewkit-registry.bats, line 54)
+#   `[ "$status" -eq 65 ]' failed
+not ok 3 require is 78 without a registry.json and 0 with one
+# (in test file tests/crewkit-registry.bats, line 66)
+#   `[ "$status" -eq 78 ]' failed
+not ok 4 set_holder changes the holder; a bad id is 65 and changes nothing
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 75)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/4/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 5 node_put then get: stable sorted bytes, listing sorted
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 85)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/5/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 6 node_put refuses a host or any unlisted key (65) and writes nothing
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 102)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/6/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 7 node_put refuses a missing key, a non-object and bad JSON (65)
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 112)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/7/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 8 node_put value checks: each bad value is 65 and writes nothing
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 123)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/8/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 9 node_put accepts every state, both boundaries and a report of Task 7's keys
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 135)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/9/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 10 a node id with a path in it is 65 everywhere and touches no file
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 147)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/10/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 11 log lines are appended, never rewritten, and survive quotes, newlines and braces
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 172)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/11/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 12 commit is a no-op without changes, one commit with changes
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 192)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/12/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 13 a timestamp-only change waits sync_min_seconds before it is committed
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 207)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/13/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 14 registry.sync_min_seconds is read; a change besides report_at is committed at once
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 222)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/14/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 15 push then pull between two clones; synced_at is the last success
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 245)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/15/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 16 pull is fast-forward only: a diverged history returns 1 and makes no merge
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 261)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/16/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 17 pull and push against an unreachable remote return 1 quickly and keep local commits
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 279)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/17/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 18 git runs with BatchMode, a 10 s timeout, no prompt and the registry.ssh_key identity
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 296)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/18/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 19 a minted token parses back to its parts
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 317)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/19/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 20 an empty pubkey part is allowed (init's own local token)
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 334)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/20/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 21 parse refuses extra dots, bad charsets and any key but ssh-ed25519 (65)
+# (in test file tests/crewkit-registry.bats, line 348)
+#   `[ "$status" -eq 0 ]' failed
+not ok 22 a token is single use, bound to its node, and dies after 24 h (44)
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 372)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/22/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 23 tokens.tsv is 600 and outside the sync repo; the secret is stored only hashed
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 402)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/23/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+not ok 24 the secret is in no external command's argv
+# (from function `rg' in file tests/crewkit-registry.bats, line 24,
+#  from function `mkreg' in file tests/crewkit-registry.bats, line 26,
+#  in test file tests/crewkit-registry.bats, line 426)
+#   `mkreg' failed with status 127
+# _: line 1: <tmp>/test/24/tree/libexec/ck/registry.sh: No such file or directory
+# _: line 1: ck_reg_create: command not found
+
+The following warnings were encountered during tests:
+BW01: `run`'s command `mkreg` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-registry.bats, line 39)
+BW01: `run`'s command `rg ck_reg_create <tmp>/test/2/reg r-AAA n-hhhhhhhhhh` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-registry.bats, line 53)
+BW01: `run`'s command `rg ck_reg_require` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-registry.bats, line 65)
+BW01: `run`'s command `parse ck1.r-aaaaaaaaaa.n-aaaaaaaaaa.abcdefghabcdefghabcdefgh22.c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSVB1YktleUZvclRlc3RzIHVzZXJAaG9zdA` exited with code 127, indicating 'Command not found'. Use run's return code checks, e.g. `run -127`, to fix this message.
+      (from function `run' in file <repo>/.cache/bats-v1.14.0/lib/bats-core/test_functions.bash, line 442,
+       in test file tests/crewkit-registry.bats, line 347)
+
+# Fix round 1 (review minors): the new tests fix1.1 to fix1.8 before the changes. RED: 24 old tests pass, the 8 new fail:
+$ bats tests/crewkit-registry.bats
+1..32
+not ok 25 fix1.1 a registry_id in registry.json that is not r-+10 is 65 from ck_reg_id and ck_token_mint
+# (in test file tests/crewkit-registry.bats, line 461)
+#   `[ "$status" -eq 65 ]' failed
+not ok 26 fix1.2 a failing owner hook is not bypassed, and git's message is shown
+# (in test file tests/crewkit-registry.bats, line 477)
+#   `[[ $stderr == *"crewkit: registry: "* ]]' failed
+not ok 27 fix1.3 commit, pull and push hold the registry lock (75 while it is held); two commits both succeed
+# (in test file tests/crewkit-registry.bats, line 494)
+#   `[ "$status" -eq 75 ]' failed
+not ok 28 fix1.4 pull and push disable askpass and prompts, and ssh has keepalives
+# (in test file tests/crewkit-registry.bats, line 524)
+#   `grep -qx 'GIT_ASKPASS=/bin/false' "$GIT_ENV_LOG"' failed
+not ok 29 fix1.5 a state_dir inside the registry dir (or a symlink into it) is refused with 78 and no tokens.tsv
+# (in test file tests/crewkit-registry.bats, line 536)
+#   `[ "$status" -eq 78 ]' failed
+not ok 30 fix1.6 any consume drops expired rows
+# (in test file tests/crewkit-registry.bats, line 558)
+#   `[ "$(wc -l < "$f" | tr -d ' ')" -eq 1 ]' failed
+not ok 31 fix1.7 parse refuses non-canonical base64url and a NUL, with only our message on stderr
+# (in test file tests/crewkit-registry.bats, line 583)
+#   `[ -n "$alt" ]' failed
+not ok 32 fix1.8 label keys and values must pass ck_label_ok (a dotted key is 65)
+# (in test file tests/crewkit-registry.bats, line 604)
+#   `[ "$status" -eq 65 ] || { echo "accepted: $f" >&2; return 1; }' failed
+# accepted: .labels={"a.b":"x"}
+
+# Fix round 2 (re-review): fix2.1 to fix2.6 before the changes. RED: 33 pass (fix2.1 passes: the I1 flaw is a surviving mutant, which fix2.1 kills; see the report), fix2.2 to fix2.6 fail:
+$ bats tests/crewkit-registry.bats
+1..38
+not ok 34 fix2.2 tokens.tsv is refused inside the clone whatever the letter case (same inode, not same string)
+# (in test file tests/crewkit-registry.bats, line 634)
+#   `[ "$status" -eq 78 ]' failed
+not ok 35 fix2.3 a refused state_dir inside the clone leaves no directory there
+# (in test file tests/crewkit-registry.bats, line 646)
+#   `[ ! -e "$R/st3/registry" ]' failed
+not ok 36 fix2.4 commit refuses (78) when a tokens.tsv is in the repo status, tracked or not, and stages nothing
+# (in test file tests/crewkit-registry.bats, line 655)
+#   `[ "$status" -eq 78 ]' failed
+not ok 37 fix2.5 a control character in a label key or value is 65 and writes nothing
+# (in test file tests/crewkit-registry.bats, line 673)
+#   `[ "$status" -eq 65 ]' failed
+not ok 38 fix2.6 ck_reg_holder checks its id; a silent git failure still says something
+# (in test file tests/crewkit-registry.bats, line 685)
+#   `[ "$status" -eq 65 ]' failed
+
+# Fix round 3: fix3.1 to fix3.3 before the changes (the 39 earlier tests pass; fix2.1 now also asserts a good token works):
+$ bats tests/crewkit-registry.bats
+1..42
+not ok 40 fix3.1 a state_dir that cannot be resolved is 78, never 'not inside'
+# (in test file tests/crewkit-registry.bats, line 720)
+#   `[ "$status" -eq 78 ]' failed
+not ok 41 fix3.2 a control character in role or name (any string field) is 65 and writes nothing
+# (in test file tests/crewkit-registry.bats, line 728)
+#   `[ "$status" -eq 65 ]' failed
+not ok 42 fix3.3 a leftover .tokens.* temp in the clone refuses the commit (78) before anything is staged
+# (in test file tests/crewkit-registry.bats, line 743)
+#   `[ "$status" -eq 78 ]' failed

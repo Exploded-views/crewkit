@@ -1,0 +1,290 @@
+{
+  "target": "libexec/ck/claudesettings.sh",
+  "suite": [
+    "bats",
+    "--abort",
+    "tests/crewkit-claudesettings.bats"
+  ],
+  "mutants": [
+    {
+      "name": "already-present check skipped",
+      "old": "    if _ck_claude_has \"$snap\" \"$tool\"; then printf 'already allowed: %s\\n' \"$tool\"; return 0; fi\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "already-present check skipped in the dry run",
+      "old": "      if _ck_claude_has \"$file\" \"$1\"; then printf 'already allowed: %s\\n' \"$1\"; return 0; fi\n",
+      "new": "      :\n"
+    },
+    {
+      "name": "malformed JSON overwritten",
+      "old": "_ck_claude_shape() {\n  jq -s -e . \"$1\" > /dev/null 2>&1 || return 1\n",
+      "new": "_ck_claude_shape() {\n  return 0\n"
+    },
+    {
+      "name": "multi-document JSON accepted",
+      "old": "jq -s -e 'length == 1 and (.[0] | type",
+      "new": "jq -s -e '(.[0] | type"
+    },
+    {
+      "name": "wrong shape accepted",
+      "old": "> /dev/null 2>&1 || return 2\n",
+      "new": "> /dev/null 2>&1 || return 0\n"
+    },
+    {
+      "name": "TOOL allowlist removed",
+      "old": "[[ ${1-} == SendMessage ]] ||",
+      "new": "true ||"
+    },
+    {
+      "name": "symlink check removed",
+      "old": "  for p in \"$dir\" \"$file\" \"$file.crewkit-bak\"; do\n    if [[ -L $p ]]",
+      "new": "  for p in; do\n    if [[ -L $p ]]"
+    },
+    {
+      "name": "symlinked backup followed",
+      "old": "for p in \"$dir\" \"$file\" \"$file.crewkit-bak\"; do",
+      "new": "for p in \"$dir\" \"$file\"; do"
+    },
+    {
+      "name": "backup that is a directory accepted",
+      "old": "  if [[ -e $file.crewkit-bak && ! -f $file.crewkit-bak ]]; then _CK_CERR=\"$file.crewkit-bak is not a regular file\"; return 78; fi\n",
+      "new": "  :\n"
+    },
+    {
+      "name": "ownership check deleted",
+      "old": "    _ck_claude_find \"$p\" ! -user \"$me\" || { _CK_CERR=\"cannot check the owner of $p\"; return 78; }\n    if [[ -n $_CK_FOUND ]]; then _CK_CERR=\"$p is not owned by you\"; return 78; fi\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "ownership test inverted",
+      "old": "_ck_claude_find \"$p\" ! -user \"$me\"",
+      "new": "_ck_claude_find \"$p\" -user \"$me\""
+    },
+    {
+      "name": "world-writable not checked",
+      "old": "_ck_claude_find \"$p\" -perm -002",
+      "new": "_ck_claude_find \"$p\" -perm -001"
+    },
+    {
+      "name": "directory accepted as settings.json",
+      "old": "    if [[ $p == \"$file\" && ! -f $p ]]; then _CK_CERR=\"$p is not a regular file\"; return 78; fi\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "unreadable file not checked first",
+      "old": "  if [[ -e $file && ! -r $file ]]; then _CK_CERR=\"$file cannot be read\"; return 78; fi\n",
+      "new": "  :\n"
+    },
+    {
+      "name": "backup skipped",
+      "old": "    mv \"$snap\" \"$bak\" || { _CK_CERR=\"cannot write the backup $bak\"; return 1; }\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "backup mode left loose",
+      "old": "    mv \"$snap\" \"$bak\" ||",
+      "new": "    chmod 644 \"$snap\"; mv \"$snap\" \"$bak\" ||"
+    },
+    {
+      "name": "backup staged at a predictable name",
+      "old": "    mv \"$snap\" \"$bak\" ||",
+      "new": "    cp \"$snap\" \"$bak.new\" && mv \"$bak.new\" \"$bak\" ||"
+    },
+    {
+      "name": "rewrite during the run not detected",
+      "old": "    cmp -s \"$snap\" \"$file\" || { _CK_CERR=\"$file changed while crewkit was editing it; run again\"; return 75; }\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "file appearing during the run overwritten",
+      "old": "  elif [[ -e $file || -L $file ]]; then",
+      "new": "  elif false; then"
+    },
+    {
+      "name": "settings content in an argument",
+      "old": "jq -e -n --slurpfile old \"$1\"",
+      "new": "jq -e -n --arg leak \"$(cat \"$1\")\" --slurpfile old \"$1\""
+    },
+    {
+      "name": "verify before mv skipped",
+      "old": "  _ck_claude_verify \"$snap\" \"$tmp\" \"$tool\" ||",
+      "new": "  true ||"
+    },
+    {
+      "name": "verify ignores the allow list",
+      "old": "    and ($n.permissions.allow == ((($o.permissions // {}).allow // []) + [$t]))\n",
+      "new": "    and true\n"
+    },
+    {
+      "name": "verify ignores key order",
+      "old": "    and (($o | keys_unsorted) + (if $o | has(\"permissions\") then [] else [\"permissions\"] end) == ($n | keys_unsorted))\n",
+      "new": "    and true\n"
+    },
+    {
+      "name": "verify ignores key order inside permissions",
+      "old": "    and ((($o.permissions // {}) | keys_unsorted) + (if ($o.permissions // {}) | has(\"allow\") then [] else [\"allow\"] end) == ($n.permissions | keys_unsorted))\n",
+      "new": "    and true\n"
+    },
+    {
+      "name": "verify ignores other keys",
+      "old": "    and (($o | if has(\"permissions\") then . else .permissions = {} end | del(.permissions.allow)) == ($n | del(.permissions.allow)))\n",
+      "new": "    and true\n"
+    },
+    {
+      "name": "dry run writes",
+      "old": "[[ ${CK_YES:-0} != 1 ]]; then\n    # A dry run",
+      "new": "[[ ${CK_YES:-0} == 9 ]]; then\n    # A dry run"
+    },
+    {
+      "name": "dry run takes the lock",
+      "old": "  if [[ ${CK_YES:-0} != 1 ]]; then\n    # A dry run",
+      "new": "  ck_lock claude-settings; ck_unlock claude-settings\n  if [[ ${CK_YES:-0} != 1 ]]; then\n    # A dry run"
+    },
+    {
+      "name": "other keys dropped",
+      "old": "jq --arg t \"$tool\" '.permissions = (",
+      "new": "jq --arg t \"$tool\" '{permissions: .permissions} | .permissions = ("
+    },
+    {
+      "name": "existing allow entries replaced",
+      "old": "| .allow = ((.allow // []) + [$t]))'",
+      "new": "| .allow = [$t])'"
+    },
+    {
+      "name": "entry added at the front",
+      "old": "| .allow = ((.allow // []) + [$t]))'",
+      "new": "| .allow = ([$t] + (.allow // [])))'"
+    },
+    {
+      "name": "file not mode 600",
+      "old": "  tmp=$(umask 077; mktemp \"$dir/.settings.json.XXXXXX\" 2>/dev/null) ||",
+      "new": "  tmp=\"$dir/.settings.json.$$\"; : > \"$tmp\" ||"
+    },
+    {
+      "name": "new ~/.claude not mode 700",
+      "old": "    mkdir -m 700 \"$dir\" 2>/dev/null",
+      "new": "    mkdir -m 755 \"$dir\" 2>/dev/null"
+    },
+    {
+      "name": "write not atomic (direct >)",
+      "old": "  mv \"$tmp\" \"$file\" ||",
+      "new": "  cat \"$tmp\" > \"$file\" ||"
+    },
+    {
+      "name": "lock not released",
+      "old": "  ck_unlock claude-settings\n  ((rc",
+      "new": "  :\n  ((rc"
+    },
+    {
+      "name": "status reports ok when missing",
+      "old": "  echo missing\n  return 1\n}",
+      "new": "  echo ok\n  return 0\n}"
+    },
+    {
+      "name": "status reports missing when the file is unreadable",
+      "old": "  if ((rc != 0)) || _ck_claude_denied \"$file\" \"$1\"; then echo unreadable; return 2; fi\n",
+      "new": "  if ((rc != 0)) || _ck_claude_denied \"$file\" \"$1\"; then echo missing; return 1; fi\n"
+    },
+    {
+      "name": "status ignores a deny entry",
+      "old": "  if ((rc != 0)) || _ck_claude_denied \"$file\" \"$1\"; then",
+      "new": "  if ((rc != 0)); then"
+    },
+    {
+      "name": "status reports ok without looking for the entry",
+      "old": "  if _ck_claude_has \"$file\" \"$1\"; then echo ok; return 0; fi\n",
+      "new": "  if true; then echo ok; return 0; fi\n"
+    },
+    {
+      "name": "lock not held",
+      "old": "  ck_lock claude-settings\n  # $$ in the subshell",
+      "new": "  :\n  # $$ in the subshell"
+    },
+    {
+      "name": "subshell trap removed",
+      "old": "    trap _ck_claude_cleanup EXIT\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "post-mv backup check removed",
+      "old": "    [[ -f $bak && ! -L $bak && ! -e $snap ]] || { _CK_CERR=\"the backup $bak is not a regular file now; $file left as it was\"; return 1; }\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "hard-link check removed",
+      "old": "    if [[ -n $_CK_FOUND ]]; then _CK_CERR=\"$file has more than one hard link: crewkit never writes through one\"; return 78; fi\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "deny warning removed",
+      "old": "    printf 'crewkit: warning: %s is also in permissions.deny in %s: the deny wins, the allow has no effect\\n' \"$1\" \"$file\" >&2\n",
+      "new": "    :\n"
+    },
+    {
+      "name": "refusal code lost",
+      "old": "  ((rc == 0)) || exit \"$rc\"\n}",
+      "new": "  :\n}"
+    },
+    {
+      "name": "caller alive not checked",
+      "old": "  kill -0 \"$$\" 2>/dev/null || return 1\n",
+      "new": "  :\n"
+    },
+    {
+      "name": "lock owner not checked",
+      "old": "  [[ $(readlink \"$dir/locks/claude-settings.lock\" 2>/dev/null) == \"$$\" ]]\n",
+      "new": "  true\n"
+    },
+    {
+      "name": "no check before the backup rename",
+      "old": "    _ck_claude_held || { _CK_CERR=\"crewkit was stopped, or lost its lock, before the backup; $file left as it was\"; return 75; }\n",
+      "new": ""
+    },
+    {
+      "name": "no check before the final rename",
+      "old": "  _ck_claude_held || { _CK_CERR=\"crewkit was stopped, or lost its lock, before the rename; $file left as it was\"; return 75; }\n",
+      "new": ""
+    },
+    {
+      "name": "group-write not checked",
+      "old": "    if [[ -n $_CK_FOUND ]]; then\n      gid=$(id -g)",
+      "new": "    if false; then\n      gid=$(id -g)"
+    },
+    {
+      "name": "group-execute checked instead of group-write",
+      "old": "_ck_claude_find \"$dir\" -perm -020 ||",
+      "new": "_ck_claude_find \"$dir\" -perm -010 ||"
+    },
+    {
+      "name": "group test inverted (own group refused, a foreign one allowed)",
+      "old": "_ck_claude_find \"$dir\" ! -group \"$gid\"",
+      "new": "_ck_claude_find \"$dir\" -group \"$gid\""
+    },
+    {
+      "name": "group-writable with own group refused",
+      "old": "_ck_claude_find \"$dir\" ! -group \"$gid\" ||",
+      "new": "_ck_claude_find \"$dir\" ||"
+    },
+    {
+      "name": "shared primary group allowed (user-private not required)",
+      "old": "      [[ $gn == \"$un\" ]] || {",
+      "new": "      true || {"
+    },
+    {
+      "name": "a failed name lookup allowed",
+      "old": "      if ! gn=$(id -gn 2>/dev/null) || ! un=$(id -un 2>/dev/null); then\n",
+      "new": "      if false; then\n"
+    },
+    {
+      "name": "names looked up for any ~/.claude, group-writable or not",
+      "old": "    _ck_claude_find \"$dir\" -perm -020 || { _CK_CERR=\"cannot check the mode of $dir\"; return 78; }\n",
+      "new": "    id -gn > /dev/null 2>&1 && id -un > /dev/null 2>&1 || { _CK_CERR=\"cannot tell your names\"; return 78; }\n    _ck_claude_find \"$dir\" -perm -020 || { _CK_CERR=\"cannot check the mode of $dir\"; return 78; }\n"
+    },
+    {
+      "name": "a zombie caller counts as alive",
+      "old": "  [[ $(ps -o stat= -p \"$$\" 2>/dev/null) =~ ^[[:space:]]*Z ]] && return 1\n",
+      "new": ""
+    }
+  ]
+}

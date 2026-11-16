@@ -127,10 +127,12 @@ merged() { tr '\n' ' ' < "$STUB/merged.log" 2>/dev/null || true; }
 merge_calls() { grep -c '^pr merge' "$STUB/calls.log" || true; }
 no_batch_branches() { [[ -z $(git --git-dir="$STUB_BARE" for-each-ref refs/heads/batch) ]]; }
 
-# hold_lock SECONDS: hold the landing lock in the background (wait for it with `wait`).
+# hold_lock SECONDS: hold the landing lock in the background (its pid is HOLD_PID; `wait "$HOLD_PID"`).
 hold_lock() {
   mkdir -p "$ORCH_STATE_DIR/locks"
   (exec 8>"$ORCH_STATE_DIR/locks/land.lock"; flock 8; sleep "$1") &
+  # shellcheck disable=SC2034  # read by the tests
+  HOLD_PID=$!
   sleep 0.5
 }
 

@@ -1,0 +1,36 @@
+# crewkit node report (libexec/crewkit-node-report) and ck_herdr_agents --access, before any of that code. RED: the new suite with no libexec/crewkit-node-report (bin/crewkit reports an unknown verb, 64, so every test fails on its status or its output), and the herdr suite's --access test with the unchanged herdr.sh. The usage test passes in RED only because an unknown verb is also 64; its other assertions (no herdr call, state not read) are not exercised until the script exists, and the mutant 'extra args accepted' is what proves it.
+$ bats tests/crewkit-node-report.bats
+1..31
+not ok 1 prints one JSON line with the documented keys and nothing else
+not ok 2 the values: node state, time, versions, platform, and an empty agent list
+not ok 3 the output's keys stay equal to the registry's CK_REPORT_KEYS
+not ok 4 roles come from tokens, else from node state
+not ok 5 the lead or bridge in node state may be a pane id
+not ok 6 access: the token if exactly reader or writer, else writer for the lead, reader for the bridge, else unknown
+not ok 7 an agent is never guessed to be a reader
+not ok 8 the bridge's status is that of its agent
+not ok 9 the report carries no cwd, title or hostname
+not ok 10 a hostile agent name or token is null, never passed through
+not ok 11 other running sessions are listed by name only, and not the node's own
+not ok 12 --session reports another session, with that session's node state
+not ok 13 herdr not running: exit 0, server_running false, no agents
+not ok 14 no herdr at all: exit 0, server_running false, no agents
+not ok 15 herdr failing on a running server is 1, with nothing on stdout
+not ok 16 writes nothing: a read-only HOME still reports
+not ok 17 writes nothing: a read-only TMPDIR still reports, and a scratch directory is left behind by none
+not ok 18 no state is created when there is none: the state directory is not made
+not ok 19 the state_dir setting is honoured
+not ok 20 the forced command ignores SSH_ORIGINAL_COMMAND
+ok 21 any argument but --session S is usage (64), with no herdr call and no read of node state
+not ok 22 no node state is 78, with nothing on stdout
+not ok 23 node state that fails a check is 65, with nothing on stdout
+not ok 24 node state: null lead and bridge, and a 64-character pane or name, are valid
+not ok 25 an oversize node state is 65
+not ok 26 the default session is herdr's default one
+not ok 27 push_gate: installed, installed without the denylist, and absent otherwise
+not ok 28 push_gate: the fixture dispatcher's own answers
+not ok 29 boot_start comes from ck_boot_status when the tree has it, else absent
+not ok 30 a ck_boot_status exported from the environment is not used
+not ok 31 platform: os and arch are mapped, and anything else is other
+$ bats tests/crewkit-herdr.bats
+not ok 11 agents --access adds the access token, only if it is exactly reader or writer

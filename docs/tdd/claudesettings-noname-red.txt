@@ -1,0 +1,24 @@
+tests/crewkit-claudesettings.bats in the Linux gate's container, which runs as a uid with no name
+(--user 501:20, no passwd entry). The three group-write tests called the real `id -un`, which fails
+there, so the code refused with its fail-safe "cannot be looked up" message, not the one each test
+expected. The code was right; the tests assumed a named user. The stubs now pin the names.
+
+$ docker run --rm --network none --user 501:20 -e HOME=/tmp -v "$S:/src" -w /src crewkit-ubuntu \
+    bash -c 'bats/bin/bats -f group tests/crewkit-claudesettings.bats'
+1..6
+not ok 1 a group-writable ~/.claude of the user's own primary group is allowed (user-private groups)
+# (in test file tests/crewkit-claudesettings.bats, line 617)
+#   `chmod 775 "$HOME/.claude"' failed
+# id: cannot find name for user ID 501
+# 78 crewkit: <tmp>/hub/.claude is group-writable and your user or group name cannot be looked up, so the group may not be yours alone (chmod g-w it)
+not ok 2 a group-writable ~/.claude of a shared primary group (staff) is 78 and unchanged
+# (in test file tests/crewkit-claudesettings.bats, line 629)
+#   `chmod 770 "$HOME/.claude"' failed
+not ok 3 a group-writable ~/.claude of another group is 78 and unchanged (id -g stubbed to a foreign gid)
+# (in test file tests/crewkit-claudesettings.bats, line 641)
+#   `chmod 770 "$HOME/.claude"' failed
+ok 4 a ~/.claude of another group that the group cannot write (750) is fine
+ok 5 a ~/.claude no group can write (700) is fine when the user or group name cannot be looked up
+ok 6 a group-writable ~/.claude of your own gid is 78 when the names cannot be looked up (user-private unconfirmed)
+
+After the fix: 59/59 in the same container, and 59/59 on macOS.
